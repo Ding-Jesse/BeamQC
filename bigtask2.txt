@@ -1,0 +1,9 @@
+in plan but not in beam: 
+('R1F', 'B5-3b')
+error rate = 0.24 %
+in beam but not in plan: 
+('2F', 'GB-5')
+('2F', 'GC-5')
+('R1F', 'B7-3')
+('R2F', 'B5-3')
+error rate = 0.97 %

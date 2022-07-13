@@ -1,0 +1,9 @@
+in plan but not in beam: 
+(B1F, b12)
+(B1F, b16)
+in beam but not in plan: 
+('B1F', 'b22')
+('B1F', 'g2')
+('B2F', 'g2')
+('B3F', 'g2')
+('R3F', 'g2')

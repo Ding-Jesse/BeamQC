@@ -8,6 +8,8 @@ import re
 import time
 import multiprocessing
 import os
+import pandas as pd
+
 def turn_floor_to_float(floor): # turn string to float
     if ' ' in floor: # 不小心有空格要把空格拔掉
         floor = floor.replace(' ', '')
@@ -79,8 +81,8 @@ def floor_exist(i, Bmax, Fmax, Rmax): # 判斷是否為空號，例如B2F-PRF會
 
     return False
 
-def vtFloat(list): #要把點座標組成的list轉成autocad看得懂的樣子？
-    return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, list)
+def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
+    return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
 
 def error(error_message): # 把錯誤訊息印到error.log裡面
     f = open('error.log', 'a')
@@ -103,7 +105,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'plan error in step 1: {e}.')
+            error(f'read_plan error in step 1: {e}.')
 
     # Step 2. 匯入檔案
     flag = 0
@@ -113,7 +115,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'plan error in step 2: {e}.')
+            error(f'read_plan error in step 2: {e}.')
 
     # Step 3. 匯入modelspace
     flag = 0
@@ -123,7 +125,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'plan error in step 3: {e}.')
+            error(f'read_plan error in step 3: {e}.')
 
     # Step 4. 遍歷所有物件 -> 炸圖塊   
     flag = 0
@@ -135,7 +137,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'plan error in step 4: {e}.')
+            error(f'read_plan error in step 4: {e}.')
 
     # Step 5. 重新匯入modelspace
     flag = 0
@@ -145,7 +147,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'plan error in step 5: {e}.')
+            error(f'read_plan error in step 5: {e}.')
     
     # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_beam_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
@@ -166,7 +168,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
                     if floor != '':
                         coor_to_floor_set.add((coor, floor))
                     else:
-                        error(f'plan error in step 6: floor is an empty string. ')
+                        error(f'read_plan error in step 6: floor is an empty string. ')
                 # 取beam的字串 -> 只取括號前的東西 (Ex. 'GC-3(50x95)' -> 'GC-3')
                 # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
                 if object.Layer in beam_layer and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader") and object.GetBoundingBox()[0][1] >= 0 \
@@ -219,7 +221,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
 
         except Exception as e:
             time.sleep(5)
-            error(f'plan error in step 6: {e}.')
+            error(f'read_plan error in step 6: {e}.')
 
     # Step 7. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
@@ -326,7 +328,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
                                 set_plan.add((turn_floor_to_string(i), beam_name))
                                 dic_plan[(turn_floor_to_string(i), beam_name)] = full_coor
                     except:
-                        error(f'plan error in step 9: The error above is from here.')
+                        error(f'read_plan error in step 9: The error above is from here.')
                     to_bool = True
                     break
             if not to_bool:
@@ -344,9 +346,9 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
                         set_plan.add((new_floor, beam_name))
                         dic_plan[(new_floor, beam_name)] = full_coor
                     else:
-                        error(f'plan error in step 9: new_floor is false.')
+                        error(f'read_plan error in step 9: new_floor is false.')
         else:
-            error('plan error in step 9: min_floor cannot be found.')
+            error('read_plan error in step 9: min_floor cannot be found.')
 
     doc_plan.Close(SaveChanges=False)
 
@@ -370,7 +372,7 @@ def read_beam(beam_filename, text_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'beam error in step 1: {e}.')
+            error(f'read_beam error in step 1: {e}.')
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -379,7 +381,7 @@ def read_beam(beam_filename, text_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'beam error in step 2: {e}.')
+            error(f'read_beam error in step 2: {e}.')
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -388,7 +390,7 @@ def read_beam(beam_filename, text_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'beam error in step 3: {e}.')
+            error(f'read_beam error in step 3: {e}.')
     
     # Step 4. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor)
     floor_to_beam_set = set()
@@ -414,7 +416,7 @@ def read_beam(beam_filename, text_layer):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'beam error in step 4: {e}.')
+            error(f'read_beam error in step 4: {e}.')
 
     # Step 5. 算出Bmax, Fmax, Rmax
     Bmax = 0
@@ -476,7 +478,7 @@ def read_beam(beam_filename, text_layer):
                             set_beam.add((turn_floor_to_string(i), beam))
                             dic_beam[(turn_floor_to_string(i), beam)] = coor
                 except:
-                    error(f'beam error in step 6: The error above is from here.')
+                    error(f'read_beam error in step 6: The error above is from here.')
                 to_bool = True
                 break
         if not to_bool:
@@ -494,7 +496,7 @@ def read_beam(beam_filename, text_layer):
                     set_beam.add((new_floor, beam))
                     dic_beam[(new_floor, beam)] = coor
                 else:
-                    error(f'plan error in step 9: new_floor is false.')
+                    error(f'read_beam error in step 6: new_floor is false.')
 
     doc_beam.Close(SaveChanges=False)
 
@@ -509,49 +511,17 @@ def read_beam(beam_filename, text_layer):
     
     return (set_beam, dic_beam)
 
-if __name__=='__main__':
-    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task6\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task6\XS-BEAM.dwg"
-    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task6\XS-PLAN_new.dwg"
-    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task6\XS-BEAM_new.dwg"
-
-    final_filename = 'task6'
-    date = time.strftime("%Y-%m-%d", time.localtime())
-    # 在plan裡面自訂圖層
-    floor_layer = "S-TITLE" # 樓層字串的圖層
-    beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = "DEFPOINTS" # 框框的圖層
-
-    # 在beam裡面自訂圖層
-    text_layer = "S-RC"
-
-    error(f'{final_filename} start. ')
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer))
-    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer))
-    final_plan = res_plan.get()
-    final_beam = res_beam.get()
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_beam = final_beam[0]
-    dic_beam = final_beam[1]
-
+def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
     set1 = set_plan - set_beam
     list1 = list(set1)
     list1.sort()
 
-    set2 = set_beam - set_plan
-    list2 = list(set2)
-    list2.sort()
-
-    # Step 1. 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
-    f_big = open(f"big{final_filename}.txt", "w")
-    f_sml = open(f"sml{final_filename}.txt", "w")
+    f_big = open(f"big{task_name}.txt", "w")
+    f_sml = open(f"sml{task_name}.txt", "w")
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
-    # Step 1-1. 開啟應用程式
+    # Step 1. 開啟應用程式
     flag = 0
     while not flag:
         try:
@@ -559,8 +529,8 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 1-1, {e}')
-    # Step 1-2. 匯入檔案
+            error(f'write_plan error in step 1, {e}')
+    # Step 2. 匯入檔案
     flag = 0
     while not flag:
         try:
@@ -568,8 +538,8 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 1-2, {e}')
-    # Step 1-3. 載入modelspace(還要畫圖)
+            error(f'write_plan error in step 2, {e}')
+    # Step 3. 載入modelspace(還要畫圖)
     flag = 0
     while not flag:
         try:
@@ -577,10 +547,10 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 1-3, {e}')
+            error(f'write_plan error in step 3, {e}')
     time.sleep(5)
 
-    # Step 1-4. 設定mark的圖層
+    # Step 4. 設定mark的圖層
     flag = 0
     while not flag:
         try:
@@ -592,9 +562,9 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 1-4, {e}')
+            error(f'write_plan error in step 4, {e}')
     
-    # Step 1-5. 完成in plan but not in beam，畫圖，以及計算錯誤率
+    # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
     big_error = 0
     sml_error = 0
 
@@ -607,8 +577,8 @@ if __name__=='__main__':
             sml_error += 1
         
         coor = dic_plan[x]
-        list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
-        points = vtFloat(list)
+        coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+        points = vtFloat(coor_list)
         pointobj = msp_plan.AddPolyline(points)
         for i in range(4):
             pointobj.SetWidth(i, 10, 10)
@@ -629,19 +599,31 @@ if __name__=='__main__':
         big_rate = round(big_error / big_count * 100, 2)
         f_big.write(f'error rate = {big_rate} %\n')
     except:
-        error(f'final error in step 1-5, there are no big beam in plan.txt?')
+        big_rate = 'unfinish'
+        error(f'write_plan error in step 5, there are no big beam in plan.txt?')
     
     try:
         sml_rate = round(sml_error / sml_count * 100, 2)
         f_sml.write(f'error rate = {sml_rate} %\n')
     except:
-        error(f'final error in step 1-5, there are no small beam in plan.txt?')
+        sml_rate = 'unfinish'
+        error(f'write_plan error in step 5, there are no small beam in plan.txt?')
 
-    # Step 2. 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+    f_big.close()
+    f_sml.close()
+    return (big_rate, sml_rate)
+
+def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+    set2 = set_beam - set_plan
+    list2 = list(set2)
+    list2.sort()
+
+    f_big = open(f"big{task_name}.txt", "a")
+    f_sml = open(f"sml{task_name}.txt", "a")
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
-    # Step 2-1. 開啟應用程式
+    # Step 1. 開啟應用程式
     flag = 0
     while not flag:
         try:
@@ -649,8 +631,8 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 2-1, {e}')
-    # Step 2-2. 匯入檔案
+            error(f'write_beam error in step 1, {e}')
+    # Step 2. 匯入檔案
     flag = 0
     while not flag:
         try:
@@ -658,8 +640,8 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 2-2, {e}')
-    # Step 2-3. 載入modelspace(還要畫圖)
+            error(f'write_beam error in step 2, {e}')
+    # Step 3. 載入modelspace(還要畫圖)
     flag = 0
     while not flag:
         try:
@@ -667,10 +649,10 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 2-3, {e}')
+            error(f'write_beam error in step 3, {e}')
     time.sleep(5)
 
-    # Step 2-4. 設定mark的圖層
+    # Step 4. 設定mark的圖層
     flag = 0
     while not flag:
         try:
@@ -682,9 +664,9 @@ if __name__=='__main__':
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'final error in step 2-4, {e}')
+            error(f'write_beam error in step 4, {e}')
 
-    # Step 2-5. 完成in plan but not in beam，畫圖，以及計算錯誤率
+    # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
     big_error = 0
     sml_error = 0
     for x in list2: 
@@ -696,8 +678,8 @@ if __name__=='__main__':
             sml_error += 1
         
         coor = dic_beam[x]
-        list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
-        points = vtFloat(list)
+        coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+        points = vtFloat(coor_list)
         pointobj = msp_beam.AddPolyline(points)
         for i in range(4):
             pointobj.SetWidth(i, 10, 10)
@@ -718,14 +700,60 @@ if __name__=='__main__':
         big_rate = round(big_error / big_count * 100, 2)
         f_big.write(f'error rate = {big_rate} %\n')
     except:
-        error(f'final error in step 1-5, there are no big beam in plan.txt?')
+        big_rate = 'unfinish'
+        error(f'write_beam error in step 5, there are no big beam in beam.txt?')
     
     try:
         sml_rate = round(sml_error / sml_count * 100, 2)
         f_sml.write(f'error rate = {sml_rate} %\n')
     except:
-        error(f'final error in step 1-5, there are no small beam in plan.txt?')
+        sml_rate = 'unfinish'
+        error(f'write_beam error in step 5, there are no small beam in beam.txt?')
     
     f_big.close()
     f_sml.close()
-    error(f'{final_filename} finish. ')
+
+    return (big_rate, sml_rate)
+
+def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other):
+    df = pd.read_excel(excel_file)
+    new_list = [(task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other)]
+    dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
+    df=pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
+    df.to_excel(excel_file)
+    return
+
+if __name__=='__main__':
+    start = time.time()
+    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
+    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-BEAM.dwg"
+    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-PLAN_new.dwg"
+    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-BEAM_new.dwg"
+    excel_file = '0713.xlsx'
+
+    task_name = 'task5'
+    date = time.strftime("%Y-%m-%d", time.localtime())
+    # 在plan裡面自訂圖層
+    floor_layer = "S-TITLE" # 樓層字串的圖層
+    beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
+    block_layer = "DEFPOINTS" # 框框的圖層
+
+    # 在beam裡面自訂圖層
+    text_layer = "S-RC"
+    multiprocessing.freeze_support()
+    pool = multiprocessing.Pool()
+    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer))
+    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer))
+    final_plan = res_plan.get()
+    final_beam = res_beam.get()
+
+    set_plan = final_plan[0]
+    dic_plan = final_plan[1]
+    set_beam = final_beam[0]
+    dic_beam = final_beam[1]
+
+    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name)
+    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name)
+
+    end = time.time()
+    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], date, f'{round(end - start, 2)}(s)', 'none')
