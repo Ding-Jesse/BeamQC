@@ -1,7 +1,0 @@
-in plan but not in beam: 
-(B1F, GB'-0)
-(B1F, GB'-1)
-in beam but not in plan: 
-('B1F', 'B3-3')
-('B2F', 'B3-3')
-('B3F', 'B3-3')
