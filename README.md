@@ -12,7 +12,7 @@ This is not good. (沒有括號)
 3. 顯示樓層的字串中，'2-5F', '3F~6F', '3F,5F,7F' 等等都是可接受的，但盡量避免中文字元(可能會變成西班牙文亂碼)
 
 This is not good. (頓號變成'¡B'了)
-![image](./picture/wrong_example2.png)
+![image](./picture/wrong_example3.png)
 
 4. 在一個圖框中，盡量只放一張圖，如果要放兩張以上的圖，請將黃色標題放在圖的下方，比較不容易出錯。
 
