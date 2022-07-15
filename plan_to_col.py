@@ -2,7 +2,6 @@ from gzip import READ
 from multiprocessing.spawn import prepare
 from tkinter import HIDDEN
 from numpy import object_
-from openpyxl import load_workbook
 import win32com.client
 import pythoncom
 import re
@@ -86,7 +85,7 @@ def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
 
 def error(error_message): # 把錯誤訊息印到error.log裡面
-    f = open('./result/error_log.txt', 'a')
+    f = open('error.log', 'a')
     localtime = time.asctime(time.localtime(time.time()))
     f.write(f'{localtime} | {error_message}\n')
     f.close
@@ -94,10 +93,8 @@ def error(error_message): # 把錯誤訊息印到error.log裡面
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡']
-beam_head1 = ['B', 'b', 'G', 'g']
-beam_head2 = ['CB', 'CG', 'cb']
 
-def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filename):
+def read_plan(plan_filename, floor_layer, col_layer, block_layer):
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -133,7 +130,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
     while not flag:
         try:
             for object in msp_plan:
-                if object.Layer in beam_layer and object.EntityName == "AcDbBlockReference":
+                if object.Layer in col_layer and object.EntityName == "AcDbBlockReference":
                     object.Explode()
             flag = 1
         except Exception as e:
@@ -150,9 +147,10 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
             time.sleep(5)
             error(f'read_plan error in step 5: {e}.')
     
-    # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_beam_set, block_coor_list
+    # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_col_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
-    coor_to_beam_set = set() # set (coor, beam)
+    coor_to_col_set = set() # set (coor, col)
+    coor_to_size_set = set() # set (coor, size)
     block_coor_list = [] # 存取方框最左下角的點座標
 
     flag = 0
@@ -160,62 +158,29 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
         try:
             for object in msp_plan:
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
-                # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
+                # 若此處報錯，可能原因: 1. 沒有括號, 2. 待補
                 if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
                     floor = object.TextString
                     floor = re.search('\(([^)]+)', floor).group(1) #取括號內的樓層數
                     floor = floor.split(' ')[0]
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2)) #不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
-                    no_chinese = False
-                    for ch in floor: # 待修正
-                        if ch == 'F' or ch.isdigit():
-                            no_chinese = True
-                            break
-                    if floor != '' and no_chinese:
+                    if floor != '':
                         coor_to_floor_set.add((coor, floor))
                     else:
-                        error(f'read_plan error in step 6: floor is an empty string or it is Chinese. ')
-                # 取beam的字串 -> 只取括號前的東西 (Ex. 'GC-3(50x95)' -> 'GC-3')
-                # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
-                if object.Layer in beam_layer and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader") and object.GetBoundingBox()[0][1] >= 0 \
-                        and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
-                    beam = object.TextString
+                        error(f'read_plan error in step 6: floor is an empty string. ')
+                # 取col的字串
+                if object.Layer in col_layer and object.ObjectName == "AcDbText" and (object.TextString[0] == 'C' or object.TextString[0:2] == '¡æ'):
+                    col = f"C{object.TextString.split('C')[1]}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    if '(' in beam:
-                        beam = beam.split('(')[0] # 取括號前內容即可
-                    comma_char = ','
-                    for char in weird_comma_list:
-                        if char in beam:
-                            comma_char = char
-                    comma = beam.count(comma_char)
-                    for i in range(comma + 1):
-                        coor_to_beam_set.add(((coor1, coor2), beam.split(comma_char)[i]))
+                    coor_to_col_set.add(((coor1, coor2), col))
 
-                # 為了排版好看的怪產物，目前看到的格式為'{\W0.7;B4-2\P(80x100)}'，所以使用分號及反斜線來切
-                # 切爛了也不會報錯，直接反映在結果
-                if object.Layer in beam_layer and object.ObjectName == "AcDbMText" and object.GetBoundingBox()[0][1] >= 0:
-                    beam = object.TextString
-                    semicolon = beam.count(';')
-                    for i in range(semicolon + 1):
-                        s = beam.split(';')[i]
-                        if s[0] in beam_head1 or s[0:2] in beam_head2:
-                            if '(' in s:
-                                s = s.split('(')[0]
-                            if '\\' in s:
-                                s = s.split('\\')[0]
-                            beam = s
-                            break
-                    
+                # 取size
+                if object.Layer in col_layer and object.ObjectName == "AcDbText" and object.TextString[0] == '(':
+                    size = (object.TextString.split('(')[1]).split(')')[0] # 取括號內東西即可
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-
-                    if '(' in beam:
-                        beam = beam.split('(')[0] # 取括號前內容即可
-                    if ' ' in beam:
-                        beam = beam.replace(' ', '') # 有空格要把空格拔掉
-                    if beam[0] in beam_head1 or beam[0:2] in beam_head2:
-                        coor_to_beam_set.add(((coor1, coor2), beam))
+                    coor_to_size_set.add(((coor1, coor2), size))
 
                 # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
                 # 此處不會報錯
@@ -279,9 +244,20 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
             elif x > 1000 and x != 2000:
                 Rmax = x
 
+    # col_size_coor_set = set() # set(col, size, the coor of col)
+    # for x in coor_to_size_set:
+    #     size_coor = x[0]
+    #     size = x[1]
+
+    for x in coor_to_col_set:
+        print(x)
+    for x in coor_to_size_set:
+        print(x)
+    exit()
+    
     # Step 9. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
-    set_plan = set() # set元素為 (樓層, 梁柱名稱)
+    set_plan = set() # set元素為 (樓層, col, size)
     dic_plan = {} # 透過(floor, beam)去找字串座標
     for x in coor_to_beam_set: # set(coor, beam)
         beam_coor = x[0][0] # 取左下角即可
@@ -359,7 +335,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
     doc_plan.Close(SaveChanges=False)
 
     # plan.txt單純debug用，不想多新增檔案可以註解掉
-    f = open(result_filename, "w")
+    f = open("plan.txt", "w")
     f.write("in plan: \n")
     l = list(set_plan)
     l.sort()
@@ -369,7 +345,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
 
     return (set_plan, dic_plan)
 
-def read_beam(beam_filename, text_layer, result_filename):
+def read_beam(beam_filename, text_layer):
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -507,7 +483,7 @@ def read_beam(beam_filename, text_layer, result_filename):
     doc_beam.Close(SaveChanges=False)
 
     # beam.txt單純debug用，不想多新增檔案可以註解掉
-    f = open(result_filename, "w")
+    f = open("beam.txt", "w")
     f.write("in beam: \n")
     l = list(set_beam)
     l.sort()
@@ -517,14 +493,13 @@ def read_beam(beam_filename, text_layer, result_filename):
     
     return (set_beam, dic_beam)
 
-def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
-    pythoncom.CoInitialize()
+def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
     set1 = set_plan - set_beam
     list1 = list(set1)
     list1.sort()
 
-    f_big = open(big_file, "w")
-    f_sml = open(sml_file, "w")
+    f_big = open(f"big{task_name}.txt", "w")
+    f_sml = open(f"sml{task_name}.txt", "w")
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
@@ -620,14 +595,13 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     f_sml.close()
     return (big_rate, sml_rate)
 
-def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
-    pythoncom.CoInitialize()
+def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
     set2 = set_beam - set_plan
     list2 = list(set2)
     list2.sort()
 
-    f_big = open(big_file, "a")
-    f_sml = open(sml_file, "a")
+    f_big = open(f"big{task_name}.txt", "a")
+    f_sml = open(f"sml{task_name}.txt", "a")
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
@@ -724,59 +698,44 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
     return (big_rate, sml_rate)
 
 def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other):
-    sheet_name = 'result_log'
+    df = pd.read_excel(excel_file)
     new_list = [(task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other)]
     dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
-    if os.path.exists(excel_file):
-        writer = pd.ExcelWriter(excel_file,engine='xlsxwriter')
-        df = pd.read_excel(excel_file) 
-        df = pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
-    else:
-        writer = pd.ExcelWriter(excel_file, engine='xlsxwriter') 
-        df = dfNew
-    df.to_excel(writer,sheet_name=sheet_name)
-    writer.save()    
+    df=pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
+    df.to_excel(excel_file)
     return
 
 if __name__=='__main__':
     start = time.time()
-    task_name = '練武'
-    # 檔案路徑區
-    # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task8/XS-PLAN.dwg" # XS-PLAN的路徑
-    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task8/XS-BEAM.dwg" # XS-BEAM的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
-    plan_file = './result/plan.txt' # plan.txt的路徑
-    beam_file = './result/beam.txt' # beam.txt的路徑
-    error_file = './result/error_log.txt' # error_log.txt的路徑
-    excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-大梁.txt" # 大梁結果
-    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-小梁.txt" # 小梁結果
+    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
+    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-BEAM.dwg"
+    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-PLAN_new.dwg"
+    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-BEAM_new.dwg"
+    excel_file = '0713.xlsx'
 
+    task_name = 'task1'
     date = time.strftime("%Y-%m-%d", time.localtime())
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
-    beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = "圖框" # 框框的圖層
+    col_layer = "S-TEXTC" # col的圖層
+    block_layer = "DEFPOINTS" # 框框的圖層
 
     # 在beam裡面自訂圖層
     text_layer = "S-RC"
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file))
-    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file))
+    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, col_layer, block_layer))
+    # res_beam = pool.apply_async(read_beam, (beam_filename, text_layer))
     final_plan = res_plan.get()
-    final_beam = res_beam.get()
+    # final_beam = res_beam.get()
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_beam = final_beam[0]
-    dic_beam = final_beam[1]
+    # set_plan = final_plan[0]
+    # dic_plan = final_plan[1]
+    # set_beam = final_beam[0]
+    # dic_beam = final_beam[1]
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date)
+    # plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name)
+    # beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name)
 
-    end = time.time()
-    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-    write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
+    # end = time.time()
+    # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
