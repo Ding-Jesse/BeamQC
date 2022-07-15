@@ -133,7 +133,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
     while not flag:
         try:
             for object in msp_plan:
-                if object.Layer in beam_layer and object.EntityName == "AcDbBlockReference":
+                if object.EntityName == "AcDbBlockReference":
                     object.Explode()
             flag = 1
         except Exception as e:
@@ -742,25 +742,25 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = '練武'
+    task_name = 'task9'
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task8/XS-PLAN.dwg" # XS-PLAN的路徑
-    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task8/XS-BEAM.dwg" # XS-BEAM的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
+    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task9/XS-PLAN.dwg" # XS-PLAN的路徑
+    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task9/XS-BEAM.dwg" # XS-BEAM的路徑
+    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
+    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-大梁.txt" # 大梁結果
-    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-小梁.txt" # 小梁結果
+    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-大梁.txt" # 大梁結果
+    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-小梁.txt" # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
     beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = "圖框" # 框框的圖層
+    block_layer = "DEFPOINTS" # 框框的圖層
 
     # 在beam裡面自訂圖層
     text_layer = "S-RC"
