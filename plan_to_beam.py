@@ -86,7 +86,7 @@ def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
 
 def error(error_message): # 把錯誤訊息印到error.log裡面
-    f = open('./result/error_log.txt', 'a')
+    f = open(error_file, 'a')
     localtime = time.asctime(time.localtime(time.time()))
     f.write(f'{localtime} | {error_message}\n')
     f.close
@@ -738,6 +738,8 @@ def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml
     writer.save()    
     return
 
+error_file = './result/error_log.txt' # error_log.txt的路徑
+
 if __name__=='__main__':
     start = time.time()
     task_name = '練武'
@@ -749,12 +751,12 @@ if __name__=='__main__':
     beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
-    error_file = './result/error_log.txt' # error_log.txt的路徑 # 這邊還沒想好要怎麼把參數傳到error的函式裡
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
     big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-大梁.txt" # 大梁結果
     sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-小梁.txt" # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
+    
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
     beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存

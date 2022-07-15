@@ -85,7 +85,7 @@ def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
 
 def error(error_message): # 把錯誤訊息印到error.log裡面
-    f = open('error.log', 'a')
+    f = open('./result/error.log', 'a', encoding = 'utf-8')
     localtime = time.asctime(time.localtime(time.time()))
     f.write(f'{localtime} | {error_message}\n')
     f.close
@@ -176,7 +176,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer):
                     coor_to_col_set.add(((coor1, coor2), col))
 
                 # 取size
-                if object.Layer in col_layer and object.ObjectName == "AcDbText" and object.TextString[0] == '(':
+                if object.Layer in col_layer and object.ObjectName == "AcDbText" and 'x' in object.TextString:
                     size = (object.TextString.split('(')[1]).split(')')[0] # 取括號內東西即可
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
@@ -253,7 +253,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer):
         print(x)
     for x in coor_to_size_set:
         print(x)
-    exit()
+    return
     
     # Step 9. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
@@ -335,7 +335,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer):
     doc_plan.Close(SaveChanges=False)
 
     # plan.txt單純debug用，不想多新增檔案可以註解掉
-    f = open("plan.txt", "w")
+    f = open("./result/plan.txt", "w", encoding = 'utf-8')
     f.write("in plan: \n")
     l = list(set_plan)
     l.sort()
@@ -483,7 +483,7 @@ def read_beam(beam_filename, text_layer):
     doc_beam.Close(SaveChanges=False)
 
     # beam.txt單純debug用，不想多新增檔案可以註解掉
-    f = open("beam.txt", "w")
+    f = open("./result/beam.txt", "w", encoding = 'utf-8')
     f.write("in beam: \n")
     l = list(set_beam)
     l.sort()
@@ -498,8 +498,8 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, t
     list1 = list(set1)
     list1.sort()
 
-    f_big = open(f"big{task_name}.txt", "w")
-    f_sml = open(f"sml{task_name}.txt", "w")
+    f_big = open(f"./result/big{task_name}.txt", "w", encoding = 'utf-8')
+    f_sml = open(f"./result/sml{task_name}.txt", "w", encoding = 'utf-8')
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
@@ -600,8 +600,8 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, t
     list2 = list(set2)
     list2.sort()
 
-    f_big = open(f"big{task_name}.txt", "a")
-    f_sml = open(f"sml{task_name}.txt", "a")
+    f_big = open(f"./result/big{task_name}.txt", "a", encoding = 'utf-8')
+    f_sml = open(f"./result/sml{task_name}.txt", "a", encoding = 'utf-8')
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
@@ -707,11 +707,11 @@ def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml
 
 if __name__=='__main__':
     start = time.time()
-    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-BEAM.dwg"
-    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-PLAN_new.dwg"
-    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task1\XS-BEAM_new.dwg"
-    excel_file = '0713.xlsx'
+    plan_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
+    beam_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM.dwg"
+    plan_new_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN_new.dwg"
+    beam_new_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM_new.dwg"
+    excel_file = './result/result_log.xlsx'
 
     task_name = 'task1'
     date = time.strftime("%Y-%m-%d", time.localtime())
