@@ -724,8 +724,7 @@ def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml
     dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
     if os.path.exists(excel_file):
         book = load_workbook(excel_file)
-        writer = pd.ExcelWriter(excel_file,engine='openpyxl')
-        writer.book = book 
+        writer = pd.ExcelWriter(excel_file,engine='xlsxwriter')
         df = pd.read_excel(excel_file) 
         df = pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
     else:
@@ -733,42 +732,40 @@ def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml
         df = dfNew
     df.to_excel(writer,sheet_name=sheet_name)
     writer.save()    
-
-    
-    df.to_excel(excel_file)
     return
 
 if __name__=='__main__':
     start = time.time()
-    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-BEAM.dwg"
-    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-PLAN_new.dwg"
-    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-BEAM_new.dwg"
-    excel_file = '0713.xlsx'
+    # plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
+    # beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-BEAM.dwg"
+    # plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-PLAN_new.dwg"
+    # beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-BEAM_new.dwg"
+    # excel_file = '0713.xlsx'
 
-    task_name = 'task7'
-    date = time.strftime("%Y-%m-%d", time.localtime())
-    # 在plan裡面自訂圖層
-    floor_layer = "S-TITLE" # 樓層字串的圖層
-    beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = "DEFPOINTS" # 框框的圖層
+    # task_name = 'task7'
+    # date = time.strftime("%Y-%m-%d", time.localtime())
+    # # 在plan裡面自訂圖層
+    # floor_layer = "S-TITLE" # 樓層字串的圖層
+    # beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
+    # block_layer = "DEFPOINTS" # 框框的圖層
 
-    # 在beam裡面自訂圖層
-    text_layer = "S-RC"
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer))
-    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer))
-    final_plan = res_plan.get()
-    final_beam = res_beam.get()
+    # # 在beam裡面自訂圖層
+    # text_layer = "S-RC"
+    # multiprocessing.freeze_support()
+    # pool = multiprocessing.Pool()
+    # res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer))
+    # res_beam = pool.apply_async(read_beam, (beam_filename, text_layer))
+    # final_plan = res_plan.get()
+    # final_beam = res_beam.get()
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_beam = final_beam[0]
-    dic_beam = final_beam[1]
+    # set_plan = final_plan[0]
+    # dic_plan = final_plan[1]
+    # set_beam = final_beam[0]
+    # dic_beam = final_beam[1]
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name,date)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name,date)
+    # plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name,date)
+    # beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name,date)
 
-    end = time.time()
-    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    # end = time.time()
+    # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    write_result_log('result_log.xlsx','','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
