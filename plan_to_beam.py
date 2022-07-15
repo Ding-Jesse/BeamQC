@@ -2,6 +2,7 @@ from gzip import READ
 from multiprocessing.spawn import prepare
 from tkinter import HIDDEN
 from numpy import object_
+from openpyxl import load_workbook
 import win32com.client
 import pythoncom
 import re
@@ -263,7 +264,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer):
                     break
             comma = floor.count(comma_char)
             for i in range(comma + 1):
-                tmp_floor_list.append(turn_floor_to_float(floor.split(',')[i]))
+                tmp_floor_list.append(turn_floor_to_float(floor.split(comma_char)[i]))
 
         for x in tmp_floor_list:
             if x < 0 and x < Bmax and x != -1000:
@@ -511,13 +512,14 @@ def read_beam(beam_filename, text_layer):
     
     return (set_beam, dic_beam)
 
-def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
+def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name, task_name_sb,date): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
+    pythoncom.CoInitialize()
     set1 = set_plan - set_beam
     list1 = list(set1)
     list1.sort()
 
-    f_big = open(f"big{task_name}.txt", "w")
-    f_sml = open(f"sml{task_name}.txt", "w")
+    f_big = open(f"{task_name}.txt", "a")
+    f_sml = open(f"{task_name_sb}.txt", "a")
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
@@ -613,13 +615,14 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, t
     f_sml.close()
     return (big_rate, sml_rate)
 
-def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name, task_name_sb,date): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+    pythoncom.CoInitialize()
     set2 = set_beam - set_plan
     list2 = list(set2)
     list2.sort()
 
-    f_big = open(f"big{task_name}.txt", "a")
-    f_sml = open(f"sml{task_name}.txt", "a")
+    f_big = open(f"{task_name}.txt", "a")
+    f_sml = open(f"{task_name_sb}.txt", "a")
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
@@ -716,22 +719,34 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, t
     return (big_rate, sml_rate)
 
 def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other):
-    df = pd.read_excel(excel_file)
+    sheet_name = 'result_log'
     new_list = [(task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other)]
     dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
-    df=pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
+    if os.path.exists(excel_file):
+        book = load_workbook(excel_file)
+        writer = pd.ExcelWriter(excel_file,engine='openpyxl')
+        writer.book = book 
+        df = pd.read_excel(excel_file) 
+        df = pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
+    else:
+        writer = pd.ExcelWriter(excel_file, engine='xlsxwriter') 
+        df = dfNew
+    df.to_excel(writer,sheet_name=sheet_name)
+    writer.save()    
+
+    
     df.to_excel(excel_file)
     return
 
 if __name__=='__main__':
     start = time.time()
-    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-BEAM.dwg"
-    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-PLAN_new.dwg"
-    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task5\XS-BEAM_new.dwg"
+    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-PLAN.dwg" # 跟AutoCAD有關的檔案都要吃絕對路徑
+    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-BEAM.dwg"
+    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-PLAN_new.dwg"
+    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task7\XS-BEAM_new.dwg"
     excel_file = '0713.xlsx'
 
-    task_name = 'task5'
+    task_name = 'task7'
     date = time.strftime("%Y-%m-%d", time.localtime())
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
@@ -752,8 +767,8 @@ if __name__=='__main__':
     set_beam = final_beam[0]
     dic_beam = final_beam[1]
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name)
+    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, task_name,date)
+    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, task_name,date)
 
     end = time.time()
-    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], date, f'{round(end - start, 2)}(s)', 'none')
+    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
