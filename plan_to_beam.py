@@ -749,7 +749,7 @@ if __name__=='__main__':
     beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
-    error_file = './result/error_log.txt' # error_log.txt的路徑
+    error_file = './result/error_log.txt' # error_log.txt的路徑 # 這邊還沒想好要怎麼把參數傳到error的函式裡
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
     big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-大梁.txt" # 大梁結果
     sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task8/{task_name}-小梁.txt" # 小梁結果
