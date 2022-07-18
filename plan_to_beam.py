@@ -97,7 +97,7 @@ weird_comma_list = [',', '、', '¡']
 beam_head1 = ['B', 'b', 'G', 'g']
 beam_head2 = ['CB', 'CG', 'cb']
 
-def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filename):
+def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filename, explode):
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -128,27 +128,30 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
             time.sleep(5)
             error(f'read_plan error in step 3: {e}.')
 
-    # Step 4. 遍歷所有物件 -> 炸圖塊   
-    flag = 0
-    while not flag:
-        try:
-            for object in msp_plan:
-                if object.EntityName == "AcDbBlockReference":
-                    object.Explode()
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'read_plan error in step 4: {e}.')
+    if explode: # 需要提前炸圖塊再進來
 
-    # Step 5. 重新匯入modelspace
-    flag = 0
-    while not flag:
-        try:
-            msp_plan = doc_plan.Modelspace
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'read_plan error in step 5: {e}.')
+        # Step 4. 遍歷所有物件 -> 炸圖塊
+        # 炸圖塊看性質即可，不用看圖層      
+        flag = 0
+        while not flag:
+            try:
+                for object in msp_plan:
+                    if object.EntityName == "AcDbBlockReference":
+                        object.Explode()
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'read_plan error in step 4: {e}.')
+
+        # Step 5. 重新匯入modelspace
+        flag = 0
+        while not flag:
+            try:
+                msp_plan = doc_plan.Modelspace
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'read_plan error in step 5: {e}.')
     
     # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_beam_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
@@ -742,18 +745,18 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = 'task9'
+    task_name = 'task3'
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task9/XS-PLAN.dwg" # XS-PLAN的路徑
-    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task9/XS-BEAM.dwg" # XS-BEAM的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
+    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task3/XS-PLAN.dwg" # XS-PLAN的路徑
+    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task3/XS-BEAM.dwg" # XS-BEAM的路徑
+    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
+    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-大梁.txt" # 大梁結果
-    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task9/{task_name}-小梁.txt" # 小梁結果
+    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-大梁.txt" # 大梁結果
+    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-小梁.txt" # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
@@ -761,12 +764,13 @@ if __name__=='__main__':
     floor_layer = "S-TITLE" # 樓層字串的圖層
     beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
     block_layer = "DEFPOINTS" # 框框的圖層
+    explode = 0 # 需不需要提前炸圖塊
 
     # 在beam裡面自訂圖層
     text_layer = "S-RC"
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file))
+    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file, explode))
     res_beam = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file))
     final_plan = res_plan.get()
     final_beam = res_beam.get()
