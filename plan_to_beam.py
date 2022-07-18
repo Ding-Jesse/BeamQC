@@ -167,7 +167,6 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                 if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
                     floor = object.TextString
                     floor = re.search('\(([^)]+)', floor).group(1) #取括號內的樓層數
-                    floor = floor.split(' ')[0]
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2)) #不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
                     no_chinese = False
                     for ch in floor: # 待修正
