@@ -93,11 +93,12 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                             no_chinese = True
                             break
                     if floor != '' and no_chinese:
+                        print(floor)
                         coor_to_floor_set.add((coor, floor))
                     else:
                         error(f'read_plan error in step 6: floor is an empty string. ')
                 # 取col的字串
-                if object.Layer == col_layer and object.ObjectName == "AcDbText" and (object.TextString[0] == 'C' or '¡æ' in object.TextString) and 'S' not in object.TextString:
+                if object.Layer == col_layer and object.ObjectName == "AcDbText" and (object.TextString[0] == 'C' or ('¡æ' in object.TextString and 'C' in object.TextString)) and 'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1]}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
@@ -683,25 +684,25 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = 'task13'
+    task_name = '台南新市'
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "C:/Users/Vince/Desktop/BeamQC/data/task13/XS-PLAN.dwg" # XS-PLAN的路徑
-    col_filename = "C:/Users/Vince/Desktop/BeamQC/data/task13/XS-COL.dwg" # XS-COL的路徑
-    plan_new_filename = f"C:/Users/Vince/Desktop/BeamQC/data/task13/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    col_new_filename = f"C:/Users/Vince/Desktop/BeamQC/data/task13/{task_name}-XS-COL_new.dwg" # XS-COL_new的路徑
+    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task14/XS-PLAN.dwg" # XS-PLAN的路徑
+    col_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task14/XS-COL.dwg" # XS-COL的路徑
+    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task14/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
+    col_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task14/{task_name}-XS-COL_new.dwg" # XS-COL_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    result_file = f"C:/Users/Vince/Desktop/BeamQC/data/task13/{task_name}-柱配筋.txt" # 柱配筋結果
+    result_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task14/{task_name}-柱配筋.txt" # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
     col_layer = "S-TEXTC" # col的圖層
-    block_layer = "DwFm" # 圖框的圖層
-    explode = 0 # 需不需要提前炸圖塊
+    block_layer = "DEFPOINTS" # 圖框的圖層
+    explode = 1 # 需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
     text_layer = "S-TEXT" # 文字的圖層
