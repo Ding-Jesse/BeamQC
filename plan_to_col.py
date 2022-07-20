@@ -93,7 +93,6 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                             no_chinese = True
                             break
                     if floor != '' and no_chinese:
-                        print(floor)
                         coor_to_floor_set.add((coor, floor))
                     else:
                         error(f'read_plan error in step 6: floor is an empty string. ')
@@ -105,11 +104,14 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                     coor_to_col_set.add(((coor1, coor2), col))
 
                 # 取size
-                if object.Layer == col_layer and object.ObjectName == "AcDbText" and 'x' in object.TextString:
+                if object.Layer == col_layer and object.ObjectName == "AcDbText" and '(' in object.TextString:
                     size = (object.TextString.split('(')[1]).split(')')[0] # 取括號內東西即可
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    coor_to_size_set.add(((coor1, coor2), size))
+                    if 'x' in size:
+                        coor_to_size_set.add(((coor1, coor2), size))
+                    else:
+                        coor_to_size_set.add(((coor1, coor2), '另詳'))
 
                 # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
                 # 此處不會報錯
@@ -201,7 +203,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
 
             col_size_coor_set.add((col_name, match_size, (left, right, up, down)))
 
-    # # 檢查col跟size有沒有被圈在一起，或者被亂圈到其他地方
+    # # DEBUG: 檢查col跟size有沒有被圈在一起，或者被亂圈到其他地方
     # for x in col_size_coor_set:
     #     coor = x[2]
     #     coor_list = [coor[0] - 20, coor[3] - 20, 0, coor[1] + 20, coor[3] - 20, 0, coor[1] + 20, coor[2] + 20, 0, coor[0] - 20, coor[2] + 20, 0, coor[0] - 20, coor[3] - 20, 0]
@@ -209,6 +211,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     #     pointobj = msp_plan.AddPolyline(points)
     #     for i in range(4):
     #         pointobj.SetWidth(i, 10, 10)
+    # return
 
     # Step 10. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
@@ -266,7 +269,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                                 set_plan.add((turn_floor_to_string(i), col_name, col_size))
                                 dic_plan[(turn_floor_to_string(i), col_name, col_size)] = full_coor
                     except:
-                        error(f'read_plan error in step 9: The error above is from here.')
+                        error(f'read_plan error in step 10: The error above is from here.')
                     to_bool = True
                     break
             if not to_bool:
@@ -284,9 +287,9 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                         set_plan.add((new_floor, col_name, col_size))
                         dic_plan[(new_floor, col_name, col_size)] = full_coor
                     else:
-                        error(f'read_plan error in step 9: new_floor is false.')
+                        error(f'read_plan error in step 10: new_floor is false.')
         else:
-            error('read_plan error in step 9: min_floor cannot be found.')
+            error('read_plan error in step 10: min_floor cannot be found.')
 
     doc_plan.Close(SaveChanges=False)
 
@@ -452,11 +455,15 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
                 min_col_diff = y[3] - coor[1][1]
         if min_floor != '' and min_col != '':
             if '-' in min_col:
-                start = int((min_col.split('-')[0]).split('C')[1])
-                end = int((min_col.split('-')[1]).split('C')[1])
-                for i in range(start, end + 1):
-                    set_col.add((min_floor, f'C{i}', size))
-                    dic_col[(min_floor, f'C{i}', size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
+                try:
+                    start = int((min_col.split('-')[0]).split('C')[1])
+                    end = int((min_col.split('-')[1]).split('C')[1])
+                    for i in range(start, end + 1):
+                        set_col.add((min_floor, f'C{i}', size))
+                        dic_col[(min_floor, f'C{i}', size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
+                except: # CW3-1 之類的不是區間
+                    set_col.add((min_floor, min_col, size))
+                    dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
             else:
                 set_col.add((min_floor, min_col, size))
                 dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
@@ -687,21 +694,21 @@ if __name__=='__main__':
     task_name = '台南新市'
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task14/XS-PLAN.dwg" # XS-PLAN的路徑
-    col_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task14/XS-COL.dwg" # XS-COL的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task14/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    col_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task14/{task_name}-XS-COL_new.dwg" # XS-COL_new的路徑
+    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task16/XS-PLAN.dwg" # XS-PLAN的路徑
+    col_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task16/XS-COL.dwg" # XS-COL的路徑
+    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
+    col_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-XS-COL_new.dwg" # XS-COL_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    result_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task14/{task_name}-柱配筋.txt" # 柱配筋結果
+    result_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-柱配筋.txt" # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
     col_layer = "S-TEXTC" # col的圖層
-    block_layer = "DEFPOINTS" # 圖框的圖層
+    block_layer = "0" # 圖框的圖層
     explode = 1 # 需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
