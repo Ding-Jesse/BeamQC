@@ -672,10 +672,10 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
     return rate
 
 # 待改
-def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other):
+def write_result_log(excel_file, task_name, plan_not_col, col_not_plan,date, runtime, other):
     sheet_name = 'result_log'
-    new_list = [(task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other)]
-    dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
+    new_list = [(task_name, plan_not_col, col_not_plan, date, runtime, other)]
+    dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in col 柱', 'in col not in plan 柱', '執行時間', '執行日期' , '備註'])
     if os.path.exists(excel_file):
         writer = pd.ExcelWriter(excel_file,engine='xlsxwriter')
         df = pd.read_excel(excel_file) 
@@ -692,43 +692,44 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 if __name__=='__main__':
     start = time.time()
     task_name = '台南新市'
-    # 檔案路徑區
-    # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task16/XS-PLAN.dwg" # XS-PLAN的路徑
-    col_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task16/XS-COL.dwg" # XS-COL的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    col_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-XS-COL_new.dwg" # XS-COL_new的路徑
-    plan_file = './result/plan.txt' # plan.txt的路徑
-    col_file = './result/col.txt' # col.txt的路徑
-    excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    result_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-柱配筋.txt" # 柱配筋結果
+    # # 檔案路徑區
+    # # 跟AutoCAD有關的檔案都要吃絕對路徑
+    # plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task16/XS-PLAN.dwg" # XS-PLAN的路徑
+    # col_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task16/XS-COL.dwg" # XS-COL的路徑
+    # plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
+    # col_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-XS-COL_new.dwg" # XS-COL_new的路徑
+    # plan_file = './result/plan.txt' # plan.txt的路徑
+    # col_file = './result/col.txt' # col.txt的路徑
+    excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
+    # result_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task16/{task_name}-柱配筋.txt" # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
-    # 在plan裡面自訂圖層
-    floor_layer = "S-TITLE" # 樓層字串的圖層
-    col_layer = "S-TEXTC" # col的圖層
-    block_layer = "0" # 圖框的圖層
-    explode = 1 # 需不需要提前炸圖塊
+    # # 在plan裡面自訂圖層
+    # floor_layer = "S-TITLE" # 樓層字串的圖層
+    # col_layer = "S-TEXTC" # col的圖層
+    # block_layer = "0" # 圖框的圖層
+    # explode = 1 # 需不需要提前炸圖塊
 
-    # 在col裡面自訂圖層
-    text_layer = "S-TEXT" # 文字的圖層
-    line_layer = "S-STUD" # 線的圖層
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode))
-    res_col = pool.apply_async(read_col, (col_filename, text_layer, line_layer, col_file, explode))
-    final_plan = res_plan.get()
-    final_col = res_col.get()
+    # # 在col裡面自訂圖層
+    # text_layer = "S-TEXT" # 文字的圖層
+    # line_layer = "S-STUD" # 線的圖層
+    # multiprocessing.freeze_support()
+    # pool = multiprocessing.Pool()
+    # res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode))
+    # res_col = pool.apply_async(read_col, (col_filename, text_layer, line_layer, col_file, explode))
+    # final_plan = res_plan.get()
+    # final_col = res_col.get()
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_col = final_col[0]
-    dic_col = final_col[1]
+    # set_plan = final_plan[0]
+    # dic_plan = final_plan[1]
+    # set_col = final_col[0]
+    # dic_col = final_col[1]
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date)
-    col_result = write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date)
+    # plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date)
+    # col_result = write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date)
 
-    # end = time.time()
+    end = time.time()
     # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
     # write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
+    write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
