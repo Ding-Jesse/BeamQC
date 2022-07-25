@@ -68,7 +68,7 @@ def turn_floor_to_string(floor): # turn float to string
     return floor
 
 def floor_exist(i, Bmax, Fmax, Rmax): # 判斷是否為空號，例如B2F-PRF會從-2跑到2000，但顯然區間裡面的值不可能都合法
-    if i == -1000: 
+    if i == -1000 or i == 2000: 
         return True
     
     elif i >= Bmax and i < 0: 
@@ -170,7 +170,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2)) #不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
                     no_chinese = False
                     for ch in floor: # 待修正
-                        if ch == 'F' or ch.isdigit():
+                        if ch == 'B' or ch == 'F' or ch == 'R' or ch.isdigit():
                             no_chinese = True
                             break
                     if floor != '' and no_chinese:
@@ -244,7 +244,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
-    
+
     # Step 8. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
@@ -744,26 +744,26 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = 'task3'
+    task_name = 'task17'
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task3/XS-PLAN.dwg" # XS-PLAN的路徑
-    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task3/XS-BEAM.dwg" # XS-BEAM的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
+    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task17/XS-PLAN.dwg" # XS-PLAN的路徑
+    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task17/XS-BEAM.dwg" # XS-BEAM的路徑
+    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
+    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-大梁.txt" # 大梁結果
-    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task3/{task_name}-小梁.txt" # 小梁結果
+    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-大梁.txt" # 大梁結果
+    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-小梁.txt" # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = "S-TITLE" # 樓層字串的圖層
     beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = "DEFPOINTS" # 框框的圖層
-    explode = 0 # 需不需要提前炸圖塊
+    block_layer = "DwFm" # 框框的圖層
+    explode = 1 # 需不需要提前炸圖塊(0:不需要 1:需要)
 
     # 在beam裡面自訂圖層
     text_layer = "S-RC"
