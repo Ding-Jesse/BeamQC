@@ -1,0 +1,63 @@
+<!doctype html>
+<title>Elements 梁配筋圖查核_beta</title>
+<h1>Elements 梁配筋圖查核_beta</h1>
+
+<form action="" method=post enctype=multipart/form-data>
+  <p>專案名稱: </p>
+  <input type="text" id="project_name" name="project_name" value="temp" required>
+  <p></p>
+  <p>圖框圖層名稱: </p>
+  <input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required>
+  <p>核對項目: </p>
+  <div>
+    <input type="checkbox" id="explode" name="explode" checked>
+    <label for="explode">Explode(如果平面圖為圖塊的話需選取)</label>
+  </div>
+  <div>
+    <input type="checkbox" id="xs-col" name="xs-col" checked>
+    <label for="xs-col">XS-COL</label>
+  </div>
+  <div>
+    <input type="checkbox" id="xs-beam" name="xs-beam" checked>
+    <label for="xs-beam">XS-Beam</label>
+  </div>
+  <p></p>
+  <div>XS-COL</div>
+  <p><input type=file name=file_col value="dwg">
+  <div>XS-BEAM</div>
+  <p><input type=file name=file1 value="dwg">
+  <div>XS-PLAN</div>
+  <p><input type=file name=file2 value="dwg">
+  <div></div>
+  <input type=submit value=Upload>
+
+</form>
+
+<p>注意事項:</p>
+<ol>
+  <li>CAD版本須為2016以前之版本</li>
+</ol>
+<ol>
+<li>在title後面加上括號(ex. 地下五層結構平面圖(B5F), 五層至六層結構平面圖(5F-6F))</li>
+</ol>
+<p>This is good.(有括號)
+<img style="max-width: 35%; height: auto;"src="./static/correct_example1.png" alt="image"></p>
+<p>This is not good. (沒有括號)
+<img style="max-width: 35%; height: auto;"src="./static/wrong_example1.png" alt="image"></p>
+<ol>
+<li><p>圖框的圖層要一致</p>
+</li>
+<li><p>顯示樓層的字串中，&#39;2-5F&#39;, &#39;3F~6F&#39;, &#39;3F,5F,7F&#39; 等等都是可接受的，但盡量避免中文字元(可能會變成西班牙文亂碼)</p>
+</li>
+</ol>
+<p>This is not good. (頓號變成&#39;¡B&#39;了)
+<img style="max-width: 35%; height: auto;"src="./static/wrong_example3.png" alt="image"></p>
+<ol>
+<li>在一個圖框中，盡量只放一張圖，如果要放兩張以上的圖，請將黃色標題放在圖的下方，比較不容易出錯。</li>
+</ol>
+<p>This is good.(黃色標題都在圖的下方)
+<img style="max-width: 35%; height: auto;"src="./static/correct_example2.png" alt="image"></p>
+<p>This is not good. (黃色標題都在圖的右方，梁跟樓層容易對錯)
+<img style="max-width: 35%; height: auto;"src="./static/wrong_example2.png" alt="image"></p>
+
+
