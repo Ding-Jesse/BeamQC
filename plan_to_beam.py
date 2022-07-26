@@ -10,6 +10,7 @@ import time
 import multiprocessing
 import os
 import pandas as pd
+import sys
 
 def turn_floor_to_float(floor): # turn string to float
     if ' ' in floor: # 不小心有空格要把空格拔掉
@@ -744,29 +745,29 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = 'task17'
+    task_name = sys.argv[12]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task17/XS-PLAN.dwg" # XS-PLAN的路徑
-    beam_filename = "K:/100_Users/EI 202208 Bamboo/BeamQC/task17/XS-BEAM.dwg" # XS-BEAM的路徑
-    plan_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-XS-PLAN_new.dwg" # XS-PLAN_new的路徑
-    beam_new_filename = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-XS-BEAM_new.dwg" # XS-BEAM_new的路徑
+    plan_filename = sys.argv[2] # XS-PLAN的路徑
+    beam_filename = sys.argv[1] # XS-BEAM的路徑
+    plan_new_filename = sys.argv[4] # XS-PLAN_new的路徑
+    beam_new_filename = sys.argv[3] # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-大梁.txt" # 大梁結果
-    sml_file = f"K:/100_Users/EI 202208 Bamboo/BeamQC/task17/{task_name}-小梁.txt" # 小梁結果
+    big_file = sys.argv[5] # 大梁結果
+    sml_file = sys.argv[6] # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
-    floor_layer = "S-TITLE" # 樓層字串的圖層
-    beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = "DwFm" # 框框的圖層
-    explode = 1 # 需不需要提前炸圖塊(0:不需要 1:需要)
+    floor_layer = sys.argv[9] # 樓層字串的圖層
+    beam_layer = [sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
+    block_layer = sys.argv[8] # 框框的圖層
+    explode = sys.argv[13] # 需不需要提前炸圖塊(0:不需要 1:需要)
 
     # 在beam裡面自訂圖層
-    text_layer = "S-RC"
+    text_layer = sys.argv[7]
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
     res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file, explode))
@@ -783,5 +784,5 @@ if __name__=='__main__':
     beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date)
 
     end = time.time()
-    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-    write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
+    # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    # write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')

@@ -1,28 +1,186 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <link href=
-               "https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/
-                bootstrap.min.css" rel="stylesheet">
+    <title>Elements 配筋圖查核_beta 結果</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+    <style>
+        html, body {
+        min-height: 100%;
+        }
+        body, div, form, input, select, textarea, label { 
+        padding: 0;
+        margin: 0;
+        outline: none;
+        font-family: Roboto, Arial, sans-serif;
+        font-size: 20px;
+        color: #666;
+        line-height: 40px;
+        }
+        h1 {
+        position: absolute;
+        margin: 0;
+        font-size: 40px;
+        color: #fff;
+        z-index: 2;
+        line-height: 83px;
+        }
+        .testbox {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: inherit;
+        padding: 20px;
+        }
+        form {
+        width: 100%;
+        padding: 20px;
+        border-radius: 6px;
+        background: #fff;
+        box-shadow: 0 0 8px  #cc7a00; 
+        }
+        .banner {
+        position: relative;
+        height: 300px;
+        background-image: url("../static/background.png");  
+        background-size: cover;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        }
+        .banner::after {
+        content: "";
+        background-color: rgba(0, 0, 0, 0.2); 
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        }
+        .banner2 {
+        position: relative;
+        height: 300px;
+        background-size: cover;
+        justify-content: left;
+        align-items: left;
+        text-align: left;
+        content: "";
+        background-color: rgba(255, 0, 0, 0.2); 
+        width: 25%;
+        height: 100%;
+
+        }
+        input, select, textarea {
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        }
+        input {
+        width: calc(100% - 10px);
+        padding: 5px;
+        }
+        
+        
+        input[type=radio]:checked + label:after {
+        opacity: 1;
+        }
+        .btn-block {
+        margin-top: 10px;
+        text-align: center;
+        }
+        button {
+        width: 150px;
+        padding: 10px;
+        border: none;
+        border-radius: 5px; 
+        background: #cc7a00;
+        font-size: 16px;
+        color: #fff;
+        cursor: pointer;
+        }
+        button:hover {
+        background: #ff9800;
+        }
+        }
+    </style>
 </head>
+
 <body>
+<div class="testbox">
+<form action="" method=post enctype=multipart/form-data>
+    <div class="banner">
+          <h1>Elements 配筋圖查核_beta</h1>
+    </div>
     <div class="container">
         <div class="header">
-            <h3 class="text-muted">Uploaded files</h3>
+            <h3 class="text-muted">Click on them to load/download them!</h3>
         </div>
         <hr/>
-        <div>
-            click on 
-            them to load/download them
-            <ul>
-                {% for file in filenames %}
-                <li>
-                    <a href="{{url_for('result_file', 
-                     filename=file)}}">{{file}}</a>
-                </li>
-                {% endfor %}
-            </ul>
+        <div>     
+            {% for file in filenames %}
+                <a href="{{url_for('result_file', 
+                filename=file)}}">{{file}}</a>
+                <br>
+            {% endfor %}
         </div>
     </div>
+</form>
+</div>
 </body>
+<div class="banner2">
+<h3>📖檔案介紹</h3>
+</div>
+<blockquote>
+<h3>核對XS-BEAM結果</h3>
+<ol>
+<li>
+<h4>大梁.txt</h4>
+內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的大梁。
+<br>
+圖例: 
+<br>
+<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result1.png" alt="image"></p></div>
+<br>
+以in plan but not in beam的('B1F', "GB'-0")為例，表示B1F的GB'-0這根大梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
+</li>
+<li>
+<h4>小梁.txt</h4>
+內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的小梁。
+<br>
+圖例: 
+<br>
+<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result2.png" alt="image"></p></div>
+<br>
+以in plan but not in beam的('B1F', 'b12')為例，表示B1F的b12這根小梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。一樣，如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
+</li>
+<li>
+<h4>MARKON-XS-BEAM.dwg</h4>
+內容: 將出現在XS-BEAM但沒有出現在XS-PLAN的大梁與小梁用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+</li>
+<li>
+<h4>MARKON-XS-PLAN.dwg</h4>
+內容: 將出現在XS-PLAN但沒有出現在XS-BEAM的大梁與小梁用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+</li>
+</ol>
+<h3>核對XS-COL結果</h3>
+<ol>
+<li>
+<h4>column.txt</h4>
+內容: 出現在XS-PLAN但沒有出現在XS-COL、出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱。
+<br>
+圖例: 
+<br>
+<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result7.png" alt="image"></p></div>
+有兩種錯誤訊息，分別為'找不到這根柱子'以及'尺寸有誤'。
+</li>
+<li>
+<h4>MARKON-XS-COL.dwg</h4>
+內容: 將出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+
+</li>
+<li>
+<h4>MARKON-column-XS-PLAN.dwg</h4>
+內容: 將出現在XS-PLAN但沒有出現在XS-COL或兩邊尺寸不相同的柱用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+
+</li>
+</blockquote>
 </html>

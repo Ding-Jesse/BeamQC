@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Elements 配筋圖查核_beta</title>
+    <title>Elements 梁配筋圖查核_beta</title>
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
     <style>
@@ -172,14 +172,14 @@
     <div class="testbox">
       <form action="" method=post enctype=multipart/form-data>
         <div class="banner">
-          <h1>Elements 配筋圖查核_beta</h1>
+          <h1>Elements 梁配筋圖查核_beta</h1>
         </div>
-<h3>請輸入以下資訊：</h3>
+        <p>請輸入以下資料</p>
         <div class="item">
-          <label for="name"><h3>專案名稱</h3></label>
+          <label for="name">專案名稱<span>*</span></label>
           <input type="text" id="project_name" name="project_name" value="temp" required>
         </div>
-<h3>核對項目</h3>
+<p>核對項目</p>
 <label class="container">Explode(如果平面圖為圖塊的話需選取)
   <input type="checkbox" id="explode" name="explode" checked>
   <span class="checkmark"></span>
@@ -190,58 +190,45 @@
   <span class="checkmark"></span>
 </label>
 
-<label class="container">XS-BEAM
+<label class="container">XS-Beam
   <input type="checkbox" id="xs-beam" name="xs-beam" checked>
   <span class="checkmark"></span>
 </label>
 
-<h3>選擇檔案及各圖層名稱</h3>
-<div><h4>XS-COL</h4></div>
+<p>選擇檔案</p>
+<div>XS-COL</div>
+<p><input type=file name=file_col value="dwg">
 <div class="item">
-  <labe>選擇檔案</label>
-  <input type=file name=file_col value="dwg">
-</div>
-<div class="item">
-  <labe>文字圖層名稱</label>
+  <labe>文字圖層名稱<span>*</span></label>
   <input type="text" id="text_col_layer" name="text_col_layer" value="S-TEXT" required>
 </div>
 <div class="item">
-  <label>表格線圖層名稱</label>
+  <label>表格線圖層名稱<span>*</span></label>
   <input type="text" id="line_layer" name="line_layer" value="S-STUD" required>
 </div>
-<div><h4>XS-BEAM</h4></div>
+<div>XS-BEAM</div>
+<p><input type=file name=file1 value="dwg">
 <div class="item">
-  <label>選擇檔案</label>
-  <input type=file name=file1 value="dwg">
-</div>
-<div class="item">
-  <label>文字圖層名稱</label>
+  <label>文字圖層名稱<span>*</span></label>
   <input type="text" id="text_layer" name="text_layer" value="S-RC" required>
 </div>
-<div><h4>XS-PLAN</h4></div>
+<div>XS-PLAN</div>
+<p><input type=file name=file2 value="dwg">
 <div class="item">
-  <label>選擇檔案</label>
-  <input type=file name=file2 value="dwg">
-</div>
-<div class="item">
-  <label>圖框圖層名稱</label>
+  <label>圖框圖層名稱<span>*</span></label>
   <input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required>
 </div>
 <div class="item">
-  <labe>樓層字串圖層名稱</label>
+  <labe>樓層字串圖層名稱<span>*</span></label>
   <input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required>
 </div>
 <div class="item">
-  <label>大梁字串圖層名稱</label>
-  <input type="text" id="big_beam_layer" name="big_beam_layer" value="S-TEXTG" required>
+  <label>大小梁字串圖層名稱<span>*</span></label>
+  <input type="text" id="beam_layer" name="beam_layer" value="S-TEXTG, S-TEXTB" required>
 </div>
 <div class="item">
-  <label>小梁字串圖層名稱</label>
-  <input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-TEXTB" required>
-</div>
-<div class="item">
-  <label>柱字串圖層名稱</label>
-  <input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required>
+  <label>柱字串圖層名稱<span>*</span></label>
+  <input type="text" id="beam_layer" name="beam_layer" value="S-TEXTC" required>
 </div>
 <div class="btn-block">
     <button type="submit">SUBMIT</button>
@@ -274,7 +261,7 @@ CAD版本須為2016以前之版本
 <p>顯示樓層的字串中，&#39;2-5F&#39;, &#39;3F~6F&#39;, &#39;3F,5F,7F&#39; 等等都是可接受的，但盡量避免中文字元(可能會變成西班牙文亂碼)</p>
 <p>This is not good. (頓號變成&#39;¡B&#39;了)
 <br>
-<div align="center"><img style="max-width: 80%; height: auto;"src="./static/wrong_example3.png" alt="image"></p></div>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example3.png" alt="image"></p></div>
 </li>
 <br>
 <li>
