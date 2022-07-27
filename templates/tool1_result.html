@@ -1,109 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Elements 配筋圖查核_beta 結果</title>
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet">
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
-    <style>
-        html, body {
-        min-height: 100%;
-        }
-        body, div, form, input, select, textarea, label { 
-        padding: 0;
-        margin: 0;
-        outline: none;
-        font-family: Roboto, Arial, sans-serif;
-        font-size: 20px;
-        color: #666;
-        line-height: 40px;
-        }
-        h1 {
-        position: absolute;
-        margin: 0;
-        font-size: 40px;
-        color: #fff;
-        z-index: 2;
-        line-height: 83px;
-        }
-        .testbox {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: inherit;
-        padding: 20px;
-        }
-        form {
-        width: 100%;
-        padding: 20px;
-        border-radius: 6px;
-        background: #fff;
-        box-shadow: 0 0 8px  #cc7a00; 
-        }
-        .banner {
-        position: relative;
-        height: 300px;
-        background-image: url("../static/background.png");  
-        background-size: cover;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        }
-        .banner::after {
-        content: "";
-        background-color: rgba(0, 0, 0, 0.2); 
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        }
-        .banner2 {
-        position: relative;
-        height: 300px;
-        background-size: cover;
-        justify-content: left;
-        align-items: left;
-        text-align: left;
-        content: "";
-        background-color: rgba(255, 0, 0, 0.2); 
-        width: 25%;
-        height: 100%;
+{% extends "base.html" %}
 
-        }
-        input, select, textarea {
-        margin-bottom: 10px;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-        }
-        input {
-        width: calc(100% - 10px);
-        padding: 5px;
-        }
-        
-        
-        input[type=radio]:checked + label:after {
-        opacity: 1;
-        }
-        .btn-block {
-        margin-top: 10px;
-        text-align: center;
-        }
-        button {
-        width: 150px;
-        padding: 10px;
-        border: none;
-        border-radius: 5px; 
-        background: #cc7a00;
-        font-size: 16px;
-        color: #fff;
-        cursor: pointer;
-        }
-        button:hover {
-        background: #ff9800;
-        }
-        }
-    </style>
-</head>
+{% block title %}Elements 配筋圖查核_beta 結果{% endblock %}
 
+{% block content %}
 <body>
 <div class="testbox">
 <form action="" method=post enctype=multipart/form-data>
@@ -125,9 +24,9 @@
     </div>
 </form>
 </div>
-</body>
+
 <div class="banner2">
-<h3>📖檔案介紹</h3>
+<h3>&emsp;📖檔案介紹</h3>
 </div>
 <blockquote>
 <h3>核對XS-BEAM結果</h3>
@@ -183,4 +82,5 @@
 
 </li>
 </blockquote>
-</html>
+</body>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Elements 配筋圖查核_beta{% endblock %}
+
+{% block content %}
+<body>
+<div class="testbox">
+<form action="" method=post enctype=multipart/form-data>
+<div class="banner">
+  <h1>Elements 配筋圖查核_beta</h1>
+</div>
+<h3>請輸入以下資訊：</h3>
+<div class="item">
+  <label for="name"><h3>專案名稱</h3></label>
+  <input type="text" id="project_name" name="project_name" value="temp" required>
+</div>
+<h3>核對項目</h3>
+
+<label class="container">柱配筋
+  <input type="checkbox" id="xs-col" name="xs-col" checked>
+  <span class="checkmark"></span>
+</label>
+
+<label class="container">梁配筋
+  <input type="checkbox" id="xs-beam" name="xs-beam" checked>
+  <span class="checkmark"></span>
+</label>
+
+<h3>選擇檔案及各圖層名稱</h3>
+<div><h4>柱配筋圖</h4></div>
+<div class="item">
+<labe>選擇檔案</label>
+<input type=file name=file_col value="dwg">
+</div>
+<div class="item">
+<labe>柱配筋圖文字圖層名稱</label>
+<input type="text" id="text_col_layer" name="text_col_layer" value="S-TEXT" required>
+</div>
+<div class="item">
+<label>柱配筋圖表格線圖層名稱</label>
+<input type="text" id="line_layer" name="line_layer" value="S-STUD" required>
+</div>
+<div><h4>梁配筋圖</h4></div>
+<div class="item">
+<label>選擇檔案</label>
+<input type=file name=file1 value="dwg">
+</div>
+<div class="item">
+<label>梁配筋圖文字圖層名稱</label>
+<input type="text" id="text_layer" name="text_layer" value="S-RC" required>
+</div>
+<div><h4>結構平面圖</h4></div>
+<div class="item">
+<label>選擇檔案</label>
+<input type=file name=file2 value="dwg">
+</div>
+<div class="item">
+<label>結構平面圖圖框圖層名稱</label>
+<input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required>
+</div>
+<div class="item">
+<labe>結構平面圖樓層字串圖層名稱</label>
+<input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required>
+</div>
+<div class="item">
+<label>結構平面圖大梁字串圖層名稱</label>
+<input type="text" id="big_beam_layer" name="big_beam_layer" value="S-TEXTG" required>
+</div>
+<div class="item">
+<label>結構平面圖小梁字串圖層名稱</label>
+<input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-TEXTB" required>
+</div>
+<div class="item">
+<label>結構平面圖柱字串圖層名稱</label>
+<input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required>
+</div>
+<div><h4>其他</h4></div>
+<label class="container">需不需要先炸圖塊(如果平面圖為圖塊的話需選取)
+<input type="checkbox" id="explode" name="explode" checked>
+<span class="checkmark"></span>
+</label>
+<div class="btn-block">
+<button type="submit">完成</button>
+</div>
+</form>
+</div>
+
+<div class="banner2">
+<h3>&emsp;⚠️注意事項</h3>
+</div>
+<blockquote>
+<ol>
+<li>
+CAD版本須為2016以前之版本。
+</li>
+<li>
+<p>每種物件的圖層要一致。</p>
+</li>
+<li>
+請確認黃色標題後面是否有括號，括號內部需要有英文的樓層名稱。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。
+<ul style="list-style-type:disc;">
+<li>
+<p>範例圖：
+<br>
+<div align="center"><img style="max-width: 35%; height: auto;"src="./static/correct_example1.png" alt="image"></p></div>
+</li>
+<li>
+<p>如下圖，如果沒有後面的括號和樓層，會導致樓層讀取失敗的問題。
+<br>
+<div align="center"><img style="max-width: 35%; height: auto;"src="./static/wrong_example1.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<li>
+<p>顯示樓層的字串中，「2-5F」，「3F~6F」，「3F,5F,7F」等等都是可接受的，但盡量避免中文字元，可能會變成西班牙文亂碼。</p>
+<ul style="list-style-type:disc;">
+<li>
+<p>如下圖，使用中文頓號的話，文字顯示的內容會變成&#39;¡B&#39;，容易導致樓層讀取錯誤的問題。
+<br>
+<div align="center"><img style="max-width: 80%; height: auto;"src="./static/wrong_example3.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<br>
+<li>
+在一個圖框中，盡量只放一張圖，如果要放兩張以上的圖，請將黃色標題放在圖的下方，比較不容易出錯。
+<br>
+<ul style="list-style-type:disc;">
+<li>
+<p>範例圖：
+<br>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/correct_example2.png" alt="image"></p></div>
+</li>
+<li>
+<p>如下圖，如果將黃色標題都在圖的右方，容易導致梁跟樓層配對錯誤。
+<br>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example2.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+</ol>
+</blockquote>
+</body>
+{% endblock %}

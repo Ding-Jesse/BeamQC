@@ -19,11 +19,11 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
-# @app.route('/')
-# def index():
-#     return render_template('index.html', template_folder='./')
+@app.route('/')
+def home():
+    return render_template('home.html')
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/tool1', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
         uploaded_beam = request.files["file1"]
@@ -89,8 +89,8 @@ def upload_file():
                                 f'{project_name}_MARKON-column-{filename_plan}']
             filenames.extend(filenames_column)
         if column_ok or beam_ok:
-            return render_template('result.html', filenames=filenames)
-    return render_template('index.html')
+            return render_template('tool1_result.html', filenames=filenames)
+    return render_template('tool1.html')
 
 @app.route('/results/<filename>/')
 def result_file(filename):
@@ -98,3 +98,19 @@ def result_file(filename):
                                filename, as_attachment = True)
     response.cache_control.max_age = 0
     return response
+
+@app.route('/tool2')
+def tool2():
+    return render_template('tool2.html')
+
+@app.route('/tool3')
+def tool3():
+    return render_template('tool3.html')
+
+@app.route('/tool4')
+def tool4():
+    return render_template('tool4.html')
+
+@app.route('/tool5')
+def tool5():
+    return render_template('tool5.html')
