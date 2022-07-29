@@ -94,11 +94,11 @@ def error(error_message): # 把錯誤訊息印到error.log裡面
     return
 
 weird_to_list = ['-', '~']
-weird_comma_list = [',', '、', '¡']
+weird_comma_list = [',', '、', '¡B']
 beam_head1 = ['B', 'b', 'G', 'g']
 beam_head2 = ['CB', 'CG', 'cb']
 
-def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filename, explode):
+def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, result_filename, explode):
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -156,7 +156,9 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
     
     # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_beam_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
-    coor_to_beam_set = set() # set (coor, beam)
+    coor_to_beam_set = set() # set (coor, (beam, size))
+    coor_to_size_beam = set() # set (coor, size_beam)
+    coor_to_size_string = set() # set (coor, size_string)
     block_coor_list = [] # 存取方框最左下角的點座標
 
     flag = 0
@@ -185,7 +187,11 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                     beam = object.TextString
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    size = ''
                     if '(' in beam:
+                        size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
+                        if 'x' not in size:
+                            size = ''
                         beam = beam.split('(')[0] # 取括號前內容即可
                     comma_char = ','
                     for char in weird_comma_list:
@@ -193,17 +199,19 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                             comma_char = char
                     comma = beam.count(comma_char)
                     for i in range(comma + 1):
-                        coor_to_beam_set.add(((coor1, coor2), beam.split(comma_char)[i]))
+                        coor_to_beam_set.add(((coor1, coor2), (beam.split(comma_char)[i], size)))
 
                 # 為了排版好看的怪產物，目前看到的格式為'{\W0.7;B4-2\P(80x100)}'，所以使用分號及反斜線來切
                 # 切爛了也不會報錯，直接反映在結果
                 if object.Layer in beam_layer and object.ObjectName == "AcDbMText" and object.GetBoundingBox()[0][1] >= 0:
                     beam = object.TextString
                     semicolon = beam.count(';')
+                    size = ''
                     for i in range(semicolon + 1):
                         s = beam.split(';')[i]
                         if s[0] in beam_head1 or s[0:2] in beam_head2:
                             if '(' in s:
+                                size = (s.split('(')[1]).split(')')[0]
                                 s = s.split('(')[0]
                             if '\\' in s:
                                 s = s.split('\\')[0]
@@ -218,7 +226,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                     if ' ' in beam:
                         beam = beam.replace(' ', '') # 有空格要把空格拔掉
                     if beam[0] in beam_head1 or beam[0:2] in beam_head2:
-                        coor_to_beam_set.add(((coor1, coor2), beam))
+                        coor_to_beam_set.add(((coor1, coor2), (beam, size)))
 
                 # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
                 # 此處不會報錯
@@ -226,13 +234,81 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     block_coor_list.append((coor1, coor2))
+
+                if object.Layer == size_layer and object.EntityName == "AcDbText" and object.GetBoundingBox()[0][1] >= 0:
+                    coor = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    if 'Gn' in object.TextString:
+                        if 'C' in object.TextString and '(' in object.TextString:
+                            coor_to_size_beam.add((coor, 'CG'))
+                            coor_to_size_beam.add((coor, 'G'))
+                        elif 'C' in object.TextString and '(' not in object.TextString:
+                            coor_to_size_beam.add((coor, 'CG'))
+                        else:
+                            coor_to_size_beam.add((coor, 'G'))
+                    if 'Bn' in object.TextString:
+                        if 'C' in object.TextString and '(' in object.TextString:
+                            coor_to_size_beam.add((coor, 'CB'))
+                            coor_to_size_beam.add((coor, 'B'))
+                        elif 'C' in object.TextString and '(' not in object.TextString:
+                            coor_to_size_beam.add((coor, 'CB'))
+                        else:
+                            coor_to_size_beam.add((coor, 'B'))
+                    if 'bn' in object.TextString:
+                        if 'c' in object.TextString and '(' in object.TextString:
+                            coor_to_size_beam.add((coor, 'cb'))
+                            coor_to_size_beam.add((coor, 'b'))
+                        elif 'c' in object.TextString and '(' not in object.TextString:
+                            coor_to_size_beam.add((coor, 'cb'))
+                        else:
+                            coor_to_size_beam.add((coor, 'b'))
+                    if 'g' in object.TextString:
+                        comma_char = ','
+                        for char in weird_comma_list:
+                            if char in object.TextString:
+                                comma_char = char
+                        comma = object.TextString.count(comma_char)
+                        for i in range(comma + 1):
+                            beam = object.TextString.split(comma_char)[i]
+                            if beam.split('g')[1].isdigit():
+                                if 'c' in beam and '(' in beam:
+                                    coor_to_size_beam.add((coor, beam.split(')')[1]))
+                                    coor_to_size_beam.add((coor, f"c{beam.split(')')[1]}"))
+                                else:
+                                    coor_to_size_beam.add((coor, beam))
+                            else:
+                                if 'c' in object.TextString and '(' in object.TextString:
+                                    coor_to_size_beam.add((coor, 'cg'))
+                                    coor_to_size_beam.add((coor, 'g'))
+                                elif 'c' in object.TextString and '(' not in object.TextString:
+                                    coor_to_size_beam.add((coor, 'cg'))
+                                else:
+                                    coor_to_size_beam.add((coor, 'g'))
+                    if 'x' in object.TextString or 'X' in object.TextString:
+                        string = (object.TextString.replace(' ', '')).replace('X', 'x')
+                        coor_to_size_string.add((coor, string))
             flag = 1
 
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 6: {e}.')
+    # Step 7. 完成size_coor_set (size_beam, size_string, size_coor)
+    size_coor_set = set()
+    for x in coor_to_size_beam:
+        coor = x[0]
+        size_beam = x[1]
+        min_size = ''
+        min_dist = 10000
+        for y in coor_to_size_string:
+            coor2 = y[0]
+            size_string = y[1]
+            dist = abs(coor[0]-coor2[0]) + abs(coor[1] - coor2[1])
+            if dist < min_dist:
+                min_size = size_string
+                min_dist = dist
+        if min_size != '':
+            size_coor_set.add((size_beam, min_size, coor))
 
-    # Step 7. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
+    # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
     floor_to_coor_set = set()
     for x in coor_to_floor_set: # set (字串的coor, floor)
@@ -246,7 +322,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
 
-    # Step 8. 算出Bmax, Fmax, Rmax
+    # Step 9. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
     Fmax = 0 # 正常樓最高到幾層
@@ -281,15 +357,74 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
+    # Step 10. 完成floor_beam_size_dic (floor, beam) -> size
+    floor_beam_size_dic = {}
+    for x in size_coor_set: # set(size_beam, min_size, coor)
+        size_coor = x[2]
+        size_string = x[1]
+        size_beam = x[0]
+        min_floor = []
+        for z in floor_to_coor_set: # set (floor, block左下角和右上角的coor)
+            floor_name = z[0]
+            block_coor = z[1] 
+            x_diff_left = size_coor[0] - block_coor[0][0] # 和左下角的diff
+            y_diff_left = size_coor[1] - block_coor[0][1]
+            x_diff_right = size_coor[0] - block_coor[1][0] # 和右上角的diff
+            y_diff_right = size_coor[1] - block_coor[1][1]
+            if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:                    
+                if len(min_floor) == 0 or min_floor[0] != floor_name:
+                    min_floor.append(min_floor)
 
-    # Step 9. 完成 set_plan 以及 dic_plan
+        floor = min_floor
+
+        if floor != '':
+            to_bool = False
+            for char in weird_to_list:
+                if char in floor:
+                    to_char = char
+                    start = floor.split(to_char)[0]
+                    end = floor.split(to_char)[1]
+                    try:
+                        start = int(turn_floor_to_float(start))
+                        end = int(turn_floor_to_float(end))
+                        if start > end:
+                            tmp = start
+                            start = end
+                            end = tmp
+                        for i in range(start, end + 1):
+                            if floor_exist(i, Bmax, Fmax, Rmax):
+                                floor_beam_size_dic[(turn_floor_to_string(i), size_beam)] = size_string
+                    except:
+                        error(f'read_plan error in step 10: The error above is from here.')
+                    to_bool = True
+                    break
+            if not to_bool:
+                comma_char = ','
+                for char in weird_comma_list:
+                    if char in floor:
+                        comma_char = char
+                        break
+                comma = floor.count(comma_char)
+                for i in range(comma + 1):
+                    new_floor = floor.split(comma_char)[i]
+                    new_floor = turn_floor_to_float(new_floor)
+                    new_floor = turn_floor_to_string(new_floor)
+                    if new_floor:
+                        floor_beam_size_dic[(new_floor, size_beam)] = size_string
+                    else:
+                        error(f'read_plan error in step 10: new_floor is false.')
+        else:
+            error('read_plan error in step 10: min_floor cannot be found.')
+
+    # Step 11. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
-    set_plan = set() # set元素為 (樓層, 梁柱名稱)
-    dic_plan = {} # 透過(floor, beam)去找字串座標
-    for x in coor_to_beam_set: # set(coor, beam)
+    set_plan = set() # set元素為 (樓層, 梁柱名稱, size)
+    dic_plan = {} # 透過(floor, beam, size)去找字串座標
+    for x in coor_to_beam_set: # set(coor, (beam, size))
         beam_coor = x[0][0] # 取左下角即可
         full_coor = x[0] # 左下跟右上都有
-        beam_name = x[1]
+        beam_name = x[1][0]
+        beam_size = x[1][1]
         min_floor = ''
         for z in floor_to_coor_set: # set (floor, block左下角和右上角的coor)
             floor_name = z[0]
@@ -334,10 +469,30 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                             end = tmp
                         for i in range(start, end + 1):
                             if floor_exist(i, Bmax, Fmax, Rmax):
-                                set_plan.add((turn_floor_to_string(i), beam_name))
-                                dic_plan[(turn_floor_to_string(i), beam_name)] = full_coor
+                                if beam_size == '':
+                                    try:
+                                        beam_size = floor_beam_size_dic[(turn_floor_to_string(i), beam_name)]
+                                    except:
+                                        if 'CG' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'CG')]
+                                        elif 'CB' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'CB')]
+                                        elif 'B' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'B')]
+                                        elif 'G' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'CG')]
+                                        elif 'cb' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'cb')]
+                                        elif 'cg' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'cg')]
+                                        elif 'b' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'b')]
+                                        elif 'g' in beam_name:
+                                            beam_size = floor_beam_size_dic[(turn_floor_to_string(i), 'g')]
+                                set_plan.add((turn_floor_to_string(i), beam_name, beam_size))
+                                dic_plan[(turn_floor_to_string(i), beam_name, beam_size)] = full_coor
                     except:
-                        error(f'read_plan error in step 9: The error above is from here.')
+                        error(f'read_plan error in step 11: The error above is from here.')
                     to_bool = True
                     break
             if not to_bool:
@@ -352,12 +507,32 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, result_filena
                     new_floor = turn_floor_to_float(new_floor)
                     new_floor = turn_floor_to_string(new_floor)
                     if new_floor:
-                        set_plan.add((new_floor, beam_name))
-                        dic_plan[(new_floor, beam_name)] = full_coor
+                        if beam_size == '':
+                            try:
+                                beam_size = floor_beam_size_dic[(new_floor, beam_name)]
+                            except:
+                                if 'CG' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'CG')]
+                                elif 'CB' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'CB')]
+                                elif 'B' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'B')]
+                                elif 'G' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'CG')]
+                                elif 'cb' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'cb')]
+                                elif 'cg' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'cg')]
+                                elif 'b' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'b')]
+                                elif 'g' in beam_name:
+                                    beam_size = floor_beam_size_dic[(new_floor, 'g')]
+                        set_plan.add((new_floor, beam_name, beam_size))
+                        dic_plan[(new_floor, beam_name, beam_size)] = full_coor
                     else:
-                        error(f'read_plan error in step 9: new_floor is false.')
+                        error(f'read_plan error in step 11: new_floor is false.')
         else:
-            error('read_plan error in step 9: min_floor cannot be found.')
+            error('read_plan error in step 11: min_floor cannot be found.')
 
     doc_plan.Close(SaveChanges=False)
 
@@ -401,7 +576,7 @@ def read_beam(beam_filename, text_layer, result_filename):
             time.sleep(5)
             error(f'read_beam error in step 3: {e}.')
     
-    # Step 4. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor)
+    # Step 4. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
     floor_to_beam_set = set()
     flag = 0
     while not flag:
@@ -421,7 +596,8 @@ def read_beam(beam_filename, text_layer, result_filename):
                         beam = pre_beam.split(comma_char)[i]
                         if beam[0] in beam_head1 or beam[0:2] in beam_head2:
                             floor = object.TextString.split(' ')[0]
-                            floor_to_beam_set.add((floor, beam, (coor1, coor2)))
+                            size = (((object.TextString.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x') # size 的格式就是 90x50, 沒空格且使用小寫x作為乘號
+                            floor_to_beam_set.add((floor, beam, (coor1, coor2), size))
             flag = 1
         except Exception as e:
             time.sleep(5)
@@ -469,6 +645,7 @@ def read_beam(beam_filename, text_layer, result_filename):
         floor = x[0]
         beam = x[1]
         coor = x[2]
+        size = x[3]
         to_bool = False
         for char in weird_to_list:
             if char in floor:
@@ -484,8 +661,8 @@ def read_beam(beam_filename, text_layer, result_filename):
                         end = tmp
                     for i in range(start, end + 1):
                         if floor_exist(i, Bmax, Fmax, Rmax):
-                            set_beam.add((turn_floor_to_string(i), beam))
-                            dic_beam[(turn_floor_to_string(i), beam)] = coor
+                            set_beam.add((turn_floor_to_string(i), beam, size))
+                            dic_beam[(turn_floor_to_string(i), beam, size)] = coor
                 except:
                     error(f'read_beam error in step 6: The error above is from here.')
                 to_bool = True
@@ -502,8 +679,8 @@ def read_beam(beam_filename, text_layer, result_filename):
                 new_floor = turn_floor_to_float(new_floor)
                 new_floor = turn_floor_to_string(new_floor)
                 if new_floor:
-                    set_beam.add((new_floor, beam))
-                    dic_beam[(new_floor, beam)] = coor
+                    set_beam.add((new_floor, beam, size))
+                    dic_beam[(new_floor, beam, size)] = coor
                 else:
                     error(f'read_beam error in step 6: new_floor is false.')
 
@@ -525,9 +702,12 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     set1 = set_plan - set_beam
     list1 = list(set1)
     list1.sort()
+    set2 = set_beam - set_plan
+    list2 = list(set2)
+    list2.sort()
 
-    f_big = open(big_file, "w")
-    f_sml = open(sml_file, "w")
+    f_big = open(big_file, "w", encoding = 'utf-8')
+    f_sml = open(sml_file, "w", encoding = 'utf-8')
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
@@ -579,11 +759,25 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     sml_error = 0
 
     for x in list1: 
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':        
-            f_big.write(f'{x}\n')
+        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
+            wrong_data = 0
+            for y in list2:
+                if x[0] == y[0] and x[1] == y[1]:
+                    f_big.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
+                    wrong_data = 1
+                    break
+            if not wrong_data:   
+                f_big.write(f'{x}: 找不到這根梁\n')
             big_error += 1
         else:
-            f_sml.write(f'{x}\n')
+            wrong_data = 0
+            for y in list2:
+                if x[0] == y[0] and x[1] == y[1]:
+                    f_sml.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
+                    wrong_data = 1
+                    break
+            if not wrong_data:   
+                f_sml.write(f'{x}: 找不到這根梁\n')
             sml_error += 1
         
         coor = dic_plan[x]
@@ -625,12 +819,15 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
 
 def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
     pythoncom.CoInitialize()
+    set1 = set_plan - set_beam
+    list1 = list(set1)
+    list1.sort()
     set2 = set_beam - set_plan
     list2 = list(set2)
     list2.sort()
 
-    f_big = open(big_file, "a")
-    f_sml = open(sml_file, "a")
+    f_big = open(big_file, "a", encoding = 'utf-8')
+    f_sml = open(sml_file, "a", encoding = 'utf-8')
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
@@ -745,32 +942,33 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = sys.argv[12]
+    task_name = 'task1' #sys.argv[12]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = sys.argv[2] # XS-PLAN的路徑
-    beam_filename = sys.argv[1] # XS-BEAM的路徑
-    plan_new_filename = sys.argv[4] # XS-PLAN_new的路徑
-    beam_new_filename = sys.argv[3] # XS-BEAM_new的路徑
+    plan_filename = r'C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r'C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM.dwg'#sys.argv[1] # XS-BEAM的路徑
+    plan_new_filename = r'C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN_nex.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    beam_new_filename = r'C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM_new.dwg'#sys.argv[3] # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = sys.argv[5] # 大梁結果
-    sml_file = sys.argv[6] # 小梁結果
+    big_file = r'C:\Users\Vince\Desktop\BeamQC\data\task1\big.txt'#sys.argv[5] # 大梁結果
+    sml_file = r'C:\Users\Vince\Desktop\BeamQC\data\task1\sml.txt'#sys.argv[6] # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
-    floor_layer = sys.argv[9] # 樓層字串的圖層
-    beam_layer = [sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = sys.argv[8] # 框框的圖層
-    explode = sys.argv[13] # 需不需要提前炸圖塊(0:不需要 1:需要)
+    floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
+    beam_layer = ['S-TEXTB', 'S-TEXTG']#[sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
+    block_layer = '0'#sys.argv[8] # 框框的圖層
+    explode = 0#sys.argv[13] # 需不需要提前炸圖塊(0:不需要 1:需要)
+    size_layer = 'S-TEXT'#sys.argv[14] # 梁尺寸字串圖層
 
     # 在beam裡面自訂圖層
-    text_layer = sys.argv[7]
+    text_layer = 'S-RC'#sys.argv[7]
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file, explode))
+    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, size_layer, plan_file, explode))
     res_beam = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file))
     final_plan = res_plan.get()
     final_beam = res_beam.get()
