@@ -1,4 +1,17 @@
-注意事項:
+# How to start server
+
+### development
+```
+cd BeamQC
+set FLASK_ENV=development
+flask run
+```
+### production(using waitress as WSGI server)
+```
+python wsgi.py
+```
+
+# 注意事項:
 1. 請在title後面加上括號(ex. 地下五層結構平面圖(B5F), 五層至六層結構平面圖(5F-6F))
 
 This is good.(有括號)
