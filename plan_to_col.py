@@ -482,7 +482,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
     
     return (set_col, dic_col)
 
-def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_filename, date): # 完成 in plan but not in col 的部分並在圖上mark有問題的部分
+def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_filename, date, drawing): # 完成 in plan but not in col 的部分並在圖上mark有問題的部分
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
@@ -494,48 +494,49 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
 
     f.write("in plan but not in col: \n")
 
-    # Step 1. 開啟應用程式
-    flag = 0
-    while not flag:
-        try:
-            wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 1, {e}')
-    # Step 2. 匯入檔案
-    flag = 0
-    while not flag:
-        try:
-            doc_plan = wincad_plan.Documents.Open(plan_filename)
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 2, {e}')
-    # Step 3. 載入modelspace(還要畫圖)
-    flag = 0
-    while not flag:
-        try:
-            msp_plan = doc_plan.Modelspace
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 3, {e}')
-    time.sleep(5)
+    if drawing:
+        # Step 1. 開啟應用程式
+        flag = 0
+        while not flag:
+            try:
+                wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 1, {e}')
+        # Step 2. 匯入檔案
+        flag = 0
+        while not flag:
+            try:
+                doc_plan = wincad_plan.Documents.Open(plan_filename)
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 2, {e}')
+        # Step 3. 載入modelspace(還要畫圖)
+        flag = 0
+        while not flag:
+            try:
+                msp_plan = doc_plan.Modelspace
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 3, {e}')
+        time.sleep(5)
 
-    # Step 4. 設定mark的圖層
-    flag = 0
-    while not flag:
-        try:
-            layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
-            doc_plan.ActiveLayer = layer_plan
-            layer_plan.color = 10
-            layer_plan.Linetype = "Continuous"
-            layer_plan.Lineweight = 0.5
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 4, {e}')
+        # Step 4. 設定mark的圖層
+        flag = 0
+        while not flag:
+            try:
+                layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
+                doc_plan.ActiveLayer = layer_plan
+                layer_plan.color = 10
+                layer_plan.Linetype = "Continuous"
+                layer_plan.Lineweight = 0.5
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 4, {e}')
     
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
@@ -553,15 +554,17 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
             
             error_num += 1
             
-            coor = dic_plan[x]
-            coor_list = [coor[0] - 20, coor[3] - 20, 0, coor[1] + 20, coor[3] - 20, 0, coor[1] + 20, coor[2] + 20, 0, coor[0] - 20, coor[2] + 20, 0, coor[0] - 20, coor[3] - 20, 0]
-            points = vtFloat(coor_list)
-            pointobj = msp_plan.AddPolyline(points)
-            for i in range(4):
-                pointobj.SetWidth(i, 10, 10)
+            if drawing:
+                coor = dic_plan[x]
+                coor_list = [coor[0] - 20, coor[3] - 20, 0, coor[1] + 20, coor[3] - 20, 0, coor[1] + 20, coor[2] + 20, 0, coor[0] - 20, coor[2] + 20, 0, coor[0] - 20, coor[3] - 20, 0]
+                points = vtFloat(coor_list)
+                pointobj = msp_plan.AddPolyline(points)
+                for i in range(4):
+                    pointobj.SetWidth(i, 10, 10)
     
-    doc_plan.SaveAs(plan_new_filename)
-    doc_plan.Close(SaveChanges=True)
+    if drawing:
+        doc_plan.SaveAs(plan_new_filename)
+        doc_plan.Close(SaveChanges=True)
 
     count = 0
     for x in set_plan:
@@ -578,7 +581,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     f.close()
     return rate
 
-def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_filename, date): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_filename, date, drawing): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
@@ -588,48 +591,50 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
 
     f = open(result_filename, "a", encoding = 'utf-8')
     f.write("in col but not in plan: \n")
-    # Step 1. 開啟應用程式
-    flag = 0
-    while not flag:
-        try:
-            wincad_col = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_col error in step 1, {e}')
-    # Step 2. 匯入檔案
-    flag = 0
-    while not flag:
-        try:
-            doc_col = wincad_col.Documents.Open(col_filename)
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_col error in step 2, {e}')
-    # Step 3. 載入modelspace(還要畫圖)
-    flag = 0
-    while not flag:
-        try:
-            msp_col = doc_col.Modelspace
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_col error in step 3, {e}')
-    time.sleep(5)
 
-    # Step 4. 設定mark的圖層
-    flag = 0
-    while not flag:
-        try:
-            layer_col = doc_col.Layers.Add(f"S-CLOUD_{date}")
-            doc_col.ActiveLayer = layer_col
-            layer_col.color = 10
-            layer_col.Linetype = "Continuous"
-            layer_col.Lineweight = 0.5
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_col error in step 4, {e}')
+    if drawing:
+        # Step 1. 開啟應用程式
+        flag = 0
+        while not flag:
+            try:
+                wincad_col = win32com.client.Dispatch("AutoCAD.Application")
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_col error in step 1, {e}')
+        # Step 2. 匯入檔案
+        flag = 0
+        while not flag:
+            try:
+                doc_col = wincad_col.Documents.Open(col_filename)
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_col error in step 2, {e}')
+        # Step 3. 載入modelspace(還要畫圖)
+        flag = 0
+        while not flag:
+            try:
+                msp_col = doc_col.Modelspace
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_col error in step 3, {e}')
+        time.sleep(5)
+
+        # Step 4. 設定mark的圖層
+        flag = 0
+        while not flag:
+            try:
+                layer_col = doc_col.Layers.Add(f"S-CLOUD_{date}")
+                doc_col.ActiveLayer = layer_col
+                layer_col.color = 10
+                layer_col.Linetype = "Continuous"
+                layer_col.Lineweight = 0.5
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_col error in step 4, {e}')
 
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
@@ -645,15 +650,17 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
 
         error_num += 1
         
-        coor = dic_col[x]
-        coor_list = [coor[0], coor[3], 0, coor[1], coor[3], 0, coor[1], coor[2], 0, coor[0], coor[2], 0, coor[0], coor[3], 0]
-        points = vtFloat(coor_list)
-        pointobj = msp_col.AddPolyline(points)
-        for i in range(4):
-            pointobj.SetWidth(i, 10, 10)
+        if drawing:
+            coor = dic_col[x]
+            coor_list = [coor[0], coor[3], 0, coor[1], coor[3], 0, coor[1], coor[2], 0, coor[0], coor[2], 0, coor[0], coor[3], 0]
+            points = vtFloat(coor_list)
+            pointobj = msp_col.AddPolyline(points)
+            for i in range(4):
+                pointobj.SetWidth(i, 10, 10)
 
-    doc_col.SaveAs(col_new_filename)
-    doc_col.Close(SaveChanges=True)
+    if drawing:
+        doc_col.SaveAs(col_new_filename)
+        doc_col.Close(SaveChanges=True)
 
     count = 0
 
@@ -715,20 +722,37 @@ if __name__=='__main__':
     # 在col裡面自訂圖層
     text_layer = sys.argv[6] # 文字的圖層
     line_layer = sys.argv[7] # 線的圖層
+
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode))
-    res_col = pool.apply_async(read_col, (col_filename, text_layer, line_layer, col_file, explode))
-    final_plan = res_plan.get()
-    final_col = res_col.get()
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_col = final_col[0]
-    dic_col = final_col[1]
+    plan_file_count = plan_filename.count(',')
+    col_file_count = col_filename.count(',')
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date)
-    col_result = write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date)
+    set_plan = set()
+    dic_plan = {}
+    set_col = set()
+    dic_col = {}
+
+    for i in range(plan_file_count + 1):
+        res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode))
+        final_plan = res_plan.get()
+        set_plan = set_plan | final_plan[0]
+        if plan_file_count == 1 and col_file_count == 1:
+            dic_plan = final_plan[1]
+    for i in range(col_file_count + 1):
+        res_col = pool.apply_async(read_col, (col_filename, text_layer, line_layer, col_file, explode))
+        final_col = res_col.get()
+        set_col = set_col | final_col[0]
+        if plan_file_count == 1 and col_file_count == 1:
+            dic_col = final_col[1]
+
+    drawing = 0
+    if plan_file_count == 1 and col_file_count == 1:
+        drawing = 1
+
+    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, drawing)
+    col_result = write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date, drawing)
 
     end = time.time()
     # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')

@@ -211,7 +211,9 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                         s = beam.split(';')[i]
                         if s[0] in beam_head1 or s[0:2] in beam_head2:
                             if '(' in s:
-                                size = (s.split('(')[1]).split(')')[0]
+                                size = (((s.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
+                                if 'x' not in size:
+                                    size = ''
                                 s = s.split('(')[0]
                             if '\\' in s:
                                 s = s.split('\\')[0]
@@ -321,7 +323,6 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
-
     # Step 9. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
@@ -373,46 +374,51 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
             y_diff_right = size_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:                    
                 if len(min_floor) == 0 or min_floor[0] != floor_name:
-                    min_floor.append(min_floor)
+                    min_floor.append(floor_name)
 
-        floor = min_floor
-
-        if floor != '':
-            to_bool = False
-            for char in weird_to_list:
-                if char in floor:
-                    to_char = char
-                    start = floor.split(to_char)[0]
-                    end = floor.split(to_char)[1]
-                    try:
-                        start = int(turn_floor_to_float(start))
-                        end = int(turn_floor_to_float(end))
-                        if start > end:
-                            tmp = start
-                            start = end
-                            end = tmp
-                        for i in range(start, end + 1):
-                            if floor_exist(i, Bmax, Fmax, Rmax):
-                                floor_beam_size_dic[(turn_floor_to_string(i), size_beam)] = size_string
-                    except:
-                        error(f'read_plan error in step 10: The error above is from here.')
-                    to_bool = True
-                    break
-            if not to_bool:
-                comma_char = ','
-                for char in weird_comma_list:
+        if len(min_floor) != 0:
+            for i in range(len(min_floor)):
+                floor = min_floor[i]
+                if (floor, size_beam) not in floor_beam_size_dic:
+                    floor_beam_size_dic[(floor, size_beam)] = size_string
+                else:
+                    pass
+                    # 補
+                to_bool = False
+                for char in weird_to_list:
                     if char in floor:
-                        comma_char = char
+                        to_char = char
+                        start = floor.split(to_char)[0]
+                        end = floor.split(to_char)[1]
+                        try:
+                            start = int(turn_floor_to_float(start))
+                            end = int(turn_floor_to_float(end))
+                            if start > end:
+                                tmp = start
+                                start = end
+                                end = tmp
+                            for i in range(start, end + 1):
+                                if floor_exist(i, Bmax, Fmax, Rmax):
+                                    floor_beam_size_dic[(turn_floor_to_string(i), size_beam)] = size_string
+                        except:
+                            error(f'read_plan error in step 10: The error above is from here.')
+                        to_bool = True
                         break
-                comma = floor.count(comma_char)
-                for i in range(comma + 1):
-                    new_floor = floor.split(comma_char)[i]
-                    new_floor = turn_floor_to_float(new_floor)
-                    new_floor = turn_floor_to_string(new_floor)
-                    if new_floor:
-                        floor_beam_size_dic[(new_floor, size_beam)] = size_string
-                    else:
-                        error(f'read_plan error in step 10: new_floor is false.')
+                if not to_bool:
+                    comma_char = ','
+                    for char in weird_comma_list:
+                        if char in floor:
+                            comma_char = char
+                            break
+                    comma = floor.count(comma_char)
+                    for i in range(comma + 1):
+                        new_floor = floor.split(comma_char)[i]
+                        new_floor = turn_floor_to_float(new_floor)
+                        new_floor = turn_floor_to_string(new_floor)
+                        if new_floor:
+                            floor_beam_size_dic[(new_floor, size_beam)] = size_string
+                        else:
+                            error(f'read_plan error in step 10: new_floor is false.')
         else:
             error('read_plan error in step 10: min_floor cannot be found.')
 
@@ -697,7 +703,7 @@ def read_beam(beam_filename, text_layer, result_filename):
     
     return (set_beam, dic_beam)
 
-def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
+def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, drawing): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
     pythoncom.CoInitialize()
     set1 = set_plan - set_beam
     list1 = list(set1)
@@ -711,48 +717,49 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
-    # Step 1. 開啟應用程式
-    flag = 0
-    while not flag:
-        try:
-            wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 1, {e}')
-    # Step 2. 匯入檔案
-    flag = 0
-    while not flag:
-        try:
-            doc_plan = wincad_plan.Documents.Open(plan_filename)
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 2, {e}')
-    # Step 3. 載入modelspace(還要畫圖)
-    flag = 0
-    while not flag:
-        try:
-            msp_plan = doc_plan.Modelspace
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 3, {e}')
-    time.sleep(5)
+    if drawing:
+        # Step 1. 開啟應用程式
+        flag = 0
+        while not flag:
+            try:
+                wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 1, {e}')
+        # Step 2. 匯入檔案
+        flag = 0
+        while not flag:
+            try:
+                doc_plan = wincad_plan.Documents.Open(plan_filename)
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 2, {e}')
+        # Step 3. 載入modelspace(還要畫圖)
+        flag = 0
+        while not flag:
+            try:
+                msp_plan = doc_plan.Modelspace
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 3, {e}')
+        time.sleep(5)
 
-    # Step 4. 設定mark的圖層
-    flag = 0
-    while not flag:
-        try:
-            layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
-            doc_plan.ActiveLayer = layer_plan
-            layer_plan.color = 10
-            layer_plan.Linetype = "Continuous"
-            layer_plan.Lineweight = 0.5
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_plan error in step 4, {e}')
+        # Step 4. 設定mark的圖層
+        flag = 0
+        while not flag:
+            try:
+                layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
+                doc_plan.ActiveLayer = layer_plan
+                layer_plan.color = 10
+                layer_plan.Linetype = "Continuous"
+                layer_plan.Lineweight = 0.5
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_plan error in step 4, {e}')
     
     # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
     big_error = 0
@@ -762,7 +769,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
         if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
             wrong_data = 0
             for y in list2:
-                if x[0] == y[0] and x[1] == y[1]:
+                if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                     f_big.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
                     wrong_data = 1
                     break
@@ -772,7 +779,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
         else:
             wrong_data = 0
             for y in list2:
-                if x[0] == y[0] and x[1] == y[1]:
+                if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                     f_sml.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
                     wrong_data = 1
                     break
@@ -780,15 +787,17 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                 f_sml.write(f'{x}: 找不到這根梁\n')
             sml_error += 1
         
-        coor = dic_plan[x]
-        coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
-        points = vtFloat(coor_list)
-        pointobj = msp_plan.AddPolyline(points)
-        for i in range(4):
-            pointobj.SetWidth(i, 10, 10)
+        if drawing:
+            coor = dic_plan[x]
+            coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+            points = vtFloat(coor_list)
+            pointobj = msp_plan.AddPolyline(points)
+            for i in range(4):
+                pointobj.SetWidth(i, 10, 10)
     
-    doc_plan.SaveAs(plan_new_filename)
-    doc_plan.Close(SaveChanges=True)
+    if drawing:
+        doc_plan.SaveAs(plan_new_filename)
+        doc_plan.Close(SaveChanges=True)
 
     big_count = 0
     sml_count = 0
@@ -817,7 +826,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     f_sml.close()
     return (big_rate, sml_rate)
 
-def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
     pythoncom.CoInitialize()
     set1 = set_plan - set_beam
     list1 = list(set1)
@@ -831,69 +840,87 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
-    # Step 1. 開啟應用程式
-    flag = 0
-    while not flag:
-        try:
-            wincad_beam = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_beam error in step 1, {e}')
-    # Step 2. 匯入檔案
-    flag = 0
-    while not flag:
-        try:
-            doc_beam = wincad_beam.Documents.Open(beam_filename)
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_beam error in step 2, {e}')
-    # Step 3. 載入modelspace(還要畫圖)
-    flag = 0
-    while not flag:
-        try:
-            msp_beam = doc_beam.Modelspace
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_beam error in step 3, {e}')
-    time.sleep(5)
 
-    # Step 4. 設定mark的圖層
-    flag = 0
-    while not flag:
-        try:
-            layer_beam = doc_beam.Layers.Add(f"S-CLOUD_{date}")
-            doc_beam.ActiveLayer = layer_beam
-            layer_beam.color = 10
-            layer_beam.Linetype = "Continuous"
-            layer_beam.Lineweight = 0.5
-            flag = 1
-        except Exception as e:
-            time.sleep(5)
-            error(f'write_beam error in step 4, {e}')
+    if drawing:
+        # Step 1. 開啟應用程式
+        flag = 0
+        while not flag:
+            try:
+                wincad_beam = win32com.client.Dispatch("AutoCAD.Application")
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_beam error in step 1, {e}')
+        # Step 2. 匯入檔案
+        flag = 0
+        while not flag:
+            try:
+                doc_beam = wincad_beam.Documents.Open(beam_filename)
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_beam error in step 2, {e}')
+        # Step 3. 載入modelspace(還要畫圖)
+        flag = 0
+        while not flag:
+            try:
+                msp_beam = doc_beam.Modelspace
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_beam error in step 3, {e}')
+        time.sleep(5)
+
+        # Step 4. 設定mark的圖層
+        flag = 0
+        while not flag:
+            try:
+                layer_beam = doc_beam.Layers.Add(f"S-CLOUD_{date}")
+                doc_beam.ActiveLayer = layer_beam
+                layer_beam.color = 10
+                layer_beam.Linetype = "Continuous"
+                layer_beam.Lineweight = 0.5
+                flag = 1
+            except Exception as e:
+                time.sleep(5)
+                error(f'write_beam error in step 4, {e}')
 
     # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
     big_error = 0
     sml_error = 0
     for x in list2: 
         if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
-            f_big.write(f'{x}\n')
+            wrong_data = 0
+            for y in list1:
+                if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
+                    f_big.write(f'{x}: 尺寸有誤，在XS-PLAN那邊是{y[2]}\n')
+                    wrong_data = 1
+                    break
+            if not wrong_data:   
+                f_big.write(f'{x}: 找不到這根梁\n')
             big_error += 1
         else:
-            f_sml.write(f'{x}\n')
+            wrong_data = 0
+            for y in list1:
+                if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
+                    f_sml.write(f'{x}: 尺寸有誤，在XS-PLAN那邊是{y[2]}\n')
+                    wrong_data = 1
+                    break
+            if not wrong_data:   
+                f_sml.write(f'{x}: 找不到這根梁\n')
             sml_error += 1
         
-        coor = dic_beam[x]
-        coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
-        points = vtFloat(coor_list)
-        pointobj = msp_beam.AddPolyline(points)
-        for i in range(4):
-            pointobj.SetWidth(i, 10, 10)
+        if drawing:
+            coor = dic_beam[x]
+            coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+            points = vtFloat(coor_list)
+            pointobj = msp_beam.AddPolyline(points)
+            for i in range(4):
+                pointobj.SetWidth(i, 10, 10)
 
-    doc_beam.SaveAs(beam_new_filename)
-    doc_beam.Close(SaveChanges=True)
+    if drawing:
+        doc_beam.SaveAs(beam_new_filename)
+        doc_beam.Close(SaveChanges=True)
 
     big_count = 0
     sml_count = 0
@@ -966,20 +993,39 @@ if __name__=='__main__':
 
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
+
+    # 多檔案接用','來連接，不用空格。Ex. 'file1,file2,file3'
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, size_layer, plan_file, explode))
-    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file))
-    final_plan = res_plan.get()
-    final_beam = res_beam.get()
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_beam = final_beam[0]
-    dic_beam = final_beam[1]
+    plan_file_count = plan_filename.count(',')
+    beam_file_count = beam_filename.count(',')
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date)
+    set_plan = set()
+    dic_plan = {}
+    set_beam = set()
+    dic_beam = {}
+
+    for i in range(plan_file_count + 1):
+        res_plan = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, beam_layer, block_layer, size_layer, plan_file, explode))
+        final_plan = res_plan.get()
+        set_plan = set_plan | final_plan[0]
+        if plan_file_count == 1 and beam_file_count == 1:
+            dic_plan = final_plan[1]
+
+    for i in range(beam_file_count + 1):
+        res_beam = pool.apply_async(read_beam, (beam_filename.split(',')[i], text_layer, beam_file))
+        final_beam = res_beam.get()
+        set_beam = set_beam | final_beam[0]
+        if plan_file_count == 1 and beam_file_count == 1:
+            dic_beam = final_beam[1]
+
+    drawing = 0
+    if plan_file_count == 1 and beam_file_count == 1:
+        drawing = 1
+    
+    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, drawing)
+    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing)
 
     end = time.time()
     # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
