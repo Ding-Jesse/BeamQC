@@ -3,6 +3,7 @@
 {% block title %}Elements 配筋圖查核_beta{% endblock %}
 
 {% block content %}
+<head><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script></head>
 <body>
 <div class="testbox">
 <form action="" method=post enctype=multipart/form-data>
@@ -30,7 +31,7 @@
 <div><h4>柱配筋圖</h4></div>
 <div class="item">
 <labe>選擇檔案</label>
-<input type=file name=file_col value="dwg">
+<input type=file name=file_col value="dwg" multiple>
 </div>
 <div class="item">
 <labe>柱配筋圖文字圖層名稱</label>
@@ -43,7 +44,7 @@
 <div><h4>梁配筋圖</h4></div>
 <div class="item">
 <label>選擇檔案</label>
-<input type=file name=file1 value="dwg">
+<input type=file name=file1 value="dwg" multiple>
 </div>
 <div class="item">
 <label>梁配筋圖文字圖層名稱</label>
@@ -52,7 +53,7 @@
 <div><h4>結構平面圖</h4></div>
 <div class="item">
 <label>選擇檔案</label>
-<input type=file name=file2 value="dwg">
+<input type=file name=file2 value="dwg" multiple>
 </div>
 <div class="item">
 <label>結構平面圖圖框圖層名稱</label>
@@ -80,9 +81,13 @@
 <span class="checkmark"></span>
 </label>
 <div class="btn-block">
-<button type="submit">完成</button>
+<button type="submit" id="but_search" onclick="showloader()">完成</button>
 </div>
 </form>
+</div>
+<!-- <div id='loader' style='display: none;'> -->
+<div id='loader' style="text-align:center;display: none;">
+  <img src='../static/loader.gif'> <b>Loading..</b>
 </div>
 
 <div class="banner2">
@@ -140,5 +145,11 @@ CAD版本須為2016以前之版本。
 </li>
 </ol>
 </blockquote>
+<script> 
+  document.getElementById("loader").style.visibility = "visible";
+  function showloader() { 
+      document.getElementById("loader").style.display = "block"; 
+  } 
+</script>
 </body>
 {% endblock %}
