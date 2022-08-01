@@ -369,13 +369,10 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         try:
             for object in msp_col:
                 if object.Layer in text_layer and object.ObjectName == "AcDbText": 
-                    if object.TextString[0] == 'C':
+                    if object.TextString[0] == 'C' and (len(object.TextString) <= 7):
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        if object.TextString.split('C')[1].isdigit(): # 單一柱子
-                            coor_to_col_set.add(((coor1, coor2), object.TextString))
-                        elif '-' in object.TextString: # 範圍，Step 9 再處理
-                            coor_to_col_set.add(((coor1, coor2), object.TextString))
+                        coor_to_col_set.add(((coor1, coor2), object.TextString))
 
                     elif 'x' in object.TextString:
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
@@ -412,24 +409,30 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         coor = x[0]
         col = x[1]
         new_coor_to_col_line_list = []
-        for y in coor_to_col_line_list:
-            if y[1] <= coor[0][1] <= y[2]:
+        for y in coor_to_col_line_list: # (縱線x座標, start, end)
+            if y[1] <= coor[0][1] <= y[2]: # 先看y座標有沒有被夾住
                 new_coor_to_col_line_list.append(y)
-        for y in range(len(new_coor_to_col_line_list)):
-            if new_coor_to_col_line_list[y][0] <= coor[0][0] <= new_coor_to_col_line_list[y+1][0]:
+        tmp_set = set(new_coor_to_col_line_list)
+        new_coor_to_col_line_list = list(tmp_set)
+        new_coor_to_col_line_list.sort(key = lambda x: x[0])
+        for y in range(len(new_coor_to_col_line_list)): # 再看x座標被哪兩條線夾住
+            if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
                 col_to_line_set.add((col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
-    
-    # Step 8. 完成floor_to_line_set 格式:(floor, up, down, left)
+
+    # Step 8. 完成floor_to_line_set 格式:(floor, down, up, left)
     floor_to_line_set = set()
     for x in coor_to_floor_set:
         coor = x[0]
         floor = x[1]
         new_coor_to_floor_line_list = []
-        for y in coor_to_floor_line_list:
-            if y[1] <= coor[0][0] <= y[2]:
+        for y in coor_to_floor_line_list: # (橫線y座標, start, end)
+            if y[1] <= coor[0][0] <= y[2]: # 先看x座標有沒有被夾住
                 new_coor_to_floor_line_list.append(y)
-        for y in range(len(new_coor_to_floor_line_list)):
-            if new_coor_to_floor_line_list[y][0] <= coor[0][1] <= new_coor_to_floor_line_list[y+1][0]:
+        tmp_set = set(new_coor_to_floor_line_list)
+        new_coor_to_floor_line_list = list(tmp_set)
+        new_coor_to_floor_line_list.sort(key = lambda x: x[0])
+        for y in range(len(new_coor_to_floor_line_list)): # 再看y座標被哪兩條線夾住，下面那條要往下平移一格
+            if new_coor_to_floor_line_list[y][0] < coor[0][1] < new_coor_to_floor_line_list[y+1][0]:
                 floor_to_line_set.add((floor, new_coor_to_floor_line_list[y-1][0], new_coor_to_floor_line_list[y+1][0], coor[0][0]))
 
     # Step 9. 完成set_col和dic_col
@@ -444,12 +447,12 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         min_col = ''
         min_col_coor = ''
         min_col_diff = 10000
-        for y in floor_to_line_set:
+        for y in floor_to_line_set: # (floor, down, up, left)
             if y[1] <= coor[1][1] <= y[2] and coor[1][0] - y[3] >= 0 and coor[1][0] - y[3] <= min_floor_diff:
                 min_floor = y[0]
                 min_floor_coor = (y[1], y[2])
                 min_floor_diff = coor[1][0] - y[3]
-        for y in col_to_line_set:
+        for y in col_to_line_set: # (col, left, right, up)
             if y[1] <= coor[1][0] <= y[2] and y[3] - coor[1][1] >= 0 and y[3] - coor[1][1] <= min_col_diff:
                 min_col = y[0]
                 min_col_coor = (y[1], y[2])
@@ -699,50 +702,56 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = sys.argv[11]
+    task_name = 'task18' #sys.argv[11]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = sys.argv[2] # XS-PLAN的路徑
-    col_filename = sys.argv[1] # XS-COL的路徑
-    plan_new_filename = sys.argv[4] # XS-PLAN_new的路徑
-    col_new_filename = sys.argv[3] # XS-COL_new的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-PLAN.dwg' #sys.argv[2] # XS-PLAN的路徑
+    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-COL.dwg' #sys.argv[1] # XS-COL的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-PLAN_new.dwg' #sys.argv[4] # XS-PLAN_new的路徑
+    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-COL_new.dwg' #sys.argv[3] # XS-COL_new的路徑
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
-    result_file = sys.argv[5] # 柱配筋結果
+    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\柱配筋.txt' #sys.argv[5] # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
-    floor_layer = sys.argv[9] # 樓層字串的圖層
-    col_layer = sys.argv[10] # col的圖層
-    block_layer = sys.argv[8] # 圖框的圖層
-    explode = sys.argv[12] # 需不需要提前炸圖塊
+    floor_layer = 'S-TITLE' #sys.argv[9] # 樓層字串的圖層
+    col_layer = 'S-TEXTC' #sys.argv[10] # col的圖層
+    block_layer = '0' #sys.argv[8] # 圖框的圖層
+    explode = 0 #sys.argv[12] # 需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
-    text_layer = sys.argv[6] # 文字的圖層
-    line_layer = sys.argv[7] # 線的圖層
+    text_layer = 'S-TEXT' #sys.argv[6] # 文字的圖層
+    line_layer = 'S-STUD' #sys.argv[7] # 線的圖層
 
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
 
-    plan_file_count = plan_filename.count(',')
-    col_file_count = col_filename.count(',')
-
+    plan_file_count = plan_filename.count(',') + 1
+    col_file_count = col_filename.count(',') + 1
+    res_plan = [None] * plan_file_count
+    res_col = [None] * col_file_count
     set_plan = set()
     dic_plan = {}
     set_col = set()
     dic_col = {}
 
-    for i in range(plan_file_count + 1):
-        res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode))
-        final_plan = res_plan.get()
+    for i in range(plan_file_count):
+        res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, col_layer, block_layer, plan_file, explode))
+
+    for i in range(col_file_count):
+        res_col[i] = pool.apply_async(read_col, (col_filename.split(',')[i], text_layer, line_layer, col_file, explode))
+
+    for i in range(plan_file_count):
+        final_plan = res_plan[i].get()
         set_plan = set_plan | final_plan[0]
         if plan_file_count == 1 and col_file_count == 1:
             dic_plan = final_plan[1]
-    for i in range(col_file_count + 1):
-        res_col = pool.apply_async(read_col, (col_filename, text_layer, line_layer, col_file, explode))
-        final_col = res_col.get()
+
+    for i in range(col_file_count):
+        final_col = res_col[i].get()
         set_col = set_col | final_col[0]
         if plan_file_count == 1 and col_file_count == 1:
             dic_col = final_col[1]
