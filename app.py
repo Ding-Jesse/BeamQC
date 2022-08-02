@@ -1,20 +1,21 @@
 from multiprocessing import allow_connection_pickling
 import os
 from time import sleep
-from flask import Flask, request, redirect, url_for, render_template,send_from_directory
+from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g
 from werkzeug.utils import secure_filename
-from main import main_functionV3, main_col_function
-
+from main import main_functionV3, main_col_function,storefile
+import functools
 import time
-app = Flask(__name__, template_folder='./')
-UPLOAD_FOLDER = 'C:/Users/Vince/Desktop/BeamQC/INPUT'
-OUTPUT_FOLDER = 'C:/Users/Vince/Desktop/BeamQC/OUTPUT'
-ALLOWED_EXTENSIONS = set(['dwg'])
+from datetime import timedelta
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
+OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
+ALLOWED_EXTENSIONS = set(['dwg'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 60MB
-
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
+app.config['SECRET_KEY'] = b'_5#y2L"F4Q8z\n\xec]/'
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -23,17 +24,37 @@ def allowed_file(filename):
 def home():
     return render_template('home.html')
 
+def login_required(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        user_agree = session.get('user_agree')
+        if user_agree is None:
+            return redirect(url_for('login'))
+
+        return view(**kwargs)
+
+    return wrapped_view
+
+@app.before_request
+def before_request():
+    session.permanent = True
+    app.permanent_session_lifetime = timedelta(minutes=15)
+
 @app.route('/tool1', methods=['GET', 'POST'])
+@login_required
 def upload_file():
     if request.method == 'POST':
-        uploaded_beam = request.files["file1"]
-        uploaded_plan = request.files["file2"]
-        uploaded_column = request.files["file_col"]
+        
+        uploaded_beams = request.files.getlist("file1")
+        uploaded_plans = request.files.getlist("file2")
+        uploaded_columns = request.files.getlist("file_col")
         beam_type = '大梁'
         sbeam_type = '小梁'
-        beam_file =''
-        plan_file = ''
+        beam_file =[]
+        plan_file = []
+        column_file = []
         txt_file =''
+        dwg_type = 'single'
         project_name = request.form['project_name']
         text_col_layer = request.form['text_col_layer']
         line_layer = request.form['line_layer']
@@ -52,48 +73,66 @@ def upload_file():
         beam_ok = False
         plan_ok = False
         column_ok = False
-        filenames = []
-        if uploaded_beam and allowed_file(uploaded_beam.filename) and xs_beam:
-            filename_beam = secure_filename(uploaded_beam.filename)
-            beam_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_beam}')
-            beam_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-{filename_beam}')
-            uploaded_beam.save(beam_file)
-            beam_ok = True
-        if uploaded_column and allowed_file(uploaded_column.filename) and xs_col:
-            filename_column = secure_filename(uploaded_column.filename)
-            column_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_column}')
-            column_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-{filename_column}')
-            uploaded_column.save(column_file)
-            column_ok = True
-        if uploaded_plan and allowed_file(uploaded_plan.filename):
-            filename_plan = secure_filename(uploaded_plan.filename)
-            plan_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}')
-            plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-{filename_plan}')
+        filenames = ['']
+        project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
+        if len(uploaded_beams) > 1: dwg_type = 'muti'
+        for uploaded_beam in uploaded_beams:
+            if uploaded_beam and allowed_file(uploaded_beam.filename) and xs_beam:
+                beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
+                filename_beam = secure_filename(uploaded_beam.filename)
+                beam_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_beam}'))
+        for uploaded_column in uploaded_columns:
+            if uploaded_column and allowed_file(uploaded_column.filename) and xs_col:
+                column_ok, column_new_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
+                filename_column = secure_filename(uploaded_column.filename)
+                column_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_column}'))
+        for uploaded_plan in uploaded_plans:
+            if uploaded_plan and allowed_file(uploaded_plan.filename):
+                plan_ok, plan_new_file = storefile(uploaded_plan,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
+                filename_plan = secure_filename(uploaded_plan.filename)
+                plan_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}'))
+                col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-column-{filename_plan}')
+        if beam_ok and len(plan_file)==1:filenames.append(os.path.split(plan_new_file)[1])
+        if len(beam_file)==1:filenames.append(os.path.split(beam_new_file)[1])
+        if len(column_file)==1:filenames.append(os.path.split(column_new_file)[1])
+        if column_ok and len(plan_file)==1:filenames.append(os.path.split(col_plan_new_file)[1])
+            # filename_plan = secure_filename(uploaded_plan.filename)
+            # plan_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}')
+            # plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-{filename_plan}')
             # col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_COL_MARKON-{filename_plan}')
-            uploaded_plan.save(plan_file)
-            plan_ok = True
+            # uploaded_plan.save(plan_file)
+            # plan_ok = True
         if beam_ok and plan_ok:
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
             sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
-            os.system(f'python plan_to_beam.py {beam_file} {plan_file} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {size_layer} {project_name} {explode_plan} {explode_beam}')
-            # main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name,explode)
-            filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt',
-                                f'{project_name}_MARKON-{filename_beam}',f'{project_name}_MARKON-{filename_plan}']
+            # os.system(f'python plan_to_beam.py {beam_file} {plan_file} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {project_name} {explode}')
+            main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name,explode)
+            filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt']
             filenames.extend(filenames_beam) 
         if column_ok and plan_ok:
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-column.txt')
-            col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-column-{filename_plan}')
-            os.system(f'python plan_to_col.py {column_file} {plan_file} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {explode_plan} {explode_col}')
-            # main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name,explode)
-            filenames_column = [f'{project_name}-column.txt',
-                                f'{project_name}_MARKON-{filename_column}',
-                                f'{project_name}_MARKON-column-{filename_plan}']
+            # os.system(f'python plan_to_col.py {column_file} {plan_file} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {explode}')
+            main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name,explode)
+            filenames_column = [f'{project_name}-column.txt']
             filenames.extend(filenames_column)
         if column_ok or beam_ok:
+            if 'filenames' in session:
+                session['filenames'].extend(filenames)
+            else:
+                session['filenames'] = filenames
             return render_template('tool1_result.html', filenames=filenames)
     return render_template('tool1.html')
+
+@app.route('/results')
+@login_required
+def result_page():
+    filenames = session.get('filenames')
+    if filenames is None or len(filenames)==0:
+        return render_template('tool1_result.html', filenames=[])
+    else:
+        return render_template('tool1_result.html', filenames=filenames)
 
 @app.route('/results/<filename>/')
 def result_file(filename):
@@ -117,3 +156,14 @@ def tool4():
 @app.route('/tool5')
 def tool5():
     return render_template('tool5.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        session['user_agree'] = 'agree'
+        return redirect(url_for('home'))
+    return render_template('statement.html', template_folder='./')
+
+if __name__ == '__main__':
+
+    app.run(host = '192.168.0.143',debug=True,port=8080)
