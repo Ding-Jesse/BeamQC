@@ -11,13 +11,15 @@ import multiprocessing
 import os
 import pandas as pd
 import sys
+from functools import cmp_to_key
 
-from plan_to_beam import turn_floor_to_float, turn_floor_to_string, floor_exist, vtFloat, error
+from plan_to_beam import turn_floor_to_float, turn_floor_to_string, floor_exist, vtFloat, error, mycmp
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡']
 
 def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, explode):
+    print('開始讀取平面圖(核對項目: 柱配筋對應)')
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -27,7 +29,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 1: {e}.')
-
+    print('平面圖讀取進度 1/10')
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -37,7 +39,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 2: {e}.')
-
+    print('平面圖讀取進度 2/10')
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -47,17 +49,22 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 3: {e}.')
-
+    print('平面圖讀取進度 3/10')
     if explode:
+        print('XS-PLAN 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候')
         # Step 4. 遍歷所有物件 -> 炸圖塊
         # 炸圖塊看性質即可，不用看圖層   
         flag = 0
         while not flag:
             try:
+                count = 0
                 for object in msp_plan:
                     if object.EntityName == "AcDbBlockReference":
                         object.Explode()
+                    if count % 1000 == 0:
+                        print(f'已讀取{count}個物件')
                 flag = 1
+                print('平面圖讀取進度 4/10')
             except Exception as e:
                 time.sleep(5)
                 error(f'read_plan error in step 4: {e}.')
@@ -71,17 +78,24 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             except Exception as e:
                 time.sleep(5)
                 error(f'read_plan error in step 5: {e}.')
+        print('平面圖讀取進度 5/10')
     
     # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_col_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
     coor_to_col_set = set() # set (coor, col)
     coor_to_size_set = set() # set (coor, size)
     block_coor_list = [] # 存取方框最左下角的點座標
-
+    print('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候...')
     flag = 0
     while not flag:
         try:
+            count = 0
+            total = msp_plan.Count
+            print(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
             for object in msp_plan:
+                count += 1
+                if count % 1000 == 0:
+                    print(f'平面圖已讀取{count}/{total}個物件')
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 待補
                 if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
@@ -125,7 +139,8 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 6: {e}.')
-
+    print('平面圖讀取進度 6/10')
+    print('註: 如果不需要炸圖塊的話，會自動跳過Step 4, 5。')   
     # Step 7. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
     floor_to_coor_set = set()
@@ -139,7 +154,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
-    
+    print('平面圖讀取進度 7/10')
     # Step 8. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
@@ -175,7 +190,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
-
+    print('平面圖讀取進度 8/10')
     # Step 9. 完成col_size_coor_set，格式: set(col, size, the coor of big_block(left, right, up, down))
     col_size_coor_set = set() 
     for x in coor_to_col_set:
@@ -203,7 +218,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             down = min(col_full_coor[0][1], match_size_coor[0][1])
 
             col_size_coor_set.add((col_name, match_size, (left, right, up, down)))
-
+    print('平面圖讀取進度 9/10')
     # # DEBUG: 檢查col跟size有沒有被圈在一起，或者被亂圈到其他地方
     # for x in col_size_coor_set:
     #     coor = x[2]
@@ -291,7 +306,8 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                         error(f'read_plan error in step 10: new_floor is false.')
         else:
             error('read_plan error in step 10: min_floor cannot be found.')
-
+    print('平面圖讀取進度 10/10')
+    print('平面圖讀取完畢。')
     doc_plan.Close(SaveChanges=False)
 
     # plan.txt單純debug用，不想多新增檔案可以註解掉
@@ -306,6 +322,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     return (set_plan, dic_plan)
 
 def read_col(col_filename, text_layer, line_layer, result_filename, explode):
+    print('開始讀取柱配筋圖...')
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -315,6 +332,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_col error in step 1: {e}.')
+    print('柱配筋圖讀取進度 1/9')
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -324,6 +342,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_col error in step 2: {e}.')
+    print('柱配筋圖讀取進度 2/9')
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -333,7 +352,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_col error in step 3: {e}.')
-
+    print('柱配筋圖讀取進度 3/9')
     if explode:
         # Step 4. 遍歷所有物件 -> 炸圖塊
         # 炸圖塊看性質即可，不用看圖層   
@@ -347,7 +366,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
             except Exception as e:
                 time.sleep(5)
                 error(f'read_col error in step 4: {e}.')
-
+        print('柱配筋圖讀取進度 4/9')
         # Step 5. 重新匯入modelspace
         flag = 0
         while not flag:
@@ -357,8 +376,9 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
             except Exception as e:
                 time.sleep(5)
                 error(f'read_col error in step 5: {e}.')
-    
+        print('柱配筋圖讀取進度 5/9')
     # Step 6. 遍歷所有物件 -> 完成一堆座標對應的set跟list
+    print('正在遍歷柱配筋圖上所有物件並篩選出有效信息，運行時間取決於柱配筋圖大小，請耐心等候')
     coor_to_floor_set = set() # set(coor, floor)
     coor_to_col_set = set() # set(coor, col)
     coor_to_size_set = set() # set(coor, size)
@@ -367,7 +387,13 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
     flag = 0
     while not flag:
         try:
+            count = 0
+            total = msp_col.Count
+            print(f'柱配筋圖上共有{total}個物件，大約運行{int(total / 6000) + 1}分鐘，請耐心等候')
             for object in msp_col:
+                count += 1
+                if count % 1000 == 0:
+                    print(f'柱配筋圖已讀取{count}/{total}個物件')
                 if object.Layer in text_layer and object.ObjectName == "AcDbText": 
                     if object.TextString[0] == 'C' and (len(object.TextString) <= 7):
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
@@ -402,7 +428,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_col error in step 6: {e}.')
-    
+    print('柱配筋圖讀取進度 6/9')
     # Step 7. 完成col_to_line_set 格式:(col, left, right, up)
     col_to_line_set = set()
     for x in coor_to_col_set:
@@ -418,7 +444,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         for y in range(len(new_coor_to_col_line_list)): # 再看x座標被哪兩條線夾住
             if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
                 col_to_line_set.add((col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
-
+    print('柱配筋圖讀取進度 7/9')
     # Step 8. 完成floor_to_line_set 格式:(floor, down, up, left)
     floor_to_line_set = set()
     for x in coor_to_floor_set:
@@ -427,14 +453,20 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         new_coor_to_floor_line_list = []
         for y in coor_to_floor_line_list: # (橫線y座標, start, end)
             if y[1] <= coor[0][0] <= y[2]: # 先看x座標有沒有被夾住
-                new_coor_to_floor_line_list.append(y)
+                failed = 0 # 查看是否有重複
+                for z in new_coor_to_floor_line_list:
+                    if z[0] == y[0]:
+                        failed = 1
+                        break
+                if failed == 0:
+                    new_coor_to_floor_line_list.append(y)
         tmp_set = set(new_coor_to_floor_line_list)
         new_coor_to_floor_line_list = list(tmp_set)
         new_coor_to_floor_line_list.sort(key = lambda x: x[0])
         for y in range(len(new_coor_to_floor_line_list)): # 再看y座標被哪兩條線夾住，下面那條要往下平移一格
             if new_coor_to_floor_line_list[y][0] < coor[0][1] < new_coor_to_floor_line_list[y+1][0]:
                 floor_to_line_set.add((floor, new_coor_to_floor_line_list[y-1][0], new_coor_to_floor_line_list[y+1][0], coor[0][0]))
-
+    print('柱配筋圖讀取進度 8/9')
     # Step 9. 完成set_col和dic_col
     dic_col = {}
     set_col = set()
@@ -473,7 +505,8 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
                 dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
     
     doc_col.Close(SaveChanges=False)
-
+    print('柱配筋圖讀取進度 9/9')
+    print('柱配筋圖讀取完成。')
     # col.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w", encoding = 'utf-8')
     f.write("in col: \n")
@@ -486,6 +519,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
     return (set_col, dic_col)
 
 def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_filename, date, drawing): # 完成 in plan but not in col 的部分並在圖上mark有問題的部分
+    print("開始標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'。")
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
@@ -543,17 +577,19 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
-
+    error_list = []
     for x in list1: 
         if x[0] != 'FBF':
             wrong_data = 0
             for y in list2:
                 if x[0] == y[0] and x[1] == y[1]:
-                    f.write(f'{x}: 尺寸有誤，在XS-COL那邊是{y[2]}\n')
+                    error_list.append((x, 0, y[2]))
+                    # f.write(f'{x}: 尺寸有誤，在XS-COL那邊是{y[2]}\n')
                     wrong_data = 1
                     break
             if not wrong_data:
-                f.write(f'{x}: 找不到這根柱子\n')
+                error_list.append((x, 1))
+                # f.write(f'{x}: 找不到這根柱子\n')
             
             error_num += 1
             
@@ -564,7 +600,14 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 pointobj = msp_plan.AddPolyline(points)
                 for i in range(4):
                     pointobj.SetWidth(i, 10, 10)
-    
+
+    error_list = sorted(error_list, key = cmp_to_key(mycmp))
+    for x in error_list:
+        if x[1] == 0:
+            f.write(f'{x[0]}: 尺寸有誤，在XS-COL那邊是{x[2]}\n')
+        else:
+            f.write(f'{x[0]}: 找不到這根柱子\n')
+
     if drawing:
         doc_plan.SaveAs(plan_new_filename)
         doc_plan.Close(SaveChanges=True)
@@ -582,9 +625,11 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
         error(f'write_plan error in step 5, there are no col in plan.txt?')
 
     f.close()
+    print("標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'完成。")
     return rate
 
 def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_filename, date, drawing): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+    print("開始標註柱配筋圖及輸出核對結果至'column.txt'。")
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
@@ -641,15 +686,18 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
 
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
+    error_list = []
     for x in list2: 
         wrong_data = 0
         for y in list1:
             if x[0] == y[0] and x[1] == y[1]:
-                f.write(f'{x}: 尺寸有誤，在XS-PLAN那邊是{y[2]}\n')
+                error_list.append((x, 0, y[2]))
+                # f.write(f'{x}: 尺寸有誤，在XS-COL那邊是{y[2]}\n')
                 wrong_data = 1
                 break
         if not wrong_data:
-            f.write(f'{x}: 找不到這根柱子\n')
+            error_list.append((x, 1))
+            # f.write(f'{x}: 找不到這根柱子\n')
 
         error_num += 1
         
@@ -661,6 +709,13 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
             for i in range(4):
                 pointobj.SetWidth(i, 10, 10)
 
+    error_list = sorted(error_list, key = cmp_to_key(mycmp))
+    for x in error_list:
+        if x[1] == 0:
+            f.write(f'{x[0]}: 尺寸有誤，在XS-PLAN那邊是{x[2]}\n')
+        else:
+            f.write(f'{x[0]}: 找不到這根柱子\n')
+            
     if drawing:
         doc_col.SaveAs(col_new_filename)
         doc_col.Close(SaveChanges=True)
@@ -679,7 +734,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
         error(f'write_col error in step 5, there are no col in col.txt?')
     
     f.close()
-
+    print("標註柱配筋圖及輸出核對結果至'column.txt'完成。")
     return rate
 
 # 待改
@@ -720,7 +775,8 @@ if __name__=='__main__':
     floor_layer = 'S-TITLE' #sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC' #sys.argv[10] # col的圖層
     block_layer = '0' #sys.argv[8] # 圖框的圖層
-    explode = 0 #sys.argv[12] # 需不需要提前炸圖塊
+    explode_plan = 0 #sys.argv[12] # XS-PLAN需不需要提前炸圖塊
+    explode_col = 0 #sys.argv[12] # XS-COL需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
     text_layer = 'S-TEXT' #sys.argv[6] # 文字的圖層
@@ -739,10 +795,10 @@ if __name__=='__main__':
     dic_col = {}
 
     for i in range(plan_file_count):
-        res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, col_layer, block_layer, plan_file, explode))
+        res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, col_layer, block_layer, plan_file, explode_plan))
 
     for i in range(col_file_count):
-        res_col[i] = pool.apply_async(read_col, (col_filename.split(',')[i], text_layer, line_layer, col_file, explode))
+        res_col[i] = pool.apply_async(read_col, (col_filename.split(',')[i], text_layer, line_layer, col_file, explode_col))
 
     for i in range(plan_file_count):
         final_plan = res_plan[i].get()
