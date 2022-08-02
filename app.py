@@ -64,7 +64,10 @@ def upload_file():
         big_beam_layer = request.form['big_beam_layer']
         sml_beam_layer = request.form['sml_beam_layer']
         col_layer = request.form['col_layer']
-        explode = request.form.get('explode')
+        size_layer = request.form['size_layer']
+        explode_plan = request.form.get('explode_plan')
+        explode_beam = request.form.get('explode_beam')
+        explode_col = request.form.get('explode_col')
         xs_col = request.form.get('xs-col')
         xs_beam = request.form.get('xs-beam')
         beam_ok = False
@@ -138,9 +141,9 @@ def result_file(filename):
     response.cache_control.max_age = 0
     return response
 
-@app.route('/tool2')
+@app.route('/tool1_README')
 def tool2():
-    return render_template('tool2.html')
+    return render_template('tool1_README.html')
 
 @app.route('/tool3')
 def tool3():

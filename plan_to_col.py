@@ -58,12 +58,14 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         while not flag:
             try:
                 count = 0
+                total = msp_plan.Count
+                print(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
                 for object in msp_plan:
                     count += 1
                     if object.EntityName == "AcDbBlockReference":
                         object.Explode()
                     if count % 1000 == 0:
-                        print(f'已讀取{count}個物件')
+                        print(f'平面圖已讀取{count}/{total}個物件')
                 flag = 1
                 print('平面圖讀取進度 4/10')
             except Exception as e:
@@ -360,9 +362,13 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         flag = 0
         while not flag:
             try:
+                count = 0
                 for object in msp_col:
+                    count += 1
                     if object.EntityName == "AcDbBlockReference":
                         object.Explode()
+                    if count % 1000 == 0:
+                        print(f'柱配筋圖已讀取{count}個物件')
                 flag = 1
             except Exception as e:
                 time.sleep(5)
@@ -390,7 +396,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         try:
             count = 0
             total = msp_col.Count
-            print(f'柱配筋圖上共有{total}個物件，大約運行{int(total / 6000) + 1}分鐘，請耐心等候')
+            print(f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
             for object in msp_col:
                 count += 1
                 if count % 1000 == 0:
@@ -521,6 +527,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
 
 def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_filename, date, drawing): # 完成 in plan but not in col 的部分並在圖上mark有問題的部分
     print("開始標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'。")
+    pythoncom.CoInitialize()
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
@@ -631,6 +638,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
 
 def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_filename, date, drawing): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
     print("開始標註柱配筋圖及輸出核對結果至'column.txt'。")
+    pythoncom.CoInitialize()
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
@@ -758,30 +766,30 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = 'task18' #sys.argv[11]
+    task_name = 'temp'#sys.argv[11]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-PLAN.dwg' #sys.argv[2] # XS-PLAN的路徑
-    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-COL.dwg' #sys.argv[1] # XS-COL的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-PLAN_new.dwg' #sys.argv[4] # XS-PLAN_new的路徑
-    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\XS-COL_new.dwg' #sys.argv[3] # XS-COL_new的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-PLAN'#sys.argv[2] # XS-PLAN的路徑
+    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-COL'#sys.argv[1] # XS-COL的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-PLAN_new'#sys.argv[4] # XS-PLAN_new的路徑
+    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-COL_new'#sys.argv[3] # XS-COL_new的路徑
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
-    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task18\柱配筋.txt' #sys.argv[5] # 柱配筋結果
+    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\column.txt'#sys.argv[5] # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
-    floor_layer = 'S-TITLE' #sys.argv[9] # 樓層字串的圖層
-    col_layer = 'S-TEXTC' #sys.argv[10] # col的圖層
-    block_layer = '0' #sys.argv[8] # 圖框的圖層
-    explode_plan = 0 #sys.argv[12] # XS-PLAN需不需要提前炸圖塊
-    explode_col = 0 #sys.argv[12] # XS-COL需不需要提前炸圖塊
+    floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
+    col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
+    block_layer = '0'#sys.argv[8] # 圖框的圖層
+    explode_plan = 0#sys.argv[12] # XS-PLAN需不需要提前炸圖塊
+    explode_col = 0#sys.argv[13] # XS-COL需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
-    text_layer = 'S-TEXT' #sys.argv[6] # 文字的圖層
-    line_layer = 'S-STUD' #sys.argv[7] # 線的圖層
+    text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
+    line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
 
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
