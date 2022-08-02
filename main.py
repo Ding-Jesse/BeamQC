@@ -3,6 +3,8 @@ import time
 import multiprocessing
 # from AutocadApi import read_plan,read_beam,write_beam,write_plan,error
 from plan_to_beam import read_plan,read_beam,write_beam,write_plan,error, write_result_log
+from werkzeug.utils import secure_filename
+import os
 import plan_to_col
 from datetime import datetime
 def main_function(beam_filename,plan_filename,final_filename,sb_final_filename):
@@ -170,7 +172,7 @@ def main_functionV2(beam_filename,plan_filename,beam_new_filename,plan_new_filen
     end_time = time.time()
     print(f'I spend {end_time - start_time} seconds. ')
 
-def main_functionV3(beam_filename,plan_filename,beam_new_filename,plan_new_filename,big_file ,sml_file,block_layer,task_name,explode):
+def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_filename,big_file ,sml_file,block_layer,task_name,explode):
     start = time.time()
     # task_name = 'task3'
     # 檔案路徑區
@@ -182,6 +184,7 @@ def main_functionV3(beam_filename,plan_filename,beam_new_filename,plan_new_filen
     plan_file = './result/beam_plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
+    size_layer = 'S-TEXT'
     # big_file = final_filename # 大梁結果
     # sml_file = sb_final_filename # 小梁結果
 
@@ -198,26 +201,46 @@ def main_functionV3(beam_filename,plan_filename,beam_new_filename,plan_new_filen
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
     print('Start Reading')
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file, explode))
-    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file))
+    res_plan =[]
+    res_beam = []
+    set_plan = set()
+    dic_plan = {}
+    set_beam = set()
+    dic_beam = {}
+    for plan_filename in plan_filenames:
+        res_plan.append(pool.apply_async(read_plan, (plan_filename,floor_layer, beam_layer, block_layer, size_layer, plan_file, explode)))
+    for beam_filename in beam_filenames:
+        res_beam.append(pool.apply_async(read_beam, (beam_filename, text_layer, beam_file,0)))
     
-    final_plan = res_plan.get()
-    final_beam = res_beam.get()
+    plan_drawing = 0
+    if len(plan_filenames) == 1:
+        plan_drawing = 1
+    beam_drawing = 0
+    if len(beam_filenames) == 1:
+        beam_drawing = 1
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_beam = final_beam[0]
-    dic_beam = final_beam[1]
+    for plan in res_plan:
+        plan = plan.get()
+        set_plan = set_plan | plan[0]
+        if plan_drawing:
+            dic_plan = plan[1]
+
+    for beam in res_beam:
+        beam = beam.get()
+        set_beam = set_beam | beam[0]
+        if beam_drawing:
+            dic_beam = beam[1]
 
     print('Start Writing')
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date)
+    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date,plan_drawing)
+    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date,beam_drawing)
 
     end = time.time()
     write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
     # write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
 
-def main_col_function(col_filename,plan_filename,col_new_filename,plan_new_filename,result_file,block_layer,task_name, explode):
+def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_filename,result_file,block_layer,task_name, explode):
+    
     start = time.time()
     # task_name = 'task13'
     # 檔案路徑區
@@ -245,17 +268,47 @@ def main_col_function(col_filename,plan_filename,col_new_filename,plan_new_filen
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
     print('Start Reading')
-    res_plan = pool.apply_async(plan_to_col.read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode))
-    res_col = pool.apply_async(plan_to_col.read_col, (col_filename, text_layer, line_layer, col_file, explode))
-    final_plan = res_plan.get()
-    final_col = res_col.get()
+    res_plan =[]
+    res_col = []
+    set_plan = set()
+    dic_plan = {}
+    set_col = set()
+    dic_col = {}
+    for plan_filename in plan_filenames:
+        res_plan.append(pool.apply_async(plan_to_col.read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, explode)))
+    for col_filename in col_filenames:
+        res_col.append(pool.apply_async(plan_to_col.read_col, (col_filename, text_layer, line_layer, col_file, explode)))
 
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_col = final_col[0]
-    dic_col = final_col[1]
-    print('Start Writing')
-    plan_result = plan_to_col.write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date)
-    col_result = plan_to_col.write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date)
+    plan_drawing = 0
+    if len(plan_filenames) == 1:
+        plan_drawing = 1
+    col_drawing = 0
+    if len(col_filenames) == 1:
+        col_drawing = 1
+
+    for plan in res_plan:
+        plan = plan.get()
+        set_plan = set_plan | plan[0]
+        if plan_drawing:
+            dic_plan = plan[1]
+
+    for col in res_col:
+        col = col.get()
+        set_col = set_col | col[0]
+        if col_drawing:
+            dic_col = col[1]
+    
+    plan_result = plan_to_col.write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, plan_drawing)
+    col_result = plan_to_col.write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date,col_drawing)
+
     end = time.time()
     plan_to_col.write_result_log(excel_file,task_name,plan_result,col_result, f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    return 
+
+def storefile(file,file_directory,file_new_directory,project_name):
+    filename_beam = secure_filename(file.filename)
+    save_file = os.path.join(file_directory, f'{project_name}-{filename_beam}')
+    file_new_name = os.path.join(file_new_directory, f'{project_name}_MARKON-{filename_beam}')
+    file.save(save_file)
+    file_ok = True
+    return file_ok , file_new_name
