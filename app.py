@@ -43,7 +43,10 @@ def upload_file():
         big_beam_layer = request.form['big_beam_layer']
         sml_beam_layer = request.form['sml_beam_layer']
         col_layer = request.form['col_layer']
-        explode = request.form.get('explode')
+        size_layer = request.form['size_layer']
+        explode_plan = request.form.get('explode_plan')
+        explode_beam = request.form.get('explode_beam')
+        explode_col = request.form.get('explode_col')
         xs_col = request.form.get('xs-col')
         xs_beam = request.form.get('xs-beam')
         beam_ok = False
@@ -73,7 +76,7 @@ def upload_file():
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
             sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
-            # os.system(f'python plan_to_beam.py {beam_file} {plan_file} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {project_name} {explode}')
+            os.system(f'python plan_to_beam.py {beam_file} {plan_file} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {size_layer} {project_name} {explode_plan} {explode_beam}')
             # main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name,explode)
             filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt',
                                 f'{project_name}_MARKON-{filename_beam}',f'{project_name}_MARKON-{filename_plan}']
@@ -82,7 +85,7 @@ def upload_file():
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-column.txt')
             col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-column-{filename_plan}')
-            # os.system(f'python plan_to_col.py {column_file} {plan_file} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {explode}')
+            os.system(f'python plan_to_col.py {column_file} {plan_file} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {explode_plan} {explode_col}')
             # main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name,explode)
             filenames_column = [f'{project_name}-column.txt',
                                 f'{project_name}_MARKON-{filename_column}',
@@ -99,9 +102,9 @@ def result_file(filename):
     response.cache_control.max_age = 0
     return response
 
-@app.route('/tool2')
+@app.route('/tool1_README')
 def tool2():
-    return render_template('tool2.html')
+    return render_template('tool1_README.html')
 
 @app.route('/tool3')
 def tool3():

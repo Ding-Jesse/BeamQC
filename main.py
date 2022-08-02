@@ -5,170 +5,6 @@ import multiprocessing
 from plan_to_beam import read_plan,read_beam,write_beam,write_plan,error, write_result_log
 import plan_to_col
 from datetime import datetime
-def main_function(beam_filename,plan_filename,final_filename,sb_final_filename):
-    start_time = time.time()
-    # plan_filename = "K:\\100_Users\\EI 202208 Bamboo\\BeamQC\\test2\\XS-PLAN.dwg"
-    # beam_filename = "K:\\100_Users\\EI 202208 Bamboo\\BeamQC\\test2\\XS-BEAM.dwg"
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename,))
-    res_beam = pool.apply_async(read_beam, (beam_filename,))
-    set_plan = res_plan.get()
-    set_beam = res_beam.get()
-
-    set1 = set_plan - set_beam
-    list1 = list(set1)
-    list1.sort()
-
-    set2 = set_beam - set_plan
-    list2 = list(set2)
-    list2.sort()
-
-    f_big = open(f"{final_filename}.txt", "w")
-    f_sml = open(f"{sb_final_filename}.txt", "w")
-
-    f_big.write("in plan but not in beam: \n")
-    f_sml.write("in plan but not in beam: \n")
-
-    
-    for x in list1: 
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
-            
-            f_big.write(f'{x}\n')
-        else:
-            f_sml.write(f'{x}\n')
-    
-    f_big.write("in beam but not in plan: \n")
-    f_sml.write("in beam but not in plan: \n")
-    for x in list2: 
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
-            f_big.write(f'{x}\n')
-        else:
-            f_sml.write(f'{x}\n')
-    
-    f_big.close()
-    f_sml.close()
-    
-    end_time = time.time()
-    print(f'I spend {end_time - start_time} seconds. ')
-
-def main_functionV2(beam_filename,plan_filename,beam_new_filename,plan_new_filename,final_filename,sb_final_filename,block_layer):
-    start_time = time.time()
-    # plan_filename = "K:\\100_Users\\EI 202208 Bamboo\\BeamQC\\task1\\XS-PLAN.dwg"
-    # beam_filename = "K:\\100_Users\\EI 202208 Bamboo\\BeamQC\\task1\\XS-BEAM.dwg"
-    # plan_new_filename = "K:\\100_Users\\EI 202208 Bamboo\\BeamQC\\task1\\XS-PLAN_new.dwg"
-    # beam_new_filename = "K:\\100_Users\\EI 202208 Bamboo\\BeamQC\\task1\\XS-BEAM_new.dwg"
-
-    # final_filename = 'task1'
-    date = str(datetime.now().strftime("%Y-%m-%d"))
-    # 在plan裡面自訂圖層
-    floor_layer = "S-TITLE" # 樓層字串的圖層
-    beam_layer = ["S-TEXTG", "S-TEXTB"] # beam的圖層，因為有兩個以上，所以用list來存
-    # block_layer = "0" # 框框的圖層
-
-    # 在beam裡面自訂圖層
-    text_layer = "S-RC"
-
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-    res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer))
-    res_beam = pool.apply_async(read_beam, (beam_filename, text_layer))
-    final_plan = res_plan.get()
-    final_beam = res_beam.get()
-    set_plan = final_plan[0]
-    dic_plan = final_plan[1]
-    set_beam = final_beam[0]
-    dic_beam = final_beam[1]
-
-    set1 = set_plan - set_beam
-    list1 = list(set1)
-    list1.sort()
-
-    set2 = set_beam - set_plan
-    list2 = list(set2)
-    list2.sort()
-
-    draw_plan(list1,plan_filename,plan_new_filename,date,dic_plan)
-    draw_beam(list2,beam_filename,beam_new_filename,date,dic_beam)
-
-    # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
-    f_big = open(f"{final_filename}.txt", "w")
-    f_sml = open(f"{sb_final_filename}.txt", "w")
-
-    f_big.write("in plan but not in beam: \n")
-    f_sml.write("in plan but not in beam: \n")
-
-    big_error = 0
-    sml_error = 0
-    big_count = 0
-    sml_count = 0
-    
-    for x in list1: 
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
-            f_big.write(f'{x}\n')
-            big_error += 1
-        else:
-            f_sml.write(f'{x}\n')
-            sml_error += 1
-
-    for x in set_plan:
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':        
-            big_count += 1
-        else:
-            sml_count += 1
-    # 計算錯誤率可能會噴錯，因為分母為0
-    try:
-        big_rate = round(big_error / big_count * 100, 2)
-        f_big.write(f'error rate = {big_rate} %\n')
-    except:
-        error(f'final error in step 1-5, there are no big beam in plan.txt?')
-    
-    try:
-        sml_rate = round(sml_error / sml_count * 100, 2)
-        f_sml.write(f'error rate = {sml_rate} %\n')
-    except:
-        error(f'final error in step 1-5, there are no small beam in plan.txt?')
-    
-    f_big.write("in beam but not in plan: \n")
-    f_sml.write("in beam but not in plan: \n")
-
-    big_error = 0
-    sml_error = 0
-
-    for x in list2: 
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
-            f_big.write(f'{x}\n')
-            big_error += 1
-        else:
-            f_sml.write(f'{x}\n')
-            sml_error += 1
-    
-    big_count = 0
-    sml_count = 0
-
-    for x in set_beam:
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':        
-            big_count += 1
-        else:
-            sml_count += 1
-    # 計算錯誤率可能會噴錯，因為分母為0
-    try:
-        big_rate = round(big_error / big_count * 100, 2)
-        f_big.write(f'error rate = {big_rate} %\n')
-    except:
-        error(f'final error in step 1-5, there are no big beam in plan.txt?')
-    
-    try:
-        sml_rate = round(sml_error / sml_count * 100, 2)
-        f_sml.write(f'error rate = {sml_rate} %\n')
-    except:
-        error(f'final error in step 1-5, there are no small beam in plan.txt?')
-
-    f_big.close()
-    f_sml.close()
-    
-    end_time = time.time()
-    print(f'I spend {end_time - start_time} seconds. ')
 
 def main_functionV3(beam_filename,plan_filename,beam_new_filename,plan_new_filename,big_file ,sml_file,block_layer,task_name,explode):
     start = time.time()
@@ -195,12 +31,12 @@ def main_functionV3(beam_filename,plan_filename,beam_new_filename,plan_new_filen
 
     # 在beam裡面自訂圖層
     text_layer = "S-RC"
-    multiprocessing.freeze_support()
+    multiprocessing.freeze_support()    
     pool = multiprocessing.Pool()
     print('Start Reading')
     res_plan = pool.apply_async(read_plan, (plan_filename, floor_layer, beam_layer, block_layer, plan_file, explode))
     res_beam = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file))
-    
+
     final_plan = res_plan.get()
     final_beam = res_beam.get()
 
