@@ -159,6 +159,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
     print('平面圖讀取進度 7/10')
+
     # Step 8. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
@@ -405,7 +406,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
                 if count % 1000 == 0:
                     print(f'柱配筋圖已讀取{count}/{total}個物件')
                 if object.Layer in text_layer and object.ObjectName == "AcDbText": 
-                    if object.TextString[0] == 'C' and (len(object.TextString) <= 7):
+                    if object.TextString[0] == 'C' and len(object.TextString) <= 7 and object.TextString[1] != 'O':
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                         coor_to_col_set.add(((coor1, coor2), object.TextString))
@@ -537,7 +538,6 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     set2 = set_col - set_plan
     list2 = list(set2)
     list2.sort()
-    pythoncom.CoInitialize()
     f = open(result_filename, "w", encoding = 'utf-8')
 
     f.write("in plan but not in col: \n")
@@ -590,6 +590,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     error_num = 0
     error_list = []
     for x in list1: 
+        print(x)
         if x[0] != 'FBF':
             wrong_data = 0
             for y in list2:
@@ -772,22 +773,22 @@ if __name__=='__main__':
     task_name = 'temp'#sys.argv[11]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task\XS-PLAN'#sys.argv[2] # XS-PLAN的路徑
-    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-COL'#sys.argv[1] # XS-COL的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-PLAN_new'#sys.argv[4] # XS-PLAN_new的路徑
-    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-COL_new'#sys.argv[3] # XS-COL_new的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-COL.dwg'#sys.argv[1] # XS-COL的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-PLAN_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
-    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\column.txt'#sys.argv[5] # 柱配筋結果
+    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\column.txt'#sys.argv[5] # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
-    block_layer = '0'#sys.argv[8] # 圖框的圖層
-    explode_plan = 0#sys.argv[12] # XS-PLAN需不需要提前炸圖塊
+    block_layer = 'DwFm'#sys.argv[8] # 圖框的圖層
+    explode_plan = 1#sys.argv[12] # XS-PLAN需不需要提前炸圖塊
     explode_col = 0#sys.argv[13] # XS-COL需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
