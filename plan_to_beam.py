@@ -153,6 +153,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         # Step 4. 遍歷所有物件 -> 炸圖塊
         # 炸圖塊看性質即可，不用看圖層      
         flag = 0
+        layer_list = [floor_layer, size_layer] + beam_layer
         while not flag:
             try:
                 count = 0
@@ -160,7 +161,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                 print(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
                 for object in msp_plan:
                     count += 1
-                    if object.EntityName == "AcDbBlockReference":
+                    if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
                         object.Explode()
                     if count % 1000 == 0:
                         print(f'平面圖已讀取{count}/{total}個物件')
@@ -634,7 +635,7 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
                 print(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
                 for object in msp_beam:
                     count += 1
-                    if object.EntityName == "AcDbBlockReference":
+                    if object.EntityName == "AcDbBlockReference" and object.Layer == text_layer:
                         object.Explode()
                     if count % 1000 == 0:
                         print(f'梁配筋圖已讀取{count}/{total}個物件')
@@ -1089,31 +1090,31 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = sys.argv[13]
+    task_name = 'task20'#sys.argv[13]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = sys.argv[2] # XS-PLAN的路徑
-    beam_filename = sys.argv[1] # XS-BEAM的路徑
-    plan_new_filename = sys.argv[4] # XS-PLAN_new的路徑
-    beam_new_filename = sys.argv[3] # XS-BEAM_new的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\清豐1F大梁-XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\清豐1F大梁-1FHB.dwg'#sys.argv[1] # XS-BEAM的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\XS-PLAN_new'#sys.argv[4] # XS-PLAN_new的路徑
+    beam_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\XS-BEAM_new'#sys.argv[3] # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = sys.argv[5] # 大梁結果
-    sml_file = sys.argv[6] # 小梁結果
+    big_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\big.txt'#sys.argv[5] # 大梁結果
+    sml_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\sml.txt'#sys.argv[6] # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
-    floor_layer = sys.argv[9] # 樓層字串的圖層
-    beam_layer = [sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = sys.argv[8] # 框框的圖層
-    explode_plan = sys.argv[14] # XS-PLAN需不需要提前炸圖塊(0:不需要 1:需要)
-    explode_beam = sys.argv[15] # XS-BEAM需不需要提前炸圖塊(0:不需要 1:需要)
-    size_layer = sys.argv[12] # 梁尺寸字串圖層
+    floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
+    beam_layer = ['S-TEXTB', 'S-TEXTG']#[sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
+    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
+    explode_plan = 0#sys.argv[14] # XS-PLAN需不需要提前炸圖塊(0:不需要 1:需要)
+    explode_beam = 0#sys.argv[15] # XS-BEAM需不需要提前炸圖塊(0:不需要 1:需要)
+    size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
 
     # 在beam裡面自訂圖層
-    text_layer = sys.argv[7]
+    text_layer = 'S-RC'#sys.argv[7]
 
     # 多檔案接用','來連接，不用空格。Ex. 'file1,file2,file3'
     multiprocessing.freeze_support()

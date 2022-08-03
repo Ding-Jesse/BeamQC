@@ -59,10 +59,11 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             try:
                 count = 0
                 total = msp_plan.Count
+                layer_list = [floor_layer, col_layer]
                 print(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
                 for object in msp_plan:
                     count += 1
-                    if object.EntityName == "AcDbBlockReference":
+                    if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
                         object.Explode()
                     if count % 1000 == 0:
                         print(f'平面圖已讀取{count}/{total}個物件')
@@ -363,12 +364,14 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
         while not flag:
             try:
                 count = 0
+                total = msp_col.Count
+                layer_list = [text_layer, line_layer]
                 for object in msp_col:
                     count += 1
-                    if object.EntityName == "AcDbBlockReference":
+                    if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
                         object.Explode()
                     if count % 1000 == 0:
-                        print(f'柱配筋圖已讀取{count}個物件')
+                        print(f'柱配筋圖已讀取{count}/{total}個物件')
                 flag = 1
             except Exception as e:
                 time.sleep(5)
@@ -769,7 +772,7 @@ if __name__=='__main__':
     task_name = 'temp'#sys.argv[11]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-PLAN'#sys.argv[2] # XS-PLAN的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task\XS-PLAN'#sys.argv[2] # XS-PLAN的路徑
     col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-COL'#sys.argv[1] # XS-COL的路徑
     plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-PLAN_new'#sys.argv[4] # XS-PLAN_new的路徑
     col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task19\XS-COL_new'#sys.argv[3] # XS-COL_new的路徑
