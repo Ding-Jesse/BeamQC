@@ -800,6 +800,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
 
     f_big.write("in plan but not in beam: \n")
     f_sml.write("in plan but not in beam: \n")
+    pythoncom.CoInitialize()
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
@@ -943,7 +944,7 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
 
     f_big.write("in beam but not in plan: \n")
     f_sml.write("in beam but not in plan: \n")
-
+    pythoncom.CoInitialize()
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0

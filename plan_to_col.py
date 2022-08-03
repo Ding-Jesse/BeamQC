@@ -537,7 +537,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     set2 = set_col - set_plan
     list2 = list(set2)
     list2.sort()
-
+    pythoncom.CoInitialize()
     f = open(result_filename, "w", encoding = 'utf-8')
 
     f.write("in plan but not in col: \n")
@@ -651,7 +651,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
 
     f = open(result_filename, "a", encoding = 'utf-8')
     f.write("in col but not in plan: \n")
-
+    pythoncom.CoInitialize()
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
