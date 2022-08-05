@@ -327,7 +327,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     return (set_plan, dic_plan)
 
 def read_col(col_filename, text_layer, line_layer, result_filename, explode):
-    print('開始讀取柱配筋圖...')
+    print('開始讀取柱配筋圖')
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -406,7 +406,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
                 if count % 1000 == 0:
                     print(f'柱配筋圖已讀取{count}/{total}個物件')
                 if object.Layer in text_layer and object.ObjectName == "AcDbText": 
-                    if object.TextString[0] == 'C' and len(object.TextString) <= 7 and object.TextString[1] != 'O':
+                    if object.TextString[0] == 'C' and len(object.TextString) <= 7:
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                         coor_to_col_set.add(((coor1, coor2), object.TextString))
@@ -415,7 +415,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, explode):
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                         coor_to_size_set.add(((coor1, coor2), object.TextString))
-                    elif 'F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString: # 可能有樓層
+                    elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString: # 可能有樓層
                         floor = object.TextString
                         if '_' in floor: # 可能有B_6F表示B棟的6F
                             floor = floor.split('_')[1]
@@ -590,7 +590,6 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     error_num = 0
     error_list = []
     for x in list1: 
-        print(x)
         if x[0] != 'FBF':
             wrong_data = 0
             for y in list2:
@@ -756,11 +755,11 @@ def write_result_log(excel_file, task_name, plan_not_col, col_not_plan,date, run
     new_list = [(task_name, plan_not_col, col_not_plan, date, runtime, other)]
     dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in col 柱', 'in col not in plan 柱', '執行時間', '執行日期' , '備註'])
     if os.path.exists(excel_file):
-        writer = pd.ExcelWriter(excel_file,engine='xlsxwriter')
-        df = pd.read_excel(excel_file) 
+        writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a', if_sheet_exists='replace')
+        df = pd.read_excel(excel_file)  
         df = pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
     else:
-        writer = pd.ExcelWriter(excel_file, engine='xlsxwriter') 
+        writer = pd.ExcelWriter(excel_file, engine='openpyxl') 
         df = dfNew
     df.to_excel(writer,sheet_name=sheet_name)
     writer.save()    
@@ -773,22 +772,22 @@ if __name__=='__main__':
     task_name = 'temp'#sys.argv[11]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
-    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-COL.dwg'#sys.argv[1] # XS-COL的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-PLAN_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
-    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\P2021-08D 宗大北基地-XSA-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-PLAN_COL_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
-    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task22-BFCOL\column.txt'#sys.argv[5] # 柱配筋結果
+    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\column.txt'#sys.argv[5] # 柱配筋結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
-    block_layer = 'DwFm'#sys.argv[8] # 圖框的圖層
-    explode_plan = 1#sys.argv[12] # XS-PLAN需不需要提前炸圖塊
+    block_layer = '圖框'#sys.argv[8] # 圖框的圖層
+    explode_plan = 0#sys.argv[12] # XS-PLAN需不需要提前炸圖塊
     explode_col = 0#sys.argv[13] # XS-COL需不需要提前炸圖塊
 
     # 在col裡面自訂圖層
@@ -833,6 +832,4 @@ if __name__=='__main__':
     col_result = write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date, drawing)
 
     end = time.time()
-    # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-    # write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
     # write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')

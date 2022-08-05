@@ -270,11 +270,11 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     block_coor_list.append((coor1, coor2))
-
+                # 找size
                 if object.Layer == size_layer and object.EntityName == "AcDbText" and object.GetBoundingBox()[0][1] >= 0:
                     coor = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     if 'Gn' in object.TextString:
-                        if 'C' in object.TextString and '(' in object.TextString:
+                        if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Gn') >= 2):
                             coor_to_size_beam.add((coor, 'CG'))
                             coor_to_size_beam.add((coor, 'G'))
                         elif 'C' in object.TextString and '(' not in object.TextString:
@@ -282,7 +282,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                         else:
                             coor_to_size_beam.add((coor, 'G'))
                     if 'Bn' in object.TextString and 'W' not in object.TextString and 'D' not in object.TextString:
-                        if 'C' in object.TextString and '(' in object.TextString:
+                        if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Bn') >= 2):
                             coor_to_size_beam.add((coor, 'CB'))
                             coor_to_size_beam.add((coor, 'B'))
                         elif 'C' in object.TextString and '(' not in object.TextString:
@@ -290,7 +290,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                         else:
                             coor_to_size_beam.add((coor, 'B'))
                     if 'bn' in object.TextString:
-                        if 'c' in object.TextString and '(' in object.TextString:
+                        if 'c' in object.TextString and ('(' in object.TextString or object.TextString.count('bn') >= 2):
                             coor_to_size_beam.add((coor, 'cb'))
                             coor_to_size_beam.add((coor, 'b'))
                         elif 'c' in object.TextString and '(' not in object.TextString:
@@ -336,7 +336,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         coor = x[0]
         size_beam = x[1]
         min_size = ''
-        min_dist = 10000
+        min_dist = 100000
         for y in coor_to_size_string:
             coor2 = y[0]
             size_string = y[1]
@@ -347,6 +347,10 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         if min_size != '':
             size_coor_set.add((size_beam, min_size, coor))
     print('平面圖讀取進度 7/11')
+
+    for x in size_coor_set:
+        print(x)
+
     # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
     floor_to_coor_set = set()
@@ -456,6 +460,9 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         else:
             error('read_plan error in step 10: min_floor cannot be found.')
     print('平面圖讀取進度 10/11')
+
+    for x in floor_beam_size_coor_set:
+        print(x)
     # Step 11. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
     set_plan = set() # set元素為 (樓層, 梁柱名稱, size)
@@ -572,6 +579,8 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                     set_plan.add((floor, beam_name, beam_size))
                     dic_plan[(floor, beam_name, beam_size)] = full_coor
                 else:
+                    set_plan.add((floor, beam_name, ''))
+                    dic_plan[(floor, beam_name, '')] = full_coor
                     error(f'read_plan error in step 10: {floor} {beam_name} cannot find size. ')
 
         else:
@@ -688,7 +697,7 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
             flag = 1
         except Exception as e:
             time.sleep(5)
-            error(f'read_beam error in step 4: {e}.')
+            error(f'read_beam error in step 6: {e}.')
     print('梁配筋圖讀取進度 6/8')
     # Step 7. 算出Bmax, Fmax, Rmax
     Bmax = 0
@@ -855,7 +864,10 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
             wrong_data = 0
             for y in list2:
                 if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
-                    err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                    if x[2] != '':
+                        err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                    else:
+                        f_big.write(f'{x}: 找不到尺寸\n')
                     wrong_data = 1
                     break
             if not wrong_data:
@@ -865,8 +877,11 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
             wrong_data = 0
             for y in list2:
                 if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
-                    err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-                    # f_sml.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
+                    if x[2] != '':
+                        err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                        # f_sml.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
+                    else:
+                        f_sml.write(f'{x}: 找不到尺寸\n')
                     wrong_data = 1
                     break
             if not wrong_data:   
@@ -999,7 +1014,10 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
             wrong_data = 0
             for y in list1:
                 if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
-                    err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                    if y[2] != '':
+                        err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                    else:
+                        f_big.write(f'{x}: XS-PLAN找不到尺寸\n')
                     wrong_data = 1
                     break
             if not wrong_data:
@@ -1009,8 +1027,10 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
             wrong_data = 0
             for y in list1:
                 if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
-                    err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-                    # f_sml.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
+                    if y[2] != '':
+                        err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                    else:
+                        f_sml.write(f'{x}: XS-PLAN找不到尺寸\n')
                     wrong_data = 1
                     break
             if not wrong_data:   
@@ -1077,13 +1097,13 @@ def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml
     new_list = [(task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other)]
     dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
     if os.path.exists(excel_file):
-        writer = pd.ExcelWriter(excel_file,engine='xlsxwriter')
-        df = pd.read_excel(excel_file) 
+        writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a', if_sheet_exists='replace')
+        df = pd.read_excel(excel_file)  
         df = pd.concat([df, dfNew], axis=0, ignore_index = True, join = 'inner')
     else:
-        writer = pd.ExcelWriter(excel_file, engine='xlsxwriter') 
+        writer = pd.ExcelWriter(excel_file, engine='openpyxl') 
         df = dfNew
-    df.to_excel(writer,sheet_name=sheet_name)
+    df.to_excel(writer,sheet_name)
     writer.save()    
     return
 
@@ -1094,22 +1114,22 @@ if __name__=='__main__':
     task_name = 'task20'#sys.argv[13]
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\清豐1F大梁-XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
-    beam_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\清豐1F大梁-1FHB.dwg'#sys.argv[1] # XS-BEAM的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\XS-PLAN_new'#sys.argv[4] # XS-PLAN_new的路徑
-    beam_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\XS-BEAM_new'#sys.argv[3] # XS-BEAM_new的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-BEAM.dwg'#sys.argv[1] # XS-BEAM的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-PLAN_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    beam_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-BEAM_new.dwg'#sys.argv[3] # XS-BEAM_new的路徑
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\big.txt'#sys.argv[5] # 大梁結果
-    sml_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task21-31000\sml.txt'#sys.argv[6] # 小梁結果
+    big_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\big.txt'#sys.argv[5] # 大梁結果
+    sml_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\sml.txt'#sys.argv[6] # 小梁結果
 
     date = time.strftime("%Y-%m-%d", time.localtime())
     
     # 在plan裡面自訂圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     beam_layer = ['S-TEXTB', 'S-TEXTG']#[sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
+    block_layer = '圖框'#sys.argv[8] # 框框的圖層
     explode_plan = 0#sys.argv[14] # XS-PLAN需不需要提前炸圖塊(0:不需要 1:需要)
     explode_beam = 0#sys.argv[15] # XS-BEAM需不需要提前炸圖塊(0:不需要 1:需要)
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
@@ -1156,5 +1176,5 @@ if __name__=='__main__':
     beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing)
 
     end = time.time()
-    # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
     # write_result_log(excel_file,'','','','','','',time.strftime("%Y-%m-%d %H:%M", time.localtime()),'')
