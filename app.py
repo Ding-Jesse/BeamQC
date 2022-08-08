@@ -1,16 +1,17 @@
 from multiprocessing import allow_connection_pickling
 import os
 from time import sleep
-from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g
+from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g, Response, stream_with_context
 from werkzeug.utils import secure_filename
 from main import main_functionV3, main_col_function,storefile
 import functools
+import json
 import time
 from datetime import timedelta
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
-OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
+UPLOAD_FOLDER = 'C:/Users/Vince/Desktop/BeamQC/INPUT'
+OUTPUT_FOLDER = 'C:/Users/Vince/Desktop/BeamQC/OUTPUT'
 ALLOWED_EXTENSIONS = set(['dwg'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
@@ -63,8 +64,9 @@ def upload_file():
         floor_layer = request.form['floor_layer']
         big_beam_layer = request.form['big_beam_layer']
         sml_beam_layer = request.form['sml_beam_layer']
+        size_layer = request.form['size_layer']
         col_layer = request.form['col_layer']
-        explode = request.form.get('explode')
+
         xs_col = request.form.get('xs-col')
         xs_beam = request.form.get('xs-beam')
         beam_ok = False
@@ -72,6 +74,7 @@ def upload_file():
         column_ok = False
         filenames = ['']
         project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
+        progress_file = f'./OUTPUT/{project_name}_progress'
         if len(uploaded_beams) > 1: dwg_type = 'muti'
         for uploaded_beam in uploaded_beams:
             if uploaded_beam and allowed_file(uploaded_beam.filename) and xs_beam:
@@ -103,15 +106,15 @@ def upload_file():
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
             sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
-            # os.system(f'python plan_to_beam.py {beam_file} {plan_file} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {project_name} {explode}')
-            main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name,explode)
+            os.system(f'python plan_to_beam.py {beam_file[0]} {plan_file[0]} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {size_layer} {project_name} {progress_file}')
+            # main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name)
             filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt']
             filenames.extend(filenames_beam) 
         if column_ok and plan_ok:
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-column.txt')
-            # os.system(f'python plan_to_col.py {column_file} {plan_file} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {explode}')
-            main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name,explode)
+            os.system(f'python plan_to_col.py {column_file[0]} {plan_file[0]} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {progress_file}')
+            # main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name)
             filenames_column = [f'{project_name}-column.txt']
             filenames.extend(filenames_column)
         if column_ok or beam_ok:
@@ -164,3 +167,17 @@ def login():
 if __name__ == '__main__':
 
     app.run(host = '192.168.0.143',debug=True,port=8080)
+
+@app.route("/listen/<project_name>/")
+def listen(project_name):
+
+  def respond_to_client():
+    while True:
+      f = open(f'./OUTPUT/{project_name}_progress', 'r', encoding="utf-8") 
+      lines = f.readlines() #一行一行讀
+      color = 'white'
+      _data = json.dumps({"color":color, "counter":lines}, ensure_ascii=False)
+      yield f"id: 1\ndata: {_data}\nevent: online\n\n"
+      time.sleep(1)
+      f.close
+  return Response(respond_to_client(), mimetype='text/event-stream')

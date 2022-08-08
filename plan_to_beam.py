@@ -94,6 +94,12 @@ def error(error_message): # 把錯誤訊息印到error.log裡面
     f.close
     return
 
+def progress(message, progress_file):
+    f = open(progress_file, 'a', encoding = 'utf8')
+    f.write(f'{message}\n')
+    f.close
+    return
+
 def mycmp(a, b): # a, b 皆為 tuple , 可能是 ((floor, beam), 0, correct) 或 ((floor, beam), 1)
     if a[1] == b[1]: # err_message 一樣，比樓層
         if turn_floor_to_float(a[0][0]) >  turn_floor_to_float(b[0][0]):
@@ -116,8 +122,8 @@ weird_comma_list = [',', '、', '¡B']
 beam_head1 = ['B', 'b', 'G', 'g']
 beam_head2 = ['CB', 'CG', 'cb']
 
-def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, result_filename, explode):
-    print('開始讀取平面圖(核對項目: 梁配筋對應)')
+def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, result_filename, progress_file):
+    progress('開始讀取平面圖(核對項目: 梁配筋對應)', progress_file)
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -127,7 +133,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 1: {e}.')
-    print('平面圖讀取進度 1/11')
+    progress('平面圖讀取進度 1/11', progress_file)
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -137,7 +143,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 2: {e}.')
-    print('平面圖讀取進度 2/11')
+    progress('平面圖讀取進度 2/11', progress_file)
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -147,40 +153,40 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
         except Exception as e:
             time.sleep(5)
             error(f'read_plan error in step 3: {e}.')
-    print('平面圖讀取進度 3/11')
-    if explode: # 需要提前炸圖塊再進來
-        print('XS-PLAN 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候')
-        # Step 4. 遍歷所有物件 -> 炸圖塊
-        # 炸圖塊看性質即可，不用看圖層      
-        flag = 0
-        layer_list = [floor_layer, size_layer] + beam_layer
-        while not flag:
-            try:
-                count = 0
-                total = msp_plan.Count
-                print(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
-                for object in msp_plan:
-                    count += 1
-                    if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
-                        object.Explode()
-                    if count % 1000 == 0:
-                        print(f'平面圖已讀取{count}/{total}個物件')
-                flag = 1
-                print('平面圖讀取進度 4/11')
-            except Exception as e:
-                time.sleep(5)
-                error(f'read_plan error in step 4: {e}.')
+    progress('平面圖讀取進度 3/11', progress_file)
 
-        # Step 5. 重新匯入modelspace
-        flag = 0
-        while not flag:
-            try:
-                msp_plan = doc_plan.Modelspace
-                flag = 1
-            except Exception as e:
-                time.sleep(5)
-                error(f'read_plan error in step 5: {e}.')
-        print('平面圖讀取進度 5/11')
+    progress('XS-PLAN 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候', progress_file)
+    # Step 4. 遍歷所有物件 -> 炸圖塊
+    # 炸圖塊看性質即可，不用看圖層      
+    flag = 0
+    layer_list = [floor_layer, size_layer] + beam_layer
+    while not flag:
+        try:
+            count = 0
+            total = msp_plan.Count
+            progress(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+            for object in msp_plan:
+                count += 1
+                if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
+                    object.Explode()
+                if count % 1000 == 0:
+                    progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+            flag = 1
+            progress('平面圖讀取進度 4/11', progress_file)
+        except Exception as e:
+            time.sleep(5)
+            error(f'read_plan error in step 4: {e}.')
+
+    # Step 5. 重新匯入modelspace
+    flag = 0
+    while not flag:
+        try:
+            msp_plan = doc_plan.Modelspace
+            flag = 1
+        except Exception as e:
+            time.sleep(5)
+            error(f'read_plan error in step 5: {e}.')
+    progress('平面圖讀取進度 5/11', progress_file)
     
     # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_beam_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
@@ -188,17 +194,17 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
     coor_to_size_beam = set() # set (coor, size_beam)
     coor_to_size_string = set() # set (coor, size_string)
     block_coor_list = [] # 存取方框最左下角的點座標
-    print('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候')
+    progress('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候', progress_file)
     flag = 0
     while not flag:
         try:
             count = 0
             total = msp_plan.Count
-            print(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
+            progress(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
             for object in msp_plan:
                 count += 1
                 if count % 1000 == 0:
-                    print(f'平面圖已讀取{count}/{total}個物件')
+                    progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
                 if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
@@ -311,7 +317,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                                     coor_to_size_beam.add((coor, f"c{beam.split(')')[1]}"))
                                 else:
                                     coor_to_size_beam.add((coor, beam))
-                            else:
+                            elif beam.split('g')[1][0] == 'n':
                                 if 'c' in object.TextString and '(' in object.TextString:
                                     coor_to_size_beam.add((coor, 'cg'))
                                     coor_to_size_beam.add((coor, 'g'))
@@ -328,8 +334,8 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
             time.sleep(5)
             error(f'read_plan error in step 6: {e}.')
 
-    print('平面圖讀取進度 6/11')
-    print('註: 如果不需要炸圖塊的話，會自動跳過Step 4, 5。')   
+    progress('平面圖讀取進度 6/11', progress_file)
+
     # Step 7. 完成size_coor_set (size_beam, size_string, size_coor)
     size_coor_set = set()
     for x in coor_to_size_beam:
@@ -346,10 +352,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                 min_dist = dist
         if min_size != '':
             size_coor_set.add((size_beam, min_size, coor))
-    print('平面圖讀取進度 7/11')
-
-    for x in size_coor_set:
-        print(x)
+    progress('平面圖讀取進度 7/11', progress_file)
 
     # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
@@ -364,7 +367,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
-    print('平面圖讀取進度 8/11')
+    progress('平面圖讀取進度 8/11', progress_file)
     # Step 9. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
@@ -400,7 +403,7 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
-    print('平面圖讀取進度 9/11')
+    progress('平面圖讀取進度 9/11', progress_file)
     # Step 10. 完成floor_beam_size_coor_set (floor, beam, size, coor)
     floor_beam_size_coor_set = set()
     for x in size_coor_set: # set(size_beam, min_size, coor)
@@ -459,10 +462,8 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
                             error(f'read_plan error in step 10: new_floor is false.')
         else:
             error('read_plan error in step 10: min_floor cannot be found.')
-    print('平面圖讀取進度 10/11')
+    progress('平面圖讀取進度 10/11', progress_file)
 
-    for x in floor_beam_size_coor_set:
-        print(x)
     # Step 11. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
     set_plan = set() # set元素為 (樓層, 梁柱名稱, size)
@@ -587,8 +588,8 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
             error('read_plan error in step 11: min_floor cannot be found.')
 
     doc_plan.Close(SaveChanges=False)
-    print('平面圖讀取進度 11/11')
-    print('平面圖讀取完畢。')
+    progress('平面圖讀取進度 11/11', progress_file)
+    progress('平面圖讀取完畢。', progress_file)
     # plan.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w")
     f.write("in plan: \n")
@@ -600,8 +601,8 @@ def read_plan(plan_filename, floor_layer, beam_layer, block_layer, size_layer, r
 
     return (set_plan, dic_plan)
 
-def read_beam(beam_filename, text_layer, result_filename, explode):
-    print('開始讀取梁配筋圖')
+def read_beam(beam_filename, text_layer, result_filename, progress_file):
+    progress('開始讀取梁配筋圖', progress_file)
     # Step 1. 打開應用程式
     flag = 0
     while not flag:
@@ -611,7 +612,7 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_beam error in step 1: {e}.')
-    print('梁配筋圖讀取進度 1/8')
+    progress('梁配筋圖讀取進度 1/8', progress_file)
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -621,7 +622,7 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_beam error in step 2: {e}.')
-    print('梁配筋圖讀取進度 2/8')
+    progress('梁配筋圖讀取進度 2/8', progress_file)
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -631,53 +632,53 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_beam error in step 3: {e}.')
-    print('梁配筋圖讀取進度 3/8')
-    if explode: # 需要提前炸圖塊再進來
-        print('XS-BEAM 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候')
-        # Step 4. 遍歷所有物件 -> 炸圖塊
-        # 炸圖塊看性質即可，不用看圖層      
-        flag = 0
-        while not flag:
-            try:
-                count = 0
-                total = msp_beam.Count
-                print(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
-                for object in msp_beam:
-                    count += 1
-                    if object.EntityName == "AcDbBlockReference" and object.Layer == text_layer:
-                        object.Explode()
-                    if count % 1000 == 0:
-                        print(f'梁配筋圖已讀取{count}/{total}個物件')
-                flag = 1
-                print('梁配筋圖讀取進度 4/8')
-            except Exception as e:
-                time.sleep(5)
-                error(f'read_beam error in step 4: {e}.')
+    progress('梁配筋圖讀取進度 3/8', progress_file)
 
-        # Step 5. 重新匯入modelspace
-        flag = 0
-        while not flag:
-            try:
-                msp_beam = doc_beam.Modelspace
-                flag = 1
-            except Exception as e:
-                time.sleep(5)
-                error(f'read_beam error in step 5: {e}.')
-        print('梁配筋圖讀取進度 5/8')
+    progress('XS-BEAM 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候', progress_file)
+    # Step 4. 遍歷所有物件 -> 炸圖塊
+    # 炸圖塊看性質即可，不用看圖層      
+    flag = 0
+    while not flag:
+        try:
+            count = 0
+            total = msp_beam.Count
+            progress(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+            for object in msp_beam:
+                count += 1
+                if object.EntityName == "AcDbBlockReference" and object.Layer == text_layer:
+                    object.Explode()
+                if count % 1000 == 0:
+                    progress(f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
+            flag = 1
+            progress('梁配筋圖讀取進度 4/8', progress_file)
+        except Exception as e:
+            time.sleep(5)
+            error(f'read_beam error in step 4: {e}.')
+
+    # Step 5. 重新匯入modelspace
+    flag = 0
+    while not flag:
+        try:
+            msp_beam = doc_beam.Modelspace
+            flag = 1
+        except Exception as e:
+            time.sleep(5)
+            error(f'read_beam error in step 5: {e}.')
+    progress('梁配筋圖讀取進度 5/8', progress_file)
     
     # Step 6. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
-    print('正在遍歷梁配筋圖上所有物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候')
+    progress('正在遍歷梁配筋圖上所有物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候', progress_file)
     floor_to_beam_set = set()
     flag = 0
     while not flag:
         try:
             count = 0
             total = msp_beam.Count
-            print(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
+            progress(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
             for object in msp_beam:
                 count += 1
                 if count % 1000 == 0:
-                    print(f'梁配筋圖已讀取{count}/{total}個物件')
+                    progress(f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
                 if object.Layer == text_layer and object.ObjectName == "AcDbText" and ' ' in object.TextString:
                     pre_beam = (object.TextString.split(' ')[1]).split('(')[0] # 把括號以後的東西拔掉
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
@@ -698,7 +699,7 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
         except Exception as e:
             time.sleep(5)
             error(f'read_beam error in step 6: {e}.')
-    print('梁配筋圖讀取進度 6/8')
+    progress('梁配筋圖讀取進度 6/8', progress_file)
     # Step 7. 算出Bmax, Fmax, Rmax
     Bmax = 0
     Fmax = 0
@@ -733,7 +734,7 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
-    print('梁配筋圖讀取進度 7/8')
+    progress('梁配筋圖讀取進度 7/8', progress_file)
     # Step 8. 完成set_beam和dic_beam
     dic_beam = {}
     set_beam = set()
@@ -781,8 +782,8 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
                     error(f'read_beam error in step 8: new_floor is false.')
 
     doc_beam.Close(SaveChanges=False)
-    print('梁配筋圖讀取進度 8/8')
-    print('梁配筋圖讀取完成。')
+    progress('梁配筋圖讀取進度 8/8', progress_file)
+    progress('梁配筋圖讀取完成。', progress_file)
     # beam.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w")
     f.write("in beam: \n")
@@ -794,8 +795,8 @@ def read_beam(beam_filename, text_layer, result_filename, explode):
     
     return (set_beam, dic_beam)
 
-def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, drawing): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
-    print("開始標註平面圖(核對項目: 梁配筋)及輸出核對結果至'大梁.txt'和'小梁.txt'。")
+def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, drawing, progress_file): # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
+    progress("開始標註平面圖(核對項目: 梁配筋)及輸出核對結果至'大梁.txt'和'小梁.txt'。", progress_file)
     pythoncom.CoInitialize()
     set1 = set_plan - set_beam
     list1 = list(set1)
@@ -940,12 +941,12 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
 
     f_big.close()
     f_sml.close()
-    print("標註平面圖(核對項目: 梁配筋)及輸出核對結果至'大梁.txt'和'小梁.txt'完成。")
+    progress("標註平面圖(核對項目: 梁配筋)及輸出核對結果至'大梁.txt'和'小梁.txt'完成。", progress_file)
     return (big_rate, sml_rate)
     
 
-def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
-    print("開始標註梁配筋圖及輸出核對結果至'大梁.txt'和'小梁.txt'。")
+def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing, progress_file): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+    progress("開始標註梁配筋圖及輸出核對結果至'大梁.txt'和'小梁.txt'。", progress_file)
     pythoncom.CoInitialize()
     set1 = set_plan - set_beam
     list1 = list(set1)
@@ -1089,7 +1090,7 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
     
     f_big.close()
     f_sml.close()
-    print("標註梁配筋圖及輸出核對結果至'大梁.txt'和'小梁.txt'完成。")
+    progress("標註梁配筋圖及輸出核對結果至'大梁.txt'和'小梁.txt'完成。", progress_file)
     return (big_rate, sml_rate)
 
 def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other):
@@ -1111,31 +1112,34 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    task_name = 'task20'#sys.argv[13]
+    
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
-    beam_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-BEAM.dwg'#sys.argv[1] # XS-BEAM的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-PLAN_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
-    beam_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\XS-BEAM_new.dwg'#sys.argv[3] # XS-BEAM_new的路徑
+    beam_filename = sys.argv[1] # XS-BEAM的路徑
+    plan_filename = sys.argv[2] # XS-PLAN的路徑
+    beam_new_filename = sys.argv[3] # XS-BEAM_new的路徑
+    plan_new_filename = sys.argv[4] # XS-PLAN_new的路徑
+    big_file = sys.argv[5] # 大梁結果
+    sml_file = sys.argv[6] # 小梁結果
+
+    # 在beam裡面自訂圖層
+    text_layer = sys.argv[7]
+
+    # 在plan裡面自訂圖層
+    block_layer = sys.argv[8] # 框框的圖層
+    floor_layer = sys.argv[9] # 樓層字串的圖層
+    beam_layer = [sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
+    size_layer = sys.argv[12] # 梁尺寸字串圖層
+
+    task_name = sys.argv[13]
+
+    progress_file = sys.argv[14]
+
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    big_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\big.txt'#sys.argv[5] # 大梁結果
-    sml_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task24-練武\sml.txt'#sys.argv[6] # 小梁結果
-
-    date = time.strftime("%Y-%m-%d", time.localtime())
     
-    # 在plan裡面自訂圖層
-    floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
-    beam_layer = ['S-TEXTB', 'S-TEXTG']#[sys.argv[10], sys.argv[11]] # beam的圖層，因為有兩個以上，所以用list來存
-    block_layer = '圖框'#sys.argv[8] # 框框的圖層
-    explode_plan = 0#sys.argv[14] # XS-PLAN需不需要提前炸圖塊(0:不需要 1:需要)
-    explode_beam = 0#sys.argv[15] # XS-BEAM需不需要提前炸圖塊(0:不需要 1:需要)
-    size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
-
-    # 在beam裡面自訂圖層
-    text_layer = 'S-RC'#sys.argv[7]
+    date = time.strftime("%Y-%m-%d", time.localtime())
 
     # 多檔案接用','來連接，不用空格。Ex. 'file1,file2,file3'
     multiprocessing.freeze_support()
@@ -1152,10 +1156,10 @@ if __name__=='__main__':
     dic_beam = {}
 
     for i in range(plan_file_count):
-        res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, beam_layer, block_layer, size_layer, plan_file, explode_plan))
+        res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, beam_layer, block_layer, size_layer, plan_file, progress_file))
 
     for i in range(beam_file_count):
-        res_beam[i] = pool.apply_async(read_beam, (beam_filename.split(',')[i], text_layer, beam_file, explode_beam))
+        res_beam[i] = pool.apply_async(read_beam, (beam_filename.split(',')[i], text_layer, beam_file, progress_file))
     
     for i in range(plan_file_count):
         final_plan = res_plan[i].get()
@@ -1172,8 +1176,8 @@ if __name__=='__main__':
     drawing = 0
     if plan_file_count == 1 and beam_file_count == 1:
         drawing = 1
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, drawing)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing)
+    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, drawing, progress_file)
+    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, drawing, progress_file)
 
     end = time.time()
     write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
