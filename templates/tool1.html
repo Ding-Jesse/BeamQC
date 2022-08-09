@@ -86,11 +86,20 @@
 </div>
 </form>
 </div>
+
 <!-- <div id='loader' style='display: none;'> -->
-<div id='loader' style="text-align:center;display: none;">
-  <img src='../static/loader.gif'> <b>Loading..</b>
+
+<div id='loader' style='display: none;'>
+<div class="testbox">
+<form>
+  <h3>流程說明</h3>
+  <div align="center"><img style="max-width: 80%; height: auto;"src="./static/flow.png" alt="image"></p></div>
+  <h3>即將為您顯示進度...</h3>
+  <img src='../static/loader.gif' style="float: left;width:20%;">
+  <div id="counter" style="float: right; text-align:left;height:300px;width:70%;overflow:auto;background-color:white;color:black;font-family:sans-serif;padding:10px;"></div>
+</form>
 </div>
-<div id="counter"></div>
+</div>
 
 <div class="banner2">
 <h3>&emsp;⚠️注意事項</h3>
@@ -145,6 +154,19 @@ CAD版本須為2016以前之版本。
 </li>
 </ul>
 </li>
+
+<li>
+<p>在柱配筋圖中，請注意不要有多餘的表格線，容易造成讀取錯誤。</p>
+<ul style="list-style-type:disc;">
+<li>
+<p>如下圖，藍色箭頭指的是多餘的表格線，這會導致9樓的柱讀取錯誤。
+<br>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example4.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<br>
+
 </ol>
 </blockquote>
 <script> 

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}配筋圖查核使用教學{% endblock %}
+
+{% block content %}
+
+<body>
+<div class="testbox">
+<form action="" method=post enctype=multipart/form-data>
+    <div class="banner">
+          <h1>配筋圖查核使用教學</h1>
+    </div>
+</form>
+</div>
+
+<div class="banner2">
+<h3>&emsp;🎞️操作影片</h3>
+</div>
+<p align = 'center'>
+<video src="./static/配筋圖示範.mp4" controls style="width: 90%"></video>
+</p>
+<div class="banner2">
+<h3>&emsp;⚠️注意事項</h3>
+</div>
+<blockquote>
+<ol>
+<li>
+CAD版本須為2016以前之版本。
+</li>
+<li>
+<p>每種物件的圖層要一致。</p>
+</li>
+<li>
+請確認黃色標題後面是否有括號，括號內部需要有英文的樓層名稱。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。
+<ul style="list-style-type:disc;">
+<li>
+<p>範例圖：
+<br>
+<div align="center"><img style="max-width: 35%; height: auto;"src="./static/correct_example1.png" alt="image"></p></div>
+</li>
+<li>
+<p>如下圖，如果沒有後面的括號和樓層，會導致樓層讀取失敗的問題。
+<br>
+<div align="center"><img style="max-width: 35%; height: auto;"src="./static/wrong_example1.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<li>
+<p>顯示樓層的字串中，「2-5F」，「3F~6F」，「3F,5F,7F」等等都是可接受的，但盡量避免中文字元，可能會變成西班牙文亂碼。</p>
+<ul style="list-style-type:disc;">
+<li>
+<p>如下圖，使用中文頓號的話，文字顯示的內容會變成&#39;¡B&#39;，容易導致樓層讀取錯誤的問題。
+<br>
+<div align="center"><img style="max-width: 80%; height: auto;"src="./static/wrong_example3.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<br>
+<li>
+在一個圖框中，盡量只放一張圖，如果要放兩張以上的圖，請將黃色標題放在圖的下方，比較不容易出錯。
+<br>
+<ul style="list-style-type:disc;">
+<li>
+<p>範例圖：
+<br>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/correct_example2.png" alt="image"></p></div>
+</li>
+<li>
+<p>如下圖，如果將黃色標題都在圖的右方，容易導致梁跟樓層配對錯誤。
+<br>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example2.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<li>
+<p>在柱配筋圖中，請注意不要有多餘的表格線，容易造成讀取錯誤。</p>
+<ul style="list-style-type:disc;">
+<li>
+<p>如下圖，藍色箭頭指的是多餘的表格線，這會導致9樓的柱讀取錯誤。
+<br>
+<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example4.png" alt="image"></p></div>
+</li>
+</ul>
+</li>
+<br>
+</ol>
+</blockquote>
+
+<div class="banner2">
+<h3>&emsp;📖輸出檔案介紹</h3>
+</div>
+<blockquote>
+<h3>核對XS-BEAM結果</h3>
+<ol>
+<li>
+<h4>大梁.txt</h4>
+內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的大梁。
+<br>
+圖例: 
+<br>
+<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result1.png" alt="image"></p></div>
+<br>
+以in plan but not in beam的('B1F', "GB'-0")為例，表示B1F的GB'-0這根大梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
+</li>
+<li>
+<h4>小梁.txt</h4>
+內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的小梁。
+<br>
+圖例: 
+<br>
+<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result2.png" alt="image"></p></div>
+<br>
+以in plan but not in beam的('B1F', 'b12')為例，表示B1F的b12這根小梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。一樣，如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
+</li>
+<li>
+<h4>MARKON-XS-BEAM.dwg</h4>
+內容: 將出現在XS-BEAM但沒有出現在XS-PLAN的大梁與小梁用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+</li>
+<li>
+<h4>MARKON-XS-PLAN.dwg</h4>
+內容: 將出現在XS-PLAN但沒有出現在XS-BEAM的大梁與小梁用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+</li>
+</ol>
+<h3>核對XS-COL結果</h3>
+<ol>
+<li>
+<h4>column.txt</h4>
+內容: 出現在XS-PLAN但沒有出現在XS-COL、出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱。
+<br>
+圖例: 
+<br>
+<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result7.png" alt="image"></p></div>
+有兩種錯誤訊息，分別為'找不到這根柱子'以及'尺寸有誤'。
+</li>
+<li>
+<h4>MARKON-XS-COL.dwg</h4>
+內容: 將出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+
+</li>
+<li>
+<h4>MARKON-column-XS-PLAN.dwg</h4>
+內容: 將出現在XS-PLAN但沒有出現在XS-COL或兩邊尺寸不相同的柱用紅色框線標註(圖層為S-CLOUD後面接當日日期)。
+
+</li>
+
+</blockquote>
+<br>
+</body>
+{% endblock %}

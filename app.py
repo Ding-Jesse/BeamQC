@@ -141,9 +141,9 @@ def result_file(filename):
     response.cache_control.max_age = 0
     return response
 
-@app.route('/tool2')
+@app.route('/tutorial')
 def tool2():
-    return render_template('tool2.html')
+    return render_template('tutorial.html')
 
 @app.route('/tool3')
 def tool3():
@@ -176,7 +176,7 @@ def listen(project_name):
       f = open(f'./OUTPUT/{project_name}_progress', 'r', encoding="utf-8") 
       lines = f.readlines() #一行一行讀
       color = 'white'
-      _data = json.dumps({"color":color, "counter":lines}, ensure_ascii=False)
+      _data = json.dumps({"color":color, "counter":''.join(lines)}, ensure_ascii=False)
       yield f"id: 1\ndata: {_data}\nevent: online\n\n"
       time.sleep(1)
       f.close

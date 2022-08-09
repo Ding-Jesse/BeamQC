@@ -91,7 +91,7 @@ input[type=radio]:checked + label:after {
   text-align: center;
 }
 button {
-  width: 150px;
+  width: 300px;
   padding: 10px;
   border: none;
   border-radius: 5px; 
