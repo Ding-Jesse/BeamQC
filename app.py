@@ -69,6 +69,9 @@ def upload_file():
 
         xs_col = request.form.get('xs-col')
         xs_beam = request.form.get('xs-beam')
+        sizing = request.form.get('sizing')
+        mline_scaling = request.form.get('mline_scaling')
+
         beam_ok = False
         plan_ok = False
         column_ok = False
@@ -106,15 +109,13 @@ def upload_file():
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
             sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
-            os.system(f'python plan_to_beam.py {beam_file[0]} {plan_file[0]} {beam_new_file} {plan_new_file} {txt_file} {sb_txt_file} {text_layer} {block_layer} {floor_layer} {big_beam_layer} {sml_beam_layer} {size_layer} {project_name} {progress_file}')
-            # main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name)
+            main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name)
             filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt']
             filenames.extend(filenames_beam) 
         if column_ok and plan_ok:
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-column.txt')
-            os.system(f'python plan_to_col.py {column_file[0]} {plan_file[0]} {column_new_file} {col_plan_new_file} {txt_file} {text_col_layer} {line_layer} {block_layer} {floor_layer} {col_layer} {project_name} {progress_file}')
-            # main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name)
+            main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name)
             filenames_column = [f'{project_name}-column.txt']
             filenames.extend(filenames_column)
         if column_ok or beam_ok:
@@ -142,12 +143,12 @@ def result_file(filename):
     return response
 
 @app.route('/tutorial')
-def tool2():
+def tutorial():
     return render_template('tutorial.html')
 
-@app.route('/tool3')
-def tool3():
-    return render_template('tool3.html')
+@app.route('/secret')
+def secret():
+    return render_template('secret.html')
 
 @app.route('/tool4')
 def tool4():

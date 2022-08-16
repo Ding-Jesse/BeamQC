@@ -26,6 +26,16 @@
   <span class="checkmark"></span>
 </label>
 
+<label class="container">核對梁配筋時是否要順便核對梁配筋圖的尺寸和平面圖的尺寸是否相符
+  <input type="checkbox" id="sizing" name="sizing" checked>
+  <span class="checkmark"></span>
+</label>
+
+<label class="container">核對梁配筋時是否要順便核對複線寬度和尺寸是否相符
+  <input type="checkbox" id="mline_scaling" name="mline_scaling" checked>
+  <span class="checkmark"></span>
+</label>
+
 <h3>選擇檔案及各圖層名稱</h3>
 <div><h4>柱配筋圖</h4></div>
 <div class="item">
@@ -181,8 +191,6 @@ CAD版本須為2016以前之版本。
           document.getElementById("loader").style.display = "block"; 
           // 顯示進度
 
-          await delay(10);
-
           var d = new Date();
 
           let year = d.getFullYear();
@@ -206,6 +214,8 @@ CAD版本須為2016以前之版本。
 
           var project_name = document.getElementById("project_name").value
           
+          await delay(10);
+
           var eventSource = new EventSource("/listen/" + d + project_name + "/")
           eventSource.addEventListener("message", function(e) {
             console.log(e.data)

@@ -30,6 +30,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             time.sleep(5)
             error(f'read_plan error in step 1: {e}.')
     progress('平面圖讀取進度 1/10', progress_file)
+
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -40,6 +41,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             time.sleep(5)
             error(f'read_plan error in step 2: {e}.')
     progress('平面圖讀取進度 2/10', progress_file)
+
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -52,19 +54,29 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     progress('平面圖讀取進度 3/10', progress_file)
 
     progress('XS-PLAN 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候', progress_file)
-    # Step 4. 遍歷所有物件 -> 炸圖塊
-    # 炸圖塊看性質即可，不用看圖層   
+
+    # Step 4.0 解鎖所有圖層 -> 不然不能刪東西
+    layer_count = doc_plan.Layers.count
+
+    for x in range(layer_count):
+        layer = doc_plan.Layers.Item(x)
+        layer.Lock = False
+
+    # Step 4. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間 
     flag = 0
     while not flag:
         try:
             count = 0
             total = msp_plan.Count
             layer_list = [floor_layer, col_layer]
-            progress(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+            non_trash_list = layer_list + [block_layer]
+            progress(f'正在炸平面圖的圖塊及篩選判斷用的物件，平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
             for object in msp_plan:
                 count += 1
                 if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
                     object.Explode()
+                if object.Layer not in non_trash_list:
+                    object.Delete()
                 if count % 1000 == 0:
                     progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
             flag = 1
@@ -125,6 +137,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 # 取size
                 if object.Layer == col_layer and object.ObjectName == "AcDbText" and '(' in object.TextString:
                     size = (object.TextString.split('(')[1]).split(')')[0] # 取括號內東西即可
+                    size = size.replace('X', 'x')
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     if 'x' in size:
@@ -196,6 +209,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             elif x > 1000 and x != 2000:
                 Rmax = x
     progress('平面圖讀取進度 8/10', progress_file)
+
     # Step 9. 完成col_size_coor_set，格式: set(col, size, the coor of big_block(left, right, up, down))
     col_size_coor_set = set() 
     for x in coor_to_col_set:
@@ -338,6 +352,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             time.sleep(5)
             error(f'read_col error in step 1: {e}.')
     progress('柱配筋圖讀取進度 1/9', progress_file)
+
     # Step 2. 匯入檔案
     flag = 0
     while not flag:
@@ -348,6 +363,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             time.sleep(5)
             error(f'read_col error in step 2: {e}.')
     progress('柱配筋圖讀取進度 2/9', progress_file)
+
     # Step 3. 匯入modelspace
     flag = 0
     while not flag:
@@ -358,6 +374,13 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             time.sleep(5)
             error(f'read_col error in step 3: {e}.')
     progress('柱配筋圖讀取進度 3/9', progress_file)
+
+    # Step 4.0 解鎖所有圖層 -> 不然不能刪東西
+    layer_count = doc_col.Layers.count
+
+    for x in range(layer_count):
+        layer = doc_col.Layers.Item(x)
+        layer.Lock = False
 
     # Step 4. 遍歷所有物件 -> 炸圖塊
     # 炸圖塊看性質即可，不用看圖層   
@@ -378,6 +401,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             time.sleep(5)
             error(f'read_col error in step 4: {e}.')
     progress('柱配筋圖讀取進度 4/9', progress_file)
+
     # Step 5. 重新匯入modelspace
     flag = 0
     while not flag:
@@ -412,10 +436,11 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                         coor_to_col_set.add(((coor1, coor2), object.TextString))
 
-                    elif 'x' in object.TextString:
+                    elif 'x' in object.TextString or 'X' in object.TextString:
+                        size = object.TextString.replace('X', 'x')
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        coor_to_size_set.add(((coor1, coor2), object.TextString))
+                        coor_to_size_set.add(((coor1, coor2), size))
                     elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString: # 可能有樓層
                         floor = object.TextString
                         if '_' in floor: # 可能有B_6F表示B棟的6F
@@ -658,7 +683,6 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
 
     f = open(result_filename, "a", encoding = 'utf-8')
     f.write("in col but not in plan: \n")
-    pythoncom.CoInitialize()
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
