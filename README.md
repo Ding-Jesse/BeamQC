@@ -29,18 +29,18 @@ python wsgi.py
 ```
 
 ## File structure
-`nginx`
+### `nginx`
 ```
 |__ /
   |__ nginx
     |__ nginx.conf
 ```
-`flask`
+### `flask`
 ```
 |__ /BeamQC
-  |__ /INPUT   <---┐
-  |__ /OUTPUT  <---| You need to add these directories by yourself or change the directory in python code. 
-  |__ /result  <---┘
+  |__ /INPUT   <--┐
+  |__ /OUTPUT  <--| You need to add these directories by yourself or change the directory in python code. 
+  |__ /result  <--┘
   |__ /static
   |  |__ /css
   |    |__ rubic.css
