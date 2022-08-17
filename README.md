@@ -28,4 +28,25 @@ flask run
 python wsgi.py
 ```
 
-## Other directory
+## File structure
+`nginx`
+```
+|__ /
+  |__ nginx
+    |__ nginx.conf
+```
+`flask`
+```
+|__ /BeamQC
+  |__ /INPUT
+  |__ /OUTPUT
+  |__ /result
+  |__ /static
+  |  |__ /css
+  |__ /templates 
+  |__ app.py
+  |__ main.py
+  |__ plan_to_beam.py
+  |__ plan_to_col.py
+  |__ wsgi.py
+```
