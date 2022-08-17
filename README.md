@@ -15,19 +15,6 @@ Clone this repo:
 git clone https://github.com/bamboochen92518/BeamQC
 ```
 
-## Start server
-
-### development
-```
-cd BeamQC
-set FLASK_ENV=development
-flask run
-```
-### production(using waitress as WSGI server)
-```
-python wsgi.py
-```
-
 ## File structure
 ### `nginx`
 ```
@@ -54,3 +41,24 @@ python wsgi.py
   |__ plan_to_col.py
   |__ wsgi.py
 ```
+
+## Getting Start
+
+### Start server
+
+#### development
+```
+cd [PATH_TO_BEAMQC]
+set FLASK_ENV=development
+flask run
+```
+Then you can visit the webpage from http://localhost:[port_number]
+
+#### production(using waitress as WSGI server)
+```
+cd /nginx
+start nginx.exe
+cd [PATH_TO_BEAMQC]
+python wsgi.py
+```
+Then you can visit the webpage from http://localhost
