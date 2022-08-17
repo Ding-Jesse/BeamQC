@@ -38,12 +38,16 @@ python wsgi.py
 `flask`
 ```
 |__ /BeamQC
-  |__ /INPUT   <--- 
-  |__ /OUTPUT  <--- You need to add these directories by yourself, or you can change the directory in python code
-  |__ /result  <---
+  |__ /INPUT   <---┐
+  |__ /OUTPUT  <---| You need to add these directories by yourself or change the directory in python code. 
+  |__ /result  <---┘
   |__ /static
   |  |__ /css
+  |    |__ rubic.css
+  |  |__ lots of files or pictures for webpage
   |__ /templates 
+  |  |__ base.html
+  |  |__ lots of html files
   |__ app.py
   |__ main.py
   |__ plan_to_beam.py
