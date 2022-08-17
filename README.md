@@ -42,7 +42,7 @@ git clone https://github.com/bamboochen92518/BeamQC
   |__ wsgi.py
 ```
 
-## Getting Start
+## Getting Started
 
 ### Start server
 
@@ -62,3 +62,9 @@ cd [PATH_TO_BEAMQC]
 python wsgi.py
 ```
 Then you can visit the webpage from http://localhost
+
+## Others
+
+Visit our webpage and try it by yourself!!!
+
+Link: http://www.freerccheck.com.tw/as
