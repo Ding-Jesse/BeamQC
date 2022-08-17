@@ -23,7 +23,7 @@ git clone https://github.com/bamboochen92518/BeamQC
     |__ nginx.conf
 ```
 
-Click here to know how to install nginx ---> https://hackmd.io/0rM5CWPHRWKzt91HtioaPg?view
+Click here to know how to install nginx ---> https://hackmd.io/@bamboochen92518/BJBguM5A5
 
 ### `flask`
 ```
