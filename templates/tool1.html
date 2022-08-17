@@ -11,32 +11,36 @@
 </div>
 <h3>請輸入以下資訊：</h3>
 <div class="item">
-  <label for="name"><h3>專案名稱</h3></label>
+  <label for="name"><h3>專案名稱 (請記得修改此欄)</h3></label>
   <input type="text" id="project_name" name="project_name" value="temp" required>
 </div>
 <h3>核對項目</h3>
 
 <label class="container">柱配筋
-  <input type="checkbox" id="xs-col" name="xs-col" checked>
+  <input type="checkbox" id="xs-col" name="xs-col" checked onclick="showcol()">
   <span class="checkmark"></span>
 </label>
 
 <label class="container">梁配筋
-  <input type="checkbox" id="xs-beam" name="xs-beam" checked>
+  <input type="checkbox" id="xs-beam" name="xs-beam" checked onclick="showbeam()">
   <span class="checkmark"></span>
 </label>
 
+<div id='beam2' style='display: block;'>
 <label class="container">核對梁配筋時是否要順便核對梁配筋圖的尺寸和平面圖的尺寸是否相符
-  <input type="checkbox" id="sizing" name="sizing" checked>
+  <input type="checkbox" id="sizing" name="sizing" checked onclick="showsize()">
   <span class="checkmark"></span>
 </label>
 
 <label class="container">核對梁配筋時是否要順便核對複線寬度和尺寸是否相符
-  <input type="checkbox" id="mline_scaling" name="mline_scaling" checked>
+  <input type="checkbox" id="mline_scaling" name="mline_scaling" checked onclick="showmline()">
   <span class="checkmark"></span>
 </label>
+</div>
 
 <h3>選擇檔案及各圖層名稱</h3>
+
+<div id='col' style='display: block;'>
 <div><h4>柱配筋圖</h4></div>
 <div class="item">
 <labe>選擇檔案</label>
@@ -50,7 +54,9 @@
 <label>柱配筋圖表格線圖層名稱</label>
 <input type="text" id="line_layer" name="line_layer" value="S-STUD" required>
 </div>
+</div>
 
+<div id='beam' style='display: block;'>
 <div><h4>梁配筋圖</h4></div>
 <div class="item">
 <label>選擇檔案</label>
@@ -60,7 +66,9 @@
 <label>梁配筋圖文字圖層名稱</label>
 <input type="text" id="text_layer" name="text_layer" value="S-RC" required>
 </div>
+</div>
 
+<div id='main' style='display: block;'>
 <div><h4>結構平面圖</h4></div>
 <div class="item">
 <label>選擇檔案</label>
@@ -74,21 +82,44 @@
 <labe>結構平面圖樓層字串圖層名稱</label>
 <input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required>
 </div>
+</div>
+
+<div id='main2' style='display: none; color: #bd1a1a' align = 'center'><h3>請選擇核對項目</h3></div>
+
+<div id='mline' style='display: block;'>
+<div class="item">
+<label>結構平面圖大梁複線圖層名稱</label>
+<input type="text" id="big_beam_layer" name="big_beam_layer" value="S-RCBMG" required>
+</div>
+<div class="item">
+<label>結構平面圖小梁複線圖層名稱</label>
+<input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-RCBMB" required>
+</div>
+</div>
+
+<div id='beam3' style='display: block;'>
 <div class="item">
 <label>結構平面圖大梁字串圖層名稱</label>
-<input type="text" id="big_beam_layer" name="big_beam_layer" value="S-TEXTG" required>
+<input type="text" id="big_beam_text_layer" name="big_beam_text_layer" value="S-TEXTG" required>
 </div>
 <div class="item">
 <label>結構平面圖小梁字串圖層名稱</label>
-<input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-TEXTB" required>
+<input type="text" id="sml_beam_text_layer" name="sml_beam_text_layer" value="S-TEXTB" required>
 </div>
+</div>
+
+<div id='size' style='display: block;'>
+<div class="item">
+<label>結構平面圖顯示量尺寸表格文字圖層名稱</label>
+<input type="text" id="size_layer" name="size_layer" value="S-TEXT" required>
+</div>
+</div>
+
+<div id='col2' style='display: block;'>
 <div class="item">
 <label>結構平面圖柱字串圖層名稱</label>
 <input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required>
 </div>
-<div class="item">
-<label>結構平面圖顯示量尺寸表格文字圖層名稱</label>
-<input type="text" id="size_layer" name="size_layer" value="S-TEXT" required>
 </div>
 
 <div class="btn-block">
@@ -230,6 +261,72 @@ CAD版本須為2016以前之版本。
       }
       myAsyncFunction();
   } 
+
+  function showcol() { 
+    document.getElementById("col").style.visibility = "visible";
+    document.getElementById("col2").style.visibility = "visible";
+    if (document.getElementById("xs-col").checked){
+      document.getElementById("col").style.display = "block"; 
+      document.getElementById("col2").style.display = "block"; 
+    }
+    else{
+      document.getElementById("col").style.display = "none"; 
+      document.getElementById("col2").style.display = "none"; 
+    }
+    showmain()
+  } 
+
+  function showbeam() { 
+    document.getElementById("beam").style.visibility = "visible";
+    document.getElementById("beam2").style.visibility = "visible";
+    document.getElementById("beam3").style.visibility = "visible";
+    if (document.getElementById("xs-beam").checked){
+      document.getElementById("beam").style.display = "block"; 
+      document.getElementById("beam2").style.display = "block"; 
+      document.getElementById("beam3").style.display = "block"; 
+    }
+    else{
+      document.getElementById("beam").style.display = "none"; 
+      document.getElementById("beam2").style.display = "none"; 
+      document.getElementById("beam3").style.display = "none"; 
+    }
+    showsize()
+    showmline()
+    showmain()
+  } 
+
+  function showsize() { 
+    document.getElementById("size").style.visibility = "visible";
+    if ((document.getElementById("sizing").checked || document.getElementById("mline_scaling").checked) && document.getElementById("xs-beam").checked){
+      document.getElementById("size").style.display = "block"; 
+    }
+    else{
+      document.getElementById("size").style.display = "none"; 
+    }
+  } 
+
+  function showmline() { 
+    document.getElementById("mline").style.visibility = "visible";
+    if (document.getElementById("mline_scaling").checked && document.getElementById("xs-beam").checked){
+      document.getElementById("mline").style.display = "block"; 
+    }
+    else{
+      document.getElementById("mline").style.display = "none"; 
+    }
+    showsize()
+  } 
+
+  function showmain() { 
+    document.getElementById("main").style.visibility = "visible";
+    if (document.getElementById("xs-col").checked || document.getElementById("xs-beam").checked){
+      document.getElementById("main").style.display = "block"; 
+      document.getElementById("main2").style.display = "none"; 
+    }
+    else{
+      document.getElementById("main").style.display = "none"; 
+      document.getElementById("main2").style.display = "block"; 
+    }
+  }
 </script>
 
 
