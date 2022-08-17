@@ -38,9 +38,9 @@ python wsgi.py
 `flask`
 ```
 |__ /BeamQC
-  |__ /INPUT
-  |__ /OUTPUT
-  |__ /result
+  |__ /INPUT   <--- 
+  |__ /OUTPUT  <--- You need to add these directories by yourself, or you can change the directory in python code
+  |__ /result  <---
   |__ /static
   |  |__ /css
   |__ /templates 
