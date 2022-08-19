@@ -243,175 +243,175 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
     # for mline_scaling
     beam_direction_mid_scale_set = set() # set (beam_layer(big_beam_layer or sml_beam_layer), direction(0: 橫的, 1: 直的), midpoint, scale)
 
-    while not flag and error_count <= 10:
-        try:
-            count = 0
-            total = msp_plan.Count
-            progress(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-            for object in msp_plan:
-                count += 1
-                if count % 1000 == 0:
-                    progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+    # while not flag and error_count <= 10:
+    #     try:
+    count = 0
+    total = msp_plan.Count
+    progress(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+    for object in msp_plan:
+        count += 1
+        if count % 1000 == 0:
+            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
 
-                # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
-                # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
-                if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
-                    floor = object.TextString
-                    floor = re.search('\(([^)]+)', floor).group(1) #取括號內的樓層數
-                    coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2)) #不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
-                    no_chinese = False
-                    for ch in floor: # 待修正
-                        if ch == 'B' or ch == 'F' or ch == 'R' or ch.isdigit():
-                            no_chinese = True
-                            break
-                    if floor != '' and no_chinese:
-                        coor_to_floor_set.add((coor, floor))
-                    else:
-                        error(f'read_plan error in step 7: floor is an empty string or it is Chinese. ')
+        # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
+        # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
+        if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
+            floor = object.TextString
+            floor = re.search('\(([^)]+)', floor).group(1) #取括號內的樓層數
+            coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2)) #不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
+            no_chinese = False
+            for ch in floor: # 待修正
+                if ch == 'B' or ch == 'F' or ch == 'R' or ch.isdigit():
+                    no_chinese = True
+                    break
+            if floor != '' and no_chinese:
+                coor_to_floor_set.add((coor, floor))
+            else:
+                error(f'read_plan error in step 7: floor is an empty string or it is Chinese. ')
 
-                # 取beam的字串
-                # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
+        # 取beam的字串
+        # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
 
-                if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader")\
-                        and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
+        if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader")\
+                and object.TextString != '' and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
 
-                    beam = object.TextString
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+            beam = object.TextString
+            coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+            coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+            size = ''
+            if '(' in beam:
+                size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
+                if 'x' not in size:
                     size = ''
-                    if '(' in beam:
-                        size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
+                beam = beam.split('(')[0] # 取括號前內容即可
+            comma_char = ','
+            for char in weird_comma_list:
+                if char in beam:
+                    comma_char = char
+            comma = beam.count(comma_char)
+            for i in range(comma + 1):
+                try:
+                    coor_to_beam_set.add(((coor1, coor2), (beam.split(comma_char)[i], size, round(object.Rotation, 2))))
+                except: # 只要不是0or1.57，後面核對的時候就會橫的值得都找。
+                    coor_to_beam_set.add(((coor1, coor2), (beam.split(comma_char)[i], size, 1)))
+                    error(f'read_plan error in step 7: {(beam, size)} at {(coor1, coor2)} cannot find Rotation.')
+
+        # 為了排版好看的怪產物，目前看到的格式為'{\W0.7;B4-2\P(80x100)}'，所以使用分號及反斜線來切
+        # 切爛了也不會報錯，直接反映在結果
+        if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and object.ObjectName == "AcDbMText":
+            beam = object.TextString
+            semicolon = beam.count(';')
+            size = ''
+            for i in range(semicolon + 1):
+                s = beam.split(';')[i]
+                if s[0] in beam_head1 or s[0:2] in beam_head2:
+                    if '(' in s:
+                        size = (((s.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
                         if 'x' not in size:
                             size = ''
-                        beam = beam.split('(')[0] # 取括號前內容即可
+                        s = s.split('(')[0]
+                    if '\\' in s:
+                        s = s.split('\\')[0]
+                    beam = s
+                    break
+            
+            coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+            coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+
+            if '(' in beam:
+                beam = beam.split('(')[0] # 取括號前內容即可
+            if ' ' in beam:
+                beam = beam.replace(' ', '') # 有空格要把空格拔掉
+            if beam[0] in beam_head1 or beam[0:2] in beam_head2:
+                try:
+                    coor_to_beam_set.add(((coor1, coor2), (beam, size, round(object.Rotation, 2))))
+                except:
+                    error(f'read_plan error in step 7: {(beam, size)} at {(coor1, coor2)} cannot find Rotation.')
+
+        # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
+        # 此處不會報錯
+
+        if object.Layer == block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
+            coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+            coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+            block_coor_list.append((coor1, coor2))
+        
+        # 找size
+
+        if sizing or mline_scaling:
+
+            if object.Layer == size_layer and object.EntityName == "AcDbText" and object.GetBoundingBox()[0][1] >= 0:
+                coor = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                if 'Gn' in object.TextString:
+                    if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Gn') >= 2):
+                        coor_to_size_beam.add((coor, 'CG'))
+                        coor_to_size_beam.add((coor, 'G'))
+                    elif 'C' in object.TextString and '(' not in object.TextString:
+                        coor_to_size_beam.add((coor, 'CG'))
+                    else:
+                        coor_to_size_beam.add((coor, 'G'))
+                if 'Bn' in object.TextString and 'W' not in object.TextString and 'D' not in object.TextString:
+                    if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Bn') >= 2):
+                        coor_to_size_beam.add((coor, 'CB'))
+                        coor_to_size_beam.add((coor, 'B'))
+                    elif 'C' in object.TextString and '(' not in object.TextString:
+                        coor_to_size_beam.add((coor, 'CB'))
+                    else:
+                        coor_to_size_beam.add((coor, 'B'))
+                if 'bn' in object.TextString:
+                    if 'c' in object.TextString and ('(' in object.TextString or object.TextString.count('bn') >= 2):
+                        coor_to_size_beam.add((coor, 'cb'))
+                        coor_to_size_beam.add((coor, 'b'))
+                    elif 'c' in object.TextString and '(' not in object.TextString:
+                        coor_to_size_beam.add((coor, 'cb'))
+                    else:
+                        coor_to_size_beam.add((coor, 'b'))
+                if 'g' in object.TextString:
                     comma_char = ','
                     for char in weird_comma_list:
-                        if char in beam:
+                        if char in object.TextString:
                             comma_char = char
-                    comma = beam.count(comma_char)
+                    comma = object.TextString.count(comma_char)
                     for i in range(comma + 1):
-                        try:
-                            coor_to_beam_set.add(((coor1, coor2), (beam.split(comma_char)[i], size, round(object.Rotation, 2))))
-                        except: # 只要不是0or1.57，後面核對的時候就會橫的值得都找。
-                            coor_to_beam_set.add(((coor1, coor2), (beam.split(comma_char)[i], size, 1)))
-                            error(f'read_plan error in step 7: {(beam, size)} at {(coor1, coor2)} cannot find Rotation.')
-
-                # 為了排版好看的怪產物，目前看到的格式為'{\W0.7;B4-2\P(80x100)}'，所以使用分號及反斜線來切
-                # 切爛了也不會報錯，直接反映在結果
-                if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and object.ObjectName == "AcDbMText":
-                    beam = object.TextString
-                    semicolon = beam.count(';')
-                    size = ''
-                    for i in range(semicolon + 1):
-                        s = beam.split(';')[i]
-                        if s[0] in beam_head1 or s[0:2] in beam_head2:
-                            if '(' in s:
-                                size = (((s.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
-                                if 'x' not in size:
-                                    size = ''
-                                s = s.split('(')[0]
-                            if '\\' in s:
-                                s = s.split('\\')[0]
-                            beam = s
-                            break
-                    
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-
-                    if '(' in beam:
-                        beam = beam.split('(')[0] # 取括號前內容即可
-                    if ' ' in beam:
-                        beam = beam.replace(' ', '') # 有空格要把空格拔掉
-                    if beam[0] in beam_head1 or beam[0:2] in beam_head2:
-                        try:
-                            coor_to_beam_set.add(((coor1, coor2), (beam, size, round(object.Rotation, 2))))
-                        except:
-                            error(f'read_plan error in step 7: {(beam, size)} at {(coor1, coor2)} cannot find Rotation.')
-
-                # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
-                # 此處不會報錯
-
-                if object.Layer == block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    block_coor_list.append((coor1, coor2))
-                
-                # 找size
-
-                if sizing or mline_scaling:
-
-                    if object.Layer == size_layer and object.EntityName == "AcDbText" and object.GetBoundingBox()[0][1] >= 0:
-                        coor = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        if 'Gn' in object.TextString:
-                            if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Gn') >= 2):
-                                coor_to_size_beam.add((coor, 'CG'))
-                                coor_to_size_beam.add((coor, 'G'))
-                            elif 'C' in object.TextString and '(' not in object.TextString:
-                                coor_to_size_beam.add((coor, 'CG'))
+                        beam = object.TextString.split(comma_char)[i]
+                        if 'g' in beam and beam.split('g')[1].isdigit():
+                            if 'c' in beam and '(' in beam:
+                                coor_to_size_beam.add((coor, beam.split(')')[1]))
+                                coor_to_size_beam.add((coor, f"c{beam.split(')')[1]}"))
                             else:
-                                coor_to_size_beam.add((coor, 'G'))
-                        if 'Bn' in object.TextString and 'W' not in object.TextString and 'D' not in object.TextString:
-                            if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Bn') >= 2):
-                                coor_to_size_beam.add((coor, 'CB'))
-                                coor_to_size_beam.add((coor, 'B'))
-                            elif 'C' in object.TextString and '(' not in object.TextString:
-                                coor_to_size_beam.add((coor, 'CB'))
-                            else:
-                                coor_to_size_beam.add((coor, 'B'))
-                        if 'bn' in object.TextString:
-                            if 'c' in object.TextString and ('(' in object.TextString or object.TextString.count('bn') >= 2):
-                                coor_to_size_beam.add((coor, 'cb'))
-                                coor_to_size_beam.add((coor, 'b'))
+                                coor_to_size_beam.add((coor, beam))
+                        elif 'g' in beam and beam.split('g')[1] != '' and beam.split('g')[1][0] == 'n':
+                            if 'c' in object.TextString and '(' in object.TextString:
+                                coor_to_size_beam.add((coor, 'cg'))
+                                coor_to_size_beam.add((coor, 'g'))
                             elif 'c' in object.TextString and '(' not in object.TextString:
-                                coor_to_size_beam.add((coor, 'cb'))
+                                coor_to_size_beam.add((coor, 'cg'))
                             else:
-                                coor_to_size_beam.add((coor, 'b'))
-                        if 'g' in object.TextString:
-                            comma_char = ','
-                            for char in weird_comma_list:
-                                if char in object.TextString:
-                                    comma_char = char
-                            comma = object.TextString.count(comma_char)
-                            for i in range(comma + 1):
-                                beam = object.TextString.split(comma_char)[i]
-                                if 'g' in beam and beam.split('g')[1].isdigit():
-                                    if 'c' in beam and '(' in beam:
-                                        coor_to_size_beam.add((coor, beam.split(')')[1]))
-                                        coor_to_size_beam.add((coor, f"c{beam.split(')')[1]}"))
-                                    else:
-                                        coor_to_size_beam.add((coor, beam))
-                                elif 'g' in beam and beam.split('g')[1] != '' and beam.split('g')[1][0] == 'n':
-                                    if 'c' in object.TextString and '(' in object.TextString:
-                                        coor_to_size_beam.add((coor, 'cg'))
-                                        coor_to_size_beam.add((coor, 'g'))
-                                    elif 'c' in object.TextString and '(' not in object.TextString:
-                                        coor_to_size_beam.add((coor, 'cg'))
-                                    else:
-                                        coor_to_size_beam.add((coor, 'g'))
-                        if 'x' in object.TextString or 'X' in object.TextString:
-                            string = (object.TextString.replace(' ', '')).replace('X', 'x')
-                            coor_to_size_string.add((coor, string))
-                    
-                # 找複線
-                if mline_scaling:
-                    if object.Layer in [big_beam_layer, sml_beam_layer] and object.ObjectName == "AcDbMline":
-                        start = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        end = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        x_diff = abs(start[0] - end[0])
-                        y_diff = abs(start[1] - end[1])
-                        mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
-                        if x_diff + y_diff > 100: # 防超短的東東
-                            if x_diff < y_diff: # 算直的, 1
-                                beam_direction_mid_scale_set.add((object.Layer, 1, mid, abs(object.MLineScale)))
-                            else: # 算橫的, 0
-                                beam_direction_mid_scale_set.add((object.Layer, 0, mid, abs(object.MLineScale)))
+                                coor_to_size_beam.add((coor, 'g'))
+                if 'x' in object.TextString or 'X' in object.TextString:
+                    string = (object.TextString.replace(' ', '')).replace('X', 'x')
+                    coor_to_size_string.add((coor, string))
             
-            flag = 1
+        # 找複線
+        if mline_scaling:
+            if object.Layer in [big_beam_layer, sml_beam_layer] and object.ObjectName == "AcDbMline":
+                start = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                end = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                x_diff = abs(start[0] - end[0])
+                y_diff = abs(start[1] - end[1])
+                mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
+                if x_diff + y_diff > 100: # 防超短的東東
+                    if x_diff < y_diff: # 算直的, 1
+                        beam_direction_mid_scale_set.add((object.Layer, 1, mid, abs(object.MLineScale)))
+                    else: # 算橫的, 0
+                        beam_direction_mid_scale_set.add((object.Layer, 0, mid, abs(object.MLineScale)))
+    
+    flag = 1
 
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(f'read_plan error in step 7: {e}, error_count = {error_count}.')
+        # except Exception as e:
+        #     error_count += 1
+        #     time.sleep(5)
+        #     error(f'read_plan error in step 7: {e}, error_count = {error_count}.')
 
     progress('平面圖讀取進度 7/13', progress_file)
 
@@ -1476,18 +1476,18 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
-    beam_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
-    plan_new_filename = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\big.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\sml.txt"#sys.argv[6] # 小梁結果
+    beam_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_new_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
+    plan_new_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
+    big_file = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-big.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-sml.txt"#sys.argv[6] # 小梁結果
 
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = '0'#sys.argv[8] # 框框的圖層
+    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
