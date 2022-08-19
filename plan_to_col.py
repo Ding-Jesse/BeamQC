@@ -19,52 +19,63 @@ weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡']
 
 def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
+    error_count = 0
     progress('開始讀取平面圖(核對項目: 柱配筋對應)', progress_file)
     # Step 1. 打開應用程式
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_plan error in step 1: {e}.')
-    progress('平面圖讀取進度 1/10', progress_file)
+            error(f'read_plan error in step 1: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 1/11', progress_file)
 
     # Step 2. 匯入檔案
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             doc_plan = wincad_plan.Documents.Open(plan_filename)
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_plan error in step 2: {e}.')
-    progress('平面圖讀取進度 2/10', progress_file)
+            error(f'read_plan error in step 2: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 2/11', progress_file)
 
     # Step 3. 匯入modelspace
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             msp_plan = doc_plan.Modelspace
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_plan error in step 3: {e}.')
-    progress('平面圖讀取進度 3/10', progress_file)
+            error(f'read_plan error in step 3: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 3/11', progress_file)
 
-    progress('XS-PLAN 正在炸圖塊，運行時間取決於平面圖大小，請耐心等候', progress_file)
-
-    # Step 4.0 解鎖所有圖層 -> 不然不能刪東西
-    layer_count = doc_plan.Layers.count
-
-    for x in range(layer_count):
-        layer = doc_plan.Layers.Item(x)
-        layer.Lock = False
-
-    # Step 4. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間 
+    # Step 4 解鎖所有圖層 -> 不然不能刪東西
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
+        try:
+            layer_count = doc_plan.Layers.count
+
+            for x in range(layer_count):
+                layer = doc_plan.Layers.Item(x)
+                layer.Lock = False
+            flag = 1
+        except Exception as e:
+            error_count += 1
+            time.sleep(5)
+            error(f'read_plan error in step 4: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 4/11', progress_file)
+
+    # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間 
+    flag = 0
+    while not flag and error_count <= 10:
         try:
             count = 0
             total = msp_plan.Count
@@ -80,30 +91,34 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 if count % 1000 == 0:
                     progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
             flag = 1
-            progress('平面圖讀取進度 4/10', progress_file)
+            
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_plan error in step 4: {e}.')
+            msp_plan = doc_plan.Modelspace
+            error(f'read_plan error in step 5: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 5/11', progress_file)
 
-    # Step 5. 重新匯入modelspace
+    # Step 6. 重新匯入modelspace
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             msp_plan = doc_plan.Modelspace
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_plan error in step 5: {e}.')
-    progress('平面圖讀取進度 5/10', progress_file)
+            error(f'read_plan error in step 6: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 6/11', progress_file)
     
-    # Step 6. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_col_set, block_coor_list
+    # Step 7. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_col_set, block_coor_list
     coor_to_floor_set = set() # set (字串的coor, floor)
     coor_to_col_set = set() # set (coor, col)
     coor_to_size_set = set() # set (coor, size)
     block_coor_list = [] # 存取方框最左下角的點座標
     progress('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候...', progress_file)
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             count = 0
             total = msp_plan.Count
@@ -126,7 +141,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                     if floor != '' and no_chinese:
                         coor_to_floor_set.add((coor, floor))
                     else:
-                        error(f'read_plan error in step 6: floor is an empty string. ')
+                        error(f'read_plan error in step 7: floor is an empty string. ')
                 # 取col的字串
                 if object.Layer == col_layer and object.ObjectName == "AcDbText" and (object.TextString[0] == 'C' or ('¡æ' in object.TextString and 'C' in object.TextString)) and 'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1]}"
@@ -154,11 +169,19 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             flag = 1
 
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_plan error in step 6: {e}.')
-    progress('平面圖讀取進度 6/10', progress_file)
+            error(f'read_plan error in step 7: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 7/11', progress_file)
 
-    # Step 7. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
+    if error_count > 10:
+        try:
+            doc_plan.Close(SaveChanges=False)
+        except:
+            pass
+        return 0
+    
+    # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
     floor_to_coor_set = set()
     for x in coor_to_floor_set: # set (字串的coor, floor)
@@ -171,9 +194,9 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0: # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
-    progress('平面圖讀取進度 7/10', progress_file)
+    progress('平面圖讀取進度 8/11', progress_file)
 
-    # Step 8. 算出Bmax, Fmax, Rmax
+    # Step 9. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
     Bmax = 0 # 地下最深到幾層(不包括FB不包括FB)
     Fmax = 0 # 正常樓最高到幾層
@@ -208,9 +231,9 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
-    progress('平面圖讀取進度 8/10', progress_file)
+    progress('平面圖讀取進度 9/11', progress_file)
 
-    # Step 9. 完成col_size_coor_set，格式: set(col, size, the coor of big_block(left, right, up, down))
+    # Step 10. 完成col_size_coor_set，格式: set(col, size, the coor of big_block(left, right, up, down))
     col_size_coor_set = set() 
     for x in coor_to_col_set:
         col_coor = x[0][0]
@@ -237,7 +260,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             down = min(col_full_coor[0][1], match_size_coor[0][1])
 
             col_size_coor_set.add((col_name, match_size, (left, right, up, down)))
-    progress('平面圖讀取進度 9/10', progress_file)
+    progress('平面圖讀取進度 10/11', progress_file)
     # # DEBUG: 檢查col跟size有沒有被圈在一起，或者被亂圈到其他地方
     # for x in col_size_coor_set:
     #     coor = x[2]
@@ -248,7 +271,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     #         pointobj.SetWidth(i, 10, 10)
     # return
 
-    # Step 10. 完成 set_plan 以及 dic_plan
+    # Step 11. 完成 set_plan 以及 dic_plan
     # 此處可能錯的地方在於找不到min_floor，可能原因: 1. 框框沒有被掃到, 導致東西在框框外面找不到家，2. 待補
     set_plan = set() # set元素為 (樓層, col, size)
     dic_plan = {} # 透過(樓層, col, size)去找col跟size的整體座標
@@ -304,7 +327,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                                 set_plan.add((turn_floor_to_string(i), col_name, col_size))
                                 dic_plan[(turn_floor_to_string(i), col_name, col_size)] = full_coor
                     except:
-                        error(f'read_plan error in step 10: The error above is from here.')
+                        error(f'read_plan error in step 11: The error above is from here.')
                     to_bool = True
                     break
             if not to_bool:
@@ -322,10 +345,10 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                         set_plan.add((new_floor, col_name, col_size))
                         dic_plan[(new_floor, col_name, col_size)] = full_coor
                     else:
-                        error(f'read_plan error in step 10: new_floor is false.')
+                        error(f'read_plan error in step 11: new_floor is false.')
         else:
-            error('read_plan error in step 10: min_floor cannot be found.')
-    progress('平面圖讀取進度 10/10', progress_file)
+            error('read_plan error in step 11: min_floor cannot be found.')
+    progress('平面圖讀取進度 11/11', progress_file)
     progress('平面圖讀取完畢。', progress_file)
     doc_plan.Close(SaveChanges=False)
 
@@ -341,51 +364,64 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     return (set_plan, dic_plan)
 
 def read_col(col_filename, text_layer, line_layer, result_filename, progress_file):
+    error_count = 0
     progress('開始讀取柱配筋圖', progress_file)
     # Step 1. 打開應用程式
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             wincad_col = win32com.client.Dispatch("AutoCAD.Application")
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_col error in step 1: {e}.')
-    progress('柱配筋圖讀取進度 1/9', progress_file)
+            error(f'read_col error in step 1: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 1/10', progress_file)
 
     # Step 2. 匯入檔案
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             doc_col = wincad_col.Documents.Open(col_filename)
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_col error in step 2: {e}.')
-    progress('柱配筋圖讀取進度 2/9', progress_file)
+            error(f'read_col error in step 2: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 2/10', progress_file)
 
     # Step 3. 匯入modelspace
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             msp_col = doc_col.Modelspace
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_col error in step 3: {e}.')
-    progress('柱配筋圖讀取進度 3/9', progress_file)
+            error(f'read_col error in step 3: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 3/10', progress_file)
 
-    # Step 4.0 解鎖所有圖層 -> 不然不能刪東西
-    layer_count = doc_col.Layers.count
-
-    for x in range(layer_count):
-        layer = doc_col.Layers.Item(x)
-        layer.Lock = False
-
-    # Step 4. 遍歷所有物件 -> 炸圖塊
-    # 炸圖塊看性質即可，不用看圖層   
+    # Step 4. 解鎖所有圖層 -> 不然不能刪東西
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
+        try:
+            layer_count = doc_col.Layers.count
+
+            for x in range(layer_count):
+                layer = doc_col.Layers.Item(x)
+                layer.Lock = False
+            flag = 1
+        except Exception as e:
+            error_count += 1
+            time.sleep(5)
+            msp_col = doc_col.Modelspace
+            error(f'read_col error in step 4: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 4/10', progress_file)
+
+    # Step 5. 遍歷所有物件 -> 炸圖塊  
+    flag = 0
+    while not flag and error_count <= 10:
         try:
             count = 0
             total = msp_col.Count
@@ -394,26 +430,30 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                 count += 1
                 if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
                     object.Explode()
+                if object.Layer not in layer_list:
+                    object.Delete()
                 if count % 1000 == 0:
                     progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_col error in step 4: {e}.')
-    progress('柱配筋圖讀取進度 4/9', progress_file)
+            error(f'read_col error in step 5: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 5/10', progress_file)
 
-    # Step 5. 重新匯入modelspace
+    # Step 6. 重新匯入modelspace
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             msp_col = doc_col.Modelspace
             flag = 1
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_col error in step 5: {e}.')
-    progress('柱配筋圖讀取進度 5/9', progress_file)
+            error(f'read_col error in step 6: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 6/10', progress_file)
 
-    # Step 6. 遍歷所有物件 -> 完成一堆座標對應的set跟list
+    # Step 7. 遍歷所有物件 -> 完成一堆座標對應的set跟list
     progress('正在遍歷柱配筋圖上所有物件並篩選出有效信息，運行時間取決於柱配筋圖大小，請耐心等候', progress_file)
     coor_to_floor_set = set() # set(coor, floor)
     coor_to_col_set = set() # set(coor, col)
@@ -421,7 +461,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
     coor_to_floor_line_list = [] # (橫線y座標, start, end)
     coor_to_col_line_list = [] # (縱線x座標, start, end)
     flag = 0
-    while not flag:
+    while not flag and error_count <= 10:
         try:
             count = 0
             total = msp_col.Count
@@ -463,11 +503,19 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             coor_to_col_line_list.sort(key = lambda x: x[0])
             coor_to_floor_line_list.sort(key = lambda x: x[0])
         except Exception as e:
+            error_count += 1
             time.sleep(5)
-            error(f'read_col error in step 6: {e}.')
-    progress('柱配筋圖讀取進度 6/9', progress_file)
+            error(f'read_col error in step 7: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 7/10', progress_file)
 
-    # Step 7. 完成col_to_line_set 格式:(col, left, right, up)
+    if error_count > 10:
+        try:
+            doc_col.Close(SaveChanges=False)
+        except:
+            pass
+        return 0
+
+    # Step 8. 完成col_to_line_set 格式:(col, left, right, up)
     col_to_line_set = set()
     for x in coor_to_col_set:
         coor = x[0]
@@ -482,9 +530,9 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
         for y in range(len(new_coor_to_col_line_list)): # 再看x座標被哪兩條線夾住
             if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
                 col_to_line_set.add((col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
-    progress('柱配筋圖讀取進度 7/9', progress_file)
+    progress('柱配筋圖讀取進度 8/10', progress_file)
 
-    # Step 8. 完成floor_to_line_set 格式:(floor, down, up, left)
+    # Step 9. 完成floor_to_line_set 格式:(floor, down, up, left)
     floor_to_line_set = set()
     for x in coor_to_floor_set:
         coor = x[0]
@@ -508,9 +556,9 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                     floor_to_line_set.add((floor, new_coor_to_floor_line_list[y-1][0], new_coor_to_floor_line_list[y+1][0], coor[0][0]))
         except:
             pass
-    progress('柱配筋圖讀取進度 8/9', progress_file)
+    progress('柱配筋圖讀取進度 9/10', progress_file)
 
-    # Step 9. 完成set_col和dic_col
+    # Step 10. 完成set_col和dic_col
     dic_col = {}
     set_col = set()
     for x in coor_to_size_set:
@@ -548,7 +596,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                 dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
     
     doc_col.Close(SaveChanges=False)
-    progress('柱配筋圖讀取進度 9/9', progress_file)
+    progress('柱配筋圖讀取進度 10/10', progress_file)
     progress('柱配筋圖讀取完成。', progress_file)
     # col.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w", encoding = 'utf-8')
@@ -562,6 +610,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
     return (set_col, dic_col)
 
 def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_filename, date, drawing, progress_file): # 完成 in plan but not in col 的部分並在圖上mark有問題的部分
+    error_count = 0
     progress("開始標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'。", progress_file)
     pythoncom.CoInitialize()
     set1 = set_plan - set_col
@@ -577,36 +626,41 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_plan error in step 1, {e}')
+                error(f'write_plan error in step 1, {e}, error_count = {error_count}.')
+        progress('平面圖標註進度 1/5', progress_file)
         # Step 2. 匯入檔案
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 doc_plan = wincad_plan.Documents.Open(plan_filename)
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_plan error in step 2, {e}')
+                error(f'write_plan error in step 2, {e}, error_count = {error_count}.')
+        progress('平面圖標註進度 2/5', progress_file)
         # Step 3. 載入modelspace(還要畫圖)
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 msp_plan = doc_plan.Modelspace
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_plan error in step 3, {e}')
+                error(f'write_plan error in step 3, {e}, error_count = {error_count}.')
         time.sleep(5)
-
+        progress('平面圖標註進度 3/5', progress_file)
         # Step 4. 設定mark的圖層
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
                 doc_plan.ActiveLayer = layer_plan
@@ -615,8 +669,17 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 layer_plan.Lineweight = 0.5
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_plan error in step 4, {e}')
+                error(f'write_plan error in step 4, {e}, error_count = {error_count}.')
+        progress('平面圖標註進度 4/5', progress_file)
+
+    if error_count > 10:
+        try:
+            doc_plan.Close(SaveChanges=False)
+        except:
+            pass
+        return 0
     
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
@@ -668,10 +731,12 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
         error(f'write_plan error in step 5, there are no col in plan.txt?')
 
     f.close()
+    progress('平面圖標註進度 5/5', progress_file)
     progress("標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'完成。", progress_file)
     return rate
 
 def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_filename, date, drawing, progress_file): # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
+    error_count = 0
     progress("開始標註柱配筋圖及輸出核對結果至'column.txt'。", progress_file)
     pythoncom.CoInitialize()
     set1 = set_plan - set_col
@@ -686,36 +751,41 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 wincad_col = win32com.client.Dispatch("AutoCAD.Application")
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_col error in step 1, {e}')
+                error(f'write_col error in step 1, {e}, error_count = {error_count}.')
+        progress('柱配筋圖標註進度 1/5', progress_file)
         # Step 2. 匯入檔案
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 doc_col = wincad_col.Documents.Open(col_filename)
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_col error in step 2, {e}')
+                error(f'write_col error in step 2, {e}, error_count = {error_count}.')
+        progress('柱配筋圖標註進度 2/5', progress_file)
         # Step 3. 載入modelspace(還要畫圖)
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 msp_col = doc_col.Modelspace
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_col error in step 3, {e}')
+                error(f'write_col error in step 3, {e}, error_count = {error_count}.')
         time.sleep(5)
-
+        progress('柱配筋圖標註進度 3/5', progress_file)
         # Step 4. 設定mark的圖層
         flag = 0
-        while not flag:
+        while not flag and error_count <= 10:
             try:
                 layer_col = doc_col.Layers.Add(f"S-CLOUD_{date}")
                 doc_col.ActiveLayer = layer_col
@@ -724,9 +794,18 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
                 layer_col.Lineweight = 0.5
                 flag = 1
             except Exception as e:
+                error_count += 1
                 time.sleep(5)
-                error(f'write_col error in step 4, {e}')
+                error(f'write_col error in step 4, {e}, error_count = {error_count}.')
+        progress('柱配筋圖標註進度 4/5', progress_file)
 
+    if error_count > 10:
+        try:
+            doc_col.Close(SaveChanges=False)
+        except:
+            pass
+        return 0
+    
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
     error_list = []
@@ -777,10 +856,10 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
         error(f'write_col error in step 5, there are no col in col.txt?')
     
     f.close()
+    progress('柱配筋圖標註進度 5/5', progress_file)
     progress("標註柱配筋圖及輸出核對結果至'column.txt'完成。", progress_file)
     return rate
 
-# 待改
 def write_result_log(excel_file, task_name, plan_not_col, col_not_plan,date, runtime, other):
     sheet_name = 'result_log'
     new_list = [(task_name, plan_not_col, col_not_plan, date, runtime, other)]
@@ -803,24 +882,24 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    col_filename = sys.argv[1] # XS-COL的路徑
-    plan_filename = sys.argv[2] # XS-PLAN的路徑
-    col_new_filename = sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = sys.argv[4] # XS-PLAN_new的路徑
-    result_file = sys.argv[5] # 柱配筋結果
+    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
+    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\column.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層
-    text_layer = sys.argv[6] # 文字的圖層
-    line_layer = sys.argv[7] # 線的圖層
+    text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
+    line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
 
     # 在plan裡面自訂圖層
-    block_layer = sys.argv[8] # 圖框的圖層
-    floor_layer = sys.argv[9] # 樓層字串的圖層
-    col_layer = sys.argv[10] # col的圖層
+    block_layer = '0'#sys.argv[8] # 圖框的圖層
+    floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
+    col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
 
-    task_name = sys.argv[11]
+    task_name = 'tmp'#sys.argv[11]
 
-    progress_file = sys.argv[12]
+    progress_file = './result/tmp'#sys.argv[12]
 
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑

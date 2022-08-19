@@ -28,10 +28,10 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
     dic_beam = {}
 
     for plan_filename in plan_filenames:
-        res_plan.append = pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date))
+        res_plan.append(pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date)))
     
     for beam_filename in beam_filenames:
-        res_beam.append = pool.apply_async(read_beam, (beam_filename, text_layer, beam_file, progress_file, sizing))
+        res_beam.append(pool.apply_async(read_beam, (beam_filename, text_layer, beam_file, progress_file, sizing)))
     
     plan_drawing = 0
     if len(plan_filenames) == 1:
@@ -41,16 +41,26 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
         beam_drawing = 1
 
     for plan in res_plan:
-        plan = plan.get()
-        set_plan = set_plan | plan[0]
-        if plan_drawing:
-            dic_plan = plan[1]
+        if plan:
+            plan = plan.get()
+            set_plan = set_plan | plan[0]
+            if plan_drawing:
+                dic_plan = plan[1]
+        else:
+            end = time.time()
+            write_result_log(excel_file, task_name, '', '', '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            return
 
     for beam in res_beam:
-        beam = beam.get()
-        set_beam = set_beam | beam[0]
-        if beam_drawing:
-            dic_beam = beam[1]
+        if beam:
+            beam = beam.get()
+            set_beam = set_beam | beam[0]
+            if beam_drawing:
+                dic_beam = beam[1]
+        else:
+            end = time.time()
+            write_result_log(excel_file, task_name, '', '', '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            return
 
     plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, plan_drawing, progress_file, sizing, mline_scaling)
     beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, beam_drawing, progress_file, sizing)
@@ -88,17 +98,27 @@ def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_fil
         col_drawing = 1
 
     for plan in res_plan:
-        plan = plan.get()
-        set_plan = set_plan | plan[0]
-        if plan_drawing:
-            dic_plan = plan[1]
+        if plan:
+            plan = plan.get()
+            set_plan = set_plan | plan[0]
+            if plan_drawing:
+                dic_plan = plan[1]
+        else:
+            end = time.time()
+            plan_to_col.write_result_log(excel_file,task_name,'','', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            return 
 
     for col in res_col:
-        col = col.get()
-        set_col = set_col | col[0]
-        if col_drawing:
-            dic_col = col[1]
-    
+        if col:
+            col = col.get()
+            set_col = set_col | col[0]
+            if col_drawing:
+                dic_col = col[1]
+        else:
+            end = time.time()
+            plan_to_col.write_result_log(excel_file,task_name,'','', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            return 
+                
     plan_result = plan_to_col.write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, plan_drawing, progress_file)
     col_result = plan_to_col.write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date,col_drawing, progress_file)
 
