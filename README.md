@@ -15,7 +15,7 @@ Clone this repo:
 git clone https://github.com/bamboochen92518/BeamQC
 ```
 
-## File structure
+## File Structure
 ### `nginx`
 ```
 |__ /
