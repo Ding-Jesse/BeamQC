@@ -209,7 +209,10 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             error_count += 1
             time.sleep(5)
             error(f'read_plan error in step 5: {e}, error_count = {error_count}.')
-            msp_plan = doc_plan.Modelspace
+            try:
+                msp_plan = doc_plan.Modelspace
+            except:
+                pass
 
     progress('平面圖讀取進度 5/13', progress_file)
 
@@ -927,7 +930,10 @@ def read_beam(beam_filename, text_layer, result_filename, progress_file, sizing)
             error_count += 1
             time.sleep(5)
             error(f'read_beam error in step 5: {e}, error_count = {error_count}.')
-            msp_beam = doc_beam.Modelspace
+            try:
+                msp_beam = doc_beam.Modelspace
+            except:
+                pass
     progress('梁配筋圖讀取進度 5/9', progress_file)
 
     # Step 6. 重新匯入modelspace
@@ -1176,6 +1182,8 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     sml_error = 0
     err_list_big = []
     err_list_sml = []
+    err_list_big_size = []
+    err_list_sml_size = []
     for x in list1: 
         if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
             wrong_data = 0
@@ -1184,9 +1192,10 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if x[2] != '':
                             err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct) 0是尺寸錯誤
+                            wrong_data = 1
                         else:
-                            f_big.write(f'{x}: 找不到尺寸\n')
-                        wrong_data = 1
+                            err_list_big_size.append(f'{(x[0], x[1])}\n')
+                        
                         break
             if not wrong_data:
                 err_list_big.append((x, 1)) # type(tuple of floor and wrong beam, err_message) 1是找不到梁            
@@ -1199,10 +1208,10 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if x[2] != '':
                             err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-                            # f_sml.write(f'{x}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
+                            wrong_data = 1
                         else:
-                            f_sml.write(f'{x}: 找不到尺寸\n')
-                        wrong_data = 1
+                            err_list_sml_size.append(f'{(x[0], x[1])}\n')
+                        
                         break
             if not wrong_data:   
                 err_list_sml.append((x, 1)) # type(tuple of floor and wrong beam, err_message)   
@@ -1225,6 +1234,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
             f_big.write(f'{y[0]}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
         else:
             f_big.write(f'{y[0]}: 找不到這根梁\n')
+    
     for y in err_list_sml:
         if y[1] == 0:
             f_sml.write(f'{y[0]}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
@@ -1248,16 +1258,30 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     try:
         big_rate = round(big_error / big_count * 100, 2)
         f_big.write(f'error rate = {big_rate} %\n')
+        
     except:
         big_rate = 'unfinish'
         error(f'write_plan error in step 5, there are no big beam in plan.txt?')
     
+    if len(err_list_big_size):
+        f_big.write(f'備註: (平面圖找不到尺寸)\n')
+        for y in err_list_big_size:
+            f_big.write(y)
+    f_big.write(f'\n')
+
     try:
         sml_rate = round(sml_error / sml_count * 100, 2)
         f_sml.write(f'error rate = {sml_rate} %\n')
+        
     except:
         sml_rate = 'unfinish'
         error(f'write_plan error in step 5, there are no small beam in plan.txt?')
+
+    if len(err_list_sml_size):
+        f_sml.write(f'備註: (平面圖找不到尺寸)\n')
+        for y in err_list_sml_size:
+            f_sml.write(y)
+    f_sml.write(f'\n')
 
     f_big.close()
     f_sml.close()
@@ -1355,8 +1379,7 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if y[2] != '':
                             err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-                        else:
-                            f_big.write(f'{x}: XS-PLAN找不到尺寸\n')
+
                         wrong_data = 1
                         break
             if not wrong_data:
@@ -1369,8 +1392,7 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if y[2] != '':
                             err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-                        else:
-                            f_sml.write(f'{x}: XS-PLAN找不到尺寸\n')
+
                         wrong_data = 1
                         break
             if not wrong_data:   

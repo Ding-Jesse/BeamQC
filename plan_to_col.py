@@ -95,7 +95,10 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         except Exception as e:
             error_count += 1
             time.sleep(5)
-            msp_plan = doc_plan.Modelspace
+            try:
+                msp_plan = doc_plan.Modelspace
+            except:
+                pass
             error(f'read_plan error in step 5: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 5/11', progress_file)
 
@@ -438,6 +441,10 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
         except Exception as e:
             error_count += 1
             time.sleep(5)
+            try:
+                msp_col = doc_col.Modelspace
+            except:
+                pass
             error(f'read_col error in step 5: {e}, error_count = {error_count}.')
     progress('柱配筋圖讀取進度 5/10', progress_file)
 
