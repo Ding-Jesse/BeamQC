@@ -70,4 +70,4 @@ Then you can visit the webpage from http://localhost
 
 Visit our webpage and try it by yourself!!!
 
-Link: http://www.freerccheck.com.tw/as
+Link: http://www.freerccheck.com.tw
