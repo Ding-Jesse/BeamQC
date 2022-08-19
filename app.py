@@ -63,7 +63,9 @@ def upload_file():
         block_layer = request.form['block_layer']
         floor_layer = request.form['floor_layer']
         big_beam_layer = request.form['big_beam_layer']
+        big_beam_text_layer = request.form['big_beam_text_layer']
         sml_beam_layer = request.form['sml_beam_layer']
+        sml_beam_text_layer = request.form['sml_beam_text_layer']
         size_layer = request.form['size_layer']
         col_layer = request.form['col_layer']
 
@@ -109,13 +111,13 @@ def upload_file():
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
             sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
-            main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,block_layer,project_name)
+            main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,text_layer,block_layer,floor_layer,size_layer,big_beam_layer,big_beam_text_layer,sml_beam_layer,sml_beam_text_layer,project_name,progress_file,sizing,mline_scaling)
             filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt']
             filenames.extend(filenames_beam) 
         if column_ok and plan_ok:
             # main function
             txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-column.txt')
-            main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,block_layer,project_name)
+            main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,text_col_layer,line_layer,block_layer,floor_layer,col_layer,project_name,progress_file)
             filenames_column = [f'{project_name}-column.txt']
             filenames.extend(filenames_column)
         if column_ok or beam_ok:
@@ -150,9 +152,9 @@ def tutorial():
 def secret():
     return render_template('secret.html')
 
-@app.route('/tool4')
-def tool4():
-    return render_template('tool4.html')
+@app.route('/NOT_FOUND')
+def NOT_FOUND():
+    return render_template('404.html')
 
 @app.route('/tool5')
 def tool5():
@@ -181,8 +183,8 @@ def listen(project_name):
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
-
+    return redirect(url_for('NOT_FOUND'))
 
 if __name__ == '__main__':
-    app.run(host = '192.168.0.189',debug=True,port=8080)
+
+    app.run(host = '192.168.1.102',debug=True,port=8080)
