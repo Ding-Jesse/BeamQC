@@ -179,7 +179,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             doc_plan.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
     
     # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
@@ -513,7 +513,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             doc_col.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
 
     # Step 8. 完成col_to_line_set 格式:(col, left, right, up)
     col_to_line_set = set()
@@ -679,7 +679,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
             doc_plan.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
     
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0
@@ -804,7 +804,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
             doc_col.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
     
     # Step 5. 完成in plan but not in col，畫圖，以及計算錯誤率
     error_num = 0

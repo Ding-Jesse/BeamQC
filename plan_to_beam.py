@@ -93,7 +93,7 @@ def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
 
 def error(error_message): # 把錯誤訊息印到error.log裡面
-    f = open(error_file, 'a')
+    f = open(error_file, 'a', encoding = 'utf-8')
     localtime = time.asctime(time.localtime(time.time()))
     f.write(f'{localtime} | {error_message}\n')
     f.close
@@ -417,7 +417,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             doc_plan.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
     
     # Step 8. 完成size_coor_set (size_beam, size_string, size_coor), Ex. 把表格中的 'Bn' 跟 '50x70' 連起來
 
@@ -983,7 +983,7 @@ def read_beam(beam_filename, text_layer, result_filename, progress_file, sizing)
             doc_beam.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
 
     # Step 8. 算出Bmax, Fmax, Rmax
     Bmax = 0
@@ -1169,7 +1169,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
             doc_plan.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
     
     # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
     big_error = 0
@@ -1339,7 +1339,7 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
             doc_beam.Close(SaveChanges=False)
         except:
             pass
-        return 0
+        return False
 
     # Step 5. 完成in beam but not in plan，畫圖，以及計算錯誤率
     big_error = 0

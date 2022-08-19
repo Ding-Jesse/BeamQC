@@ -41,8 +41,8 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
         beam_drawing = 1
 
     for plan in res_plan:
+        plan = plan.get()
         if plan:
-            plan = plan.get()
             set_plan = set_plan | plan[0]
             if plan_drawing:
                 dic_plan = plan[1]
@@ -52,8 +52,8 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
             return
 
     for beam in res_beam:
+        beam = beam.get()
         if beam:
-            beam = beam.get()
             set_beam = set_beam | beam[0]
             if beam_drawing:
                 dic_beam = beam[1]
@@ -98,8 +98,8 @@ def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_fil
         col_drawing = 1
 
     for plan in res_plan:
+        plan = plan.get()
         if plan:
-            plan = plan.get()
             set_plan = set_plan | plan[0]
             if plan_drawing:
                 dic_plan = plan[1]
@@ -109,8 +109,8 @@ def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_fil
             return 
 
     for col in res_col:
+        col = col.get()
         if col:
-            col = col.get()
             set_col = set_col | col[0]
             if col_drawing:
                 dic_col = col[1]
