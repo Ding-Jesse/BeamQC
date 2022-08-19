@@ -576,28 +576,29 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
         min_floor = ''
         for z in floor_to_coor_set: # set (floor, block左下角和右上角的coor)
             floor_name = z[0]
-            block_coor = z[1] 
+            block_coor = z[1]
             x_diff_left = beam_coor[0] - block_coor[0][0] # 和左下角的diff
             y_diff_left = beam_coor[1] - block_coor[0][1]
             x_diff_right = beam_coor[0] - block_coor[1][0] # 和右上角的diff
             y_diff_right = beam_coor[1] - block_coor[1][1]
-            if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:                    
+            if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:             
                 if min_floor == '' or min_floor == floor_name:
                     min_floor = floor_name
 
-                else: # 有很多層在同一個block, 仍然透過字串的coor找樓層
-                    new_min = 1000000
-                    new_min_floor = ''
+                else: # 有很多層在同一個block, 仍然透過字串的coor找樓層 -> 應從已知選項找最適合的，而不是全部重找，這樣會找到框框外面的東西
                     for y in coor_to_floor_set: # set(字串的coor, floor)
-                        string_coor = y[0]
-                        new_floor = y[1]
-                        new_x_diff = abs(beam_coor[0] - string_coor[0])
-                        new_y_diff = beam_coor[1] - string_coor[1]
-                        new_total = new_x_diff + new_y_diff
-                        if new_y_diff > 0 and new_total < new_min:
-                            new_min = new_total
-                            new_min_floor = new_floor
-                    min_floor = new_min_floor
+                        if y[1] == min_floor:
+                            string_coor = y[0]
+                            x_diff = abs(beam_coor[0] - string_coor[0])
+                            y_diff = beam_coor[1] - string_coor[1]
+                            total = x_diff + y_diff
+                        if y[1] == floor_name:
+                            string_coor = y[0]
+                            new_x_diff = abs(beam_coor[0] - string_coor[0])
+                            new_y_diff = beam_coor[1] - string_coor[1]
+                            new_total = new_x_diff + new_y_diff
+                    if new_y_diff > 0 and new_total < total:
+                        min_floor = floor_name
 
         floor = min_floor
 
@@ -640,7 +641,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                         floor_list.append(new_floor)
                     else:
                         error(f'read_plan error in step 12: new_floor is false.')
-
+            
             # 樓層找到之後要去表格對自己的size多大(如果size = ''的話)
             
             for floor in floor_list:

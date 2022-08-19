@@ -296,18 +296,19 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                     min_floor = floor_name
 
                 else: # 有很多層在同一個block, 仍然透過字串的coor找樓層
-                    new_min = 1000000
-                    new_min_floor = ''
-                    for y in coor_to_floor_set: # set(字串的coor, floor)
-                        string_coor = y[0]
-                        new_floor = y[1]
-                        new_x_diff = abs(col_coor[0] - string_coor[0])
-                        new_y_diff = col_coor[1] - string_coor[1]
-                        new_total = new_x_diff + new_y_diff
-                        if new_y_diff > 0 and new_total < new_min:
-                            new_min = new_total
-                            new_min_floor = new_floor
-                    min_floor = new_min_floor
+                    for y in coor_to_floor_set:
+                        if y[1] == min_floor:
+                            string_coor = y[0]
+                            x_diff = abs(col_coor[0] - string_coor[0])
+                            y_diff = col_coor[1] - string_coor[1]
+                            total = x_diff + y_diff
+                        if y[1] == floor_name:
+                            string_coor = y[0]
+                            new_x_diff = abs(col_coor[0] - string_coor[0])
+                            new_y_diff = col_coor[1] - string_coor[1]
+                            new_total = new_x_diff + new_y_diff
+                    if new_y_diff > 0 and new_total < total:
+                        min_floor = floor_name
 
         floor = min_floor
 
