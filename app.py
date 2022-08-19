@@ -165,20 +165,24 @@ def login():
         return redirect(url_for('home'))
     return render_template('statement.html', template_folder='./')
 
-if __name__ == '__main__':
-
-    app.run(host = '192.168.0.143',debug=True,port=8080)
-
 @app.route("/listen/<project_name>/")
 def listen(project_name):
 
   def respond_to_client():
     while True:
-      f = open(f'./OUTPUT/{project_name}_progress', 'r', encoding="utf-8") 
+      f = open(f'./OUTPUT/{project_name}_progress', 'a+', encoding="utf-8") 
       lines = f.readlines() #一行一行讀
       color = 'white'
       _data = json.dumps({"color":color, "counter":''.join(lines)}, ensure_ascii=False)
       yield f"id: 1\ndata: {_data}\nevent: online\n\n"
-      time.sleep(1)
+      time.sleep(5)
       f.close
   return Response(respond_to_client(), mimetype='text/event-stream')
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+
+if __name__ == '__main__':
+    app.run(host = '192.168.0.189',debug=True,port=8080)
