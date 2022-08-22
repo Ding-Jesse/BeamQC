@@ -13,7 +13,7 @@ import pandas as pd
 import sys
 from functools import cmp_to_key
 
-from plan_to_beam import turn_floor_to_float, turn_floor_to_string, floor_exist, vtFloat, error, mycmp, progress
+from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, mycmp, progress
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡']
@@ -177,6 +177,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             error(f'read_plan error in step 7: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 7/11', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_plan.Close(SaveChanges=False)
@@ -236,6 +237,34 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 Rmax = x
     progress('平面圖讀取進度 9/11', progress_file)
 
+    # 先把不合理的樓層踢掉
+    new_floor_to_coor_list = []
+    for x in floor_to_coor_set:
+        floor_name = x[0]
+        block_coor = x[1] 
+        floor_list = turn_floor_to_list(floor_name, Bmax, Fmax, Rmax)
+        if len(floor_list) != 0:
+            new_floor_to_coor_list.append((floor_list, block_coor))
+
+    floor_to_coor_set = new_floor_to_coor_list
+    
+    for x in floor_to_coor_set:
+        print(x)
+    
+    new_coor_to_floor_list = []
+    for x in coor_to_floor_set:
+        string_coor = x[0]
+        floor_name = x[1] 
+        floor_list = turn_floor_to_list(floor_name, Bmax, Fmax, Rmax)
+        if len(floor_list) != 0:
+            new_coor_to_floor_list.append((string_coor, floor_list))
+
+    coor_to_floor_set = new_coor_to_floor_list
+    
+    print('---')
+    for x in coor_to_floor_set:
+        print(x)
+    
     # Step 10. 完成col_size_coor_set，格式: set(col, size, the coor of big_block(left, right, up, down))
     col_size_coor_set = set() 
     for x in coor_to_col_set:
@@ -285,16 +314,17 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         col_size = x[1]
         min_floor = ''
         for z in floor_to_coor_set: # set (floor, block左下角和右上角的coor)
-            floor_name = z[0]
+            floor_list = z[0]
             block_coor = z[1] 
             x_diff_left = col_coor[0] - block_coor[0][0] # 和左下角的diff
             y_diff_left = col_coor[1] - block_coor[0][1]
             x_diff_right = col_coor[0] - block_coor[1][0] # 和右上角的diff
             y_diff_right = col_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:                    
-                if min_floor == '' or min_floor == floor_name:
-                    min_floor = floor_name
+                if min_floor == '' or min_floor == floor_list:
+                    min_floor = floor_list
 
+                
                 else: # 有很多層在同一個block, 仍然透過字串的coor找樓層
                     for y in coor_to_floor_set:
                         if y[1] == min_floor:
@@ -302,56 +332,23 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                             x_diff = abs(col_coor[0] - string_coor[0])
                             y_diff = col_coor[1] - string_coor[1]
                             total = x_diff + y_diff
-                        if y[1] == floor_name:
+                        if y[1] == floor_list:
                             string_coor = y[0]
                             new_x_diff = abs(col_coor[0] - string_coor[0])
                             new_y_diff = col_coor[1] - string_coor[1]
                             new_total = new_x_diff + new_y_diff
-                    if new_y_diff > 0 and new_total < total:
-                        min_floor = floor_name
+                    if (new_y_diff > 0 and y_diff > 0 and new_total < total) or y_diff < 0:
+                        min_floor = floor_list
+                        
+        floor_list = min_floor
 
-        floor = min_floor
-
-        if floor != '':
-            to_bool = False
-            for char in weird_to_list:
-                if char in floor:
-                    to_char = char
-                    start = floor.split(to_char)[0]
-                    end = floor.split(to_char)[1]
-                    try:
-                        start = int(turn_floor_to_float(start))
-                        end = int(turn_floor_to_float(end))
-                        if start > end:
-                            tmp = start
-                            start = end
-                            end = tmp
-                        for i in range(start, end + 1):
-                            if floor_exist(i, Bmax, Fmax, Rmax):
-                                set_plan.add((turn_floor_to_string(i), col_name, col_size))
-                                dic_plan[(turn_floor_to_string(i), col_name, col_size)] = full_coor
-                    except:
-                        error(f'read_plan error in step 11: The error above is from here.')
-                    to_bool = True
-                    break
-            if not to_bool:
-                comma_char = ','
-                for char in weird_comma_list:
-                    if char in floor:
-                        comma_char = char
-                        break
-                comma = floor.count(comma_char)
-                for i in range(comma + 1):
-                    new_floor = floor.split(comma_char)[i]
-                    new_floor = turn_floor_to_float(new_floor)
-                    new_floor = turn_floor_to_string(new_floor)
-                    if new_floor:
-                        set_plan.add((new_floor, col_name, col_size))
-                        dic_plan[(new_floor, col_name, col_size)] = full_coor
-                    else:
-                        error(f'read_plan error in step 11: new_floor is false.')
+        if floor_list != '':
+            for floor in floor_list:
+                set_plan.add((floor, col_name, col_size))
+                dic_plan[(floor, col_name, col_size)] = full_coor
         else:
             error('read_plan error in step 11: min_floor cannot be found.')
+            
     progress('平面圖讀取進度 11/11', progress_file)
     progress('平面圖讀取完畢。', progress_file)
     doc_plan.Close(SaveChanges=False)
@@ -516,6 +513,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             error(f'read_col error in step 7: {e}, error_count = {error_count}.')
     progress('柱配筋圖讀取進度 7/10', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_col.Close(SaveChanges=False)
@@ -682,6 +680,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 error(f'write_plan error in step 4, {e}, error_count = {error_count}.')
         progress('平面圖標註進度 4/5', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_plan.Close(SaveChanges=False)
@@ -807,6 +806,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
                 error(f'write_col error in step 4, {e}, error_count = {error_count}.')
         progress('柱配筋圖標註進度 4/5', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_col.Close(SaveChanges=False)
@@ -893,7 +893,7 @@ if __name__=='__main__':
     col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
     plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
     col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
     result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\column.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層

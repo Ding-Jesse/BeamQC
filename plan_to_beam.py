@@ -74,6 +74,47 @@ def turn_floor_to_string(floor): # 把數字變回字串
 
     return floor
 
+def turn_floor_to_list(floor, Bmax, Fmax, Rmax):
+    floor_list = []
+    to_bool = False
+    for char in weird_to_list:
+        if char in floor:
+            to_char = char
+            start = floor.split(to_char)[0]
+            end = floor.split(to_char)[1]
+            try:
+                start = int(turn_floor_to_float(start))
+                end = int(turn_floor_to_float(end))
+                if start > end:
+                    tmp = start
+                    start = end
+                    end = tmp
+                for i in range(start, end + 1):
+                    if floor_exist(i, Bmax, Fmax, Rmax):
+                        floor_list.append(turn_floor_to_string(i))
+            except:
+                error(f'turn_floor_to_list error: {floor} cannot be turned to list.')
+            to_bool = True
+            break
+
+    if not to_bool:
+        comma_char = ','
+        for char in weird_comma_list:
+            if char in floor:
+                comma_char = char
+                break
+        comma = floor.count(comma_char)
+        for i in range(comma + 1):
+            new_floor = floor.split(comma_char)[i]
+            new_floor = turn_floor_to_float(new_floor)
+            new_floor = turn_floor_to_string(new_floor)
+            if new_floor:
+                floor_list.append(new_floor)
+            else:
+                error(f'turn_floor_to_list error: {floor} cannot be turned to list.')
+                
+    return floor_list
+
 def floor_exist(i, Bmax, Fmax, Rmax): # 判斷是否為空號，例如B2F-PRF會從-2跑到2000，但顯然區間裡面的值不可能都合法
     if i == -1000 or i == 2000: 
         return True
@@ -250,7 +291,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             progress(f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
             for object in msp_plan:
                 count += 1
-                if count % 1000 == 0:
+                if count % 1000 == 0 or count == total:
                     progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
 
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
@@ -283,6 +324,14 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                         size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
                         if 'x' not in size:
                             size = ''
+                        else:
+                            try:
+                                first = size.split('x')[0]
+                                second = size.split('x')[1]
+                                if not (float(first) and float(second)):
+                                    size = ''
+                            except:
+                                size = ''
                         beam = beam.split('(')[0] # 取括號前內容即可
                     comma_char = ','
                     for char in weird_comma_list:
@@ -309,6 +358,14 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                                 size = (((s.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
                                 if 'x' not in size:
                                     size = ''
+                                else:
+                                    try:
+                                        first = size.split('x')[0]
+                                        second = size.split('x')[1]
+                                        if not (float(first) and float(second)):
+                                            size = ''
+                                    except:
+                                        size = ''
                                 s = s.split('(')[0]
                             if '\\' in s:
                                 s = s.split('\\')[0]
@@ -390,7 +447,13 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                                         coor_to_size_beam.add((coor, 'g'))
                         if 'x' in object.TextString or 'X' in object.TextString:
                             string = (object.TextString.replace(' ', '')).replace('X', 'x')
-                            coor_to_size_string.add((coor, string))
+                            try:
+                                first = string.split('x')[0]
+                                second = string.split('x')[1]
+                                if float(first) and float(second):
+                                    coor_to_size_string.add((coor, string))
+                            except:
+                                pass
                     
                 # 找複線
                 if mline_scaling:
@@ -415,6 +478,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
 
     progress('平面圖讀取進度 7/13', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_plan.Close(SaveChanges=False)
@@ -430,7 +494,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             coor = x[0]
             size_beam = x[1]
             min_size = ''
-            min_dist = 100000
+            min_dist = 10000
             for y in coor_to_size_string:
                 coor2 = y[0]
                 size_string = y[1]
@@ -492,6 +556,35 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
+    
+    # 先把不合理的樓層踢掉
+    new_floor_to_coor_list = []
+    for x in floor_to_coor_set:
+        floor_name = x[0]
+        block_coor = x[1] 
+        floor_list = turn_floor_to_list(floor_name, Bmax, Fmax, Rmax)
+        if len(floor_list) != 0:
+            new_floor_to_coor_list.append((floor_list, block_coor))
+
+    floor_to_coor_set = new_floor_to_coor_list
+    
+    for x in floor_to_coor_set:
+        print(x)
+        
+    new_coor_to_floor_list = []
+    for x in coor_to_floor_set:
+        string_coor = x[0]
+        floor_name = x[1] 
+        floor_list = turn_floor_to_list(floor_name, Bmax, Fmax, Rmax)
+        if len(floor_list) != 0:
+            new_coor_to_floor_list.append((string_coor, floor_list))
+
+    coor_to_floor_set = new_coor_to_floor_list
+    
+    print('---')
+    for x in coor_to_floor_set:
+        print(x)
+    
     progress('平面圖讀取進度 10/13', progress_file)
 
     # Step 11. 完成floor_beam_size_coor_set (floor, beam, size, coor), 找表格內的物件在哪一個框框裡面，進而找到所屬樓層
@@ -503,55 +596,22 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             size_string = x[1]
             size_beam = x[0]
             min_floor = []
-            for z in floor_to_coor_set: # set (floor, block左下角和右上角的coor)
-                floor_name = z[0]
+            for z in floor_to_coor_set: # list (floor_list, block左下角和右上角的coor)
+                floor_list = z[0]
                 block_coor = z[1] 
                 x_diff_left = size_coor[0] - block_coor[0][0] # 和左下角的diff
                 y_diff_left = size_coor[1] - block_coor[0][1]
                 x_diff_right = size_coor[0] - block_coor[1][0] # 和右上角的diff
                 y_diff_right = size_coor[1] - block_coor[1][1]
                 if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:                    
-                    if len(min_floor) == 0 or min_floor[0] != floor_name:
-                        min_floor.append(floor_name)
+                    if len(min_floor) == 0 or min_floor[0] != floor_list:
+                        min_floor.append(floor_list)
 
             if len(min_floor) != 0:
                 for i in range(len(min_floor)):
-                    floor = min_floor[i]                            
-                    to_bool = False
-                    for char in weird_to_list:
-                        if char in floor:
-                            to_char = char
-                            start = floor.split(to_char)[0]
-                            end = floor.split(to_char)[1]
-                            try:
-                                start = int(turn_floor_to_float(start))
-                                end = int(turn_floor_to_float(end))
-                                if start > end:
-                                    tmp = start
-                                    start = end
-                                    end = tmp
-                                for i in range(start, end + 1):
-                                    if floor_exist(i, Bmax, Fmax, Rmax):
-                                        floor_beam_size_coor_set.add((turn_floor_to_string(i), size_beam, size_string, size_coor))
-                            except:
-                                error(f'read_plan error in step 11: The error above is from here.')
-                            to_bool = True
-                            break
-                    if not to_bool:
-                        comma_char = ','
-                        for char in weird_comma_list:
-                            if char in floor:
-                                comma_char = char
-                                break
-                        comma = floor.count(comma_char)
-                        for i in range(comma + 1):
-                            new_floor = floor.split(comma_char)[i]
-                            new_floor = turn_floor_to_float(new_floor)
-                            new_floor = turn_floor_to_string(new_floor)
-                            if new_floor:
-                                floor_beam_size_coor_set.add((new_floor, size_beam, size_string, size_coor))
-                            else:
-                                error(f'read_plan error in step 11: {(size_beam, size_string, size_coor)} cannot find new_floor.')
+                    floor_list = min_floor[i]
+                    for floor in floor_list:
+                        floor_beam_size_coor_set.add((floor, size_beam, size_string, size_coor))                            
             else:
                 error(f'read_plan error in step 11: {(size_beam, size_string, size_coor)} cannot find min_floor.')
     progress('平面圖讀取進度 11/13', progress_file)
@@ -565,7 +625,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
     # 如果沒有要對size -> set元素為 (floor, beam)
     # 如果有要對size但沒有要對mline -> set元素為 (floor, beam, size)
     # 如果有要對size和mline -> set元素為 (floor, beam, size, rotate)
-
+    
     # 遍歷所有beam，找這是幾樓的
     for x in coor_to_beam_set: # set(coor, (beam, size))
         beam_coor = x[0][0] # 取左下角即可
@@ -574,16 +634,16 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
         beam_size = x[1][1]
         beam_rotate = x[1][2]
         min_floor = ''
-        for z in floor_to_coor_set: # set (floor, block左下角和右上角的coor)
-            floor_name = z[0]
+        for z in floor_to_coor_set: # 我其實是list歐哈哈 (floor_list, block左下角和右上角的coor)
+            floor_list = z[0]
             block_coor = z[1]
             x_diff_left = beam_coor[0] - block_coor[0][0] # 和左下角的diff
             y_diff_left = beam_coor[1] - block_coor[0][1]
             x_diff_right = beam_coor[0] - block_coor[1][0] # 和右上角的diff
             y_diff_right = beam_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:             
-                if min_floor == '' or min_floor == floor_name:
-                    min_floor = floor_name
+                if min_floor == '' or min_floor == floor_list:
+                    min_floor = floor_list
 
                 else: # 有很多層在同一個block, 仍然透過字串的coor找樓層 -> 應從已知選項找最適合的，而不是全部重找，這樣會找到框框外面的東西
                     for y in coor_to_floor_set: # set(字串的coor, floor)
@@ -592,62 +652,23 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                             x_diff = abs(beam_coor[0] - string_coor[0])
                             y_diff = beam_coor[1] - string_coor[1]
                             total = x_diff + y_diff
-                        if y[1] == floor_name:
+                        if y[1] == floor_list:
                             string_coor = y[0]
                             new_x_diff = abs(beam_coor[0] - string_coor[0])
                             new_y_diff = beam_coor[1] - string_coor[1]
                             new_total = new_x_diff + new_y_diff
-                    if new_y_diff > 0 and new_total < total:
-                        min_floor = floor_name
+                    if (new_y_diff > 0 and y_diff > 0 and new_total < total) or y_diff < 0:
+                        min_floor = floor_list
 
-        floor = min_floor
-
-        # 到這裡才分解樓層(Ex. 把'2F-6f'拆開變成2F, 3F, 4F, 5F, 6F。)
+        floor_list = min_floor
+            
+        # 樓層找到之後要去表格對自己的size多大(如果size = ''的話)
         
-        if floor != '':
-            to_bool = False
-            floor_list = []
-            for char in weird_to_list:
-                if char in floor:
-                    to_char = char
-                    start = floor.split(to_char)[0]
-                    end = floor.split(to_char)[1]
-                    try:
-                        start = int(turn_floor_to_float(start))
-                        end = int(turn_floor_to_float(end))
-                        if start > end:
-                            tmp = start
-                            start = end
-                            end = tmp
-                        for i in range(start, end + 1):
-                            if floor_exist(i, Bmax, Fmax, Rmax):
-                                floor_list.append(turn_floor_to_string(i))
-                    except:
-                        error(f'read_plan error in step 12: The error above is from here.')
-                    to_bool = True
-                    break
-            if not to_bool:
-                comma_char = ','
-                for char in weird_comma_list:
-                    if char in floor:
-                        comma_char = char
-                        break
-                comma = floor.count(comma_char)
-                for i in range(comma + 1):
-                    new_floor = floor.split(comma_char)[i]
-                    new_floor = turn_floor_to_float(new_floor)
-                    new_floor = turn_floor_to_string(new_floor)
-                    if new_floor:
-                        floor_list.append(new_floor)
-                    else:
-                        error(f'read_plan error in step 12: new_floor is false.')
-            
-            # 樓層找到之後要去表格對自己的size多大(如果size = ''的話)
-            
+        if floor_list != '':
             for floor in floor_list:
                 if sizing or mline_scaling: 
                     if beam_size == '':
-                        min_diff = 100000
+                        min_diff = 10000
                         min_size = ''
                         for y in floor_beam_size_coor_set:
                             if y[0] == floor and y[1] == beam_name: # 先看有沒有像g1, g2完全吻合的
@@ -694,9 +715,6 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 else: # 不用對尺寸
                     set_plan.add((floor, beam_name))
                     dic_plan[(floor, beam_name)] = full_coor
-
-        else:
-            error('read_plan error in step 12: min_floor cannot be found.')
 
     doc_plan.Close(SaveChanges=False)
     progress('平面圖讀取進度 12/13', progress_file)
@@ -985,6 +1003,7 @@ def read_beam(beam_filename, text_layer, result_filename, progress_file, sizing)
             error(f'read_beam error in step 7: {e}, error_count = {error_count}.')
     progress('梁配筋圖讀取進度 7/9', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_beam.Close(SaveChanges=False)
@@ -1171,6 +1190,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                 error(f'write_plan error in step 4, {e}, error_count = {error_count}.')
         progress('平面圖標註進度 4/5', progress_file)
     
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_plan.Close(SaveChanges=False)
@@ -1359,6 +1379,7 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
                 error(f'write_beam error in step 4, {e}, error_count = {error_count}.')
     progress('梁配筋圖標註進度 4/5', progress_file)
 
+    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
             doc_beam.Close(SaveChanges=False)
@@ -1477,18 +1498,18 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
-    beam_new_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
-    plan_new_filename = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-big.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"C:\Users\Vince\OneDrive\文件\2022-08-19-16-10土城165-sml.txt"#sys.argv[6] # 小梁結果
+    beam_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_new_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
+    plan_new_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
+    big_file = r"C:\Users\Vince\Desktop\BeamQC\data\task1\big.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"C:\Users\Vince\Desktop\BeamQC\data\task1\sml.txt"#sys.argv[6] # 小梁結果
 
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
+    block_layer = '0'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
@@ -1499,8 +1520,8 @@ if __name__=='__main__':
 
     progress_file = './result/tmp'#sys.argv[14]
 
-    sizing = 1 # 要不要對尺寸
-    mline_scaling = 1 # 要不要對複線寬度
+    sizing = 0 # 要不要對尺寸
+    mline_scaling = 0 # 要不要對複線寬度
 
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
