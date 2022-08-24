@@ -432,6 +432,7 @@ a:not([href]):not([tabindex]):focus {
 .page-navbar {
   min-height: 90px;
   background-color: rgba(52, 58, 64, 1); /* 背景顏色 */
+  background: linear-gradient(45deg,rgba(52, 58, 64, 1),rgba(80, 89, 97, 1));
   -webkit-transition: all 0.3s;
   transition: all 0.3s;
 }
@@ -448,7 +449,7 @@ a:not([href]):not([tabindex]):focus {
 }
 
 .text-primary {
-  color: #ff9a44 !important; /* 左邊的字的顏色(前半) */
+  color: #ff9a44 ; /* 左邊的字的顏色(前半) */
 }
 
 .text-light {

@@ -497,7 +497,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                             floor = turn_floor_to_string(floor)
                             coor_to_floor_set.add(((coor1, coor2), floor))
                 
-                if object.Layer in line_layer:
+                elif object.Layer in line_layer:
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     if coor1[0] == coor2[0]:

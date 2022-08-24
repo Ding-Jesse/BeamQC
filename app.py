@@ -10,8 +10,8 @@ import time
 from datetime import timedelta
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'C:/Users/Vince/Desktop/BeamQC/INPUT'
-OUTPUT_FOLDER = 'C:/Users/Vince/Desktop/BeamQC/OUTPUT'
+UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
+OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
 ALLOWED_EXTENSIONS = set(['dwg'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
@@ -187,4 +187,4 @@ def page_not_found(e):
 
 if __name__ == '__main__':
 
-    app.run(host = '192.168.1.102',debug=True,port=8080)
+    app.run(host = '192.168.0.188',debug=True,port=8080)

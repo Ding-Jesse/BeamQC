@@ -313,7 +313,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 # 取beam的字串
                 # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
 
-                if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader")\
+                elif object.Layer in [big_beam_text_layer, sml_beam_text_layer] and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader")\
                         and object.TextString != '' and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
 
                     beam = object.TextString
@@ -347,7 +347,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
 
                 # 為了排版好看的怪產物，目前看到的格式為'{\W0.7;B4-2\P(80x100)}'，所以使用分號及反斜線來切
                 # 切爛了也不會報錯，直接反映在結果
-                if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and object.ObjectName == "AcDbMText":
+                elif object.Layer in [big_beam_text_layer, sml_beam_text_layer] and object.ObjectName == "AcDbMText":
                     beam = object.TextString
                     semicolon = beam.count(';')
                     size = ''
@@ -388,7 +388,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
                 # 此處不會報錯
 
-                if object.Layer == block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
+                elif object.Layer == block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     block_coor_list.append((coor1, coor2))
@@ -567,9 +567,6 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             new_floor_to_coor_list.append((floor_list, block_coor))
 
     floor_to_coor_set = new_floor_to_coor_list
-    
-    for x in floor_to_coor_set:
-        print(x)
         
     new_coor_to_floor_list = []
     for x in coor_to_floor_set:
@@ -580,10 +577,6 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             new_coor_to_floor_list.append((string_coor, floor_list))
 
     coor_to_floor_set = new_coor_to_floor_list
-    
-    print('---')
-    for x in coor_to_floor_set:
-        print(x)
     
     progress('平面圖讀取進度 10/13', progress_file)
 
@@ -1213,10 +1206,9 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if x[2] != '':
                             err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct) 0是尺寸錯誤
-                            wrong_data = 1
                         else:
                             err_list_big_size.append(f'{(x[0], x[1])}\n')
-                        
+                        wrong_data = 1
                         break
             if not wrong_data:
                 err_list_big.append((x, 1)) # type(tuple of floor and wrong beam, err_message) 1是找不到梁            
@@ -1229,10 +1221,9 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if x[2] != '':
                             err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-                            wrong_data = 1
                         else:
                             err_list_sml_size.append(f'{(x[0], x[1])}\n')
-                        
+                        wrong_data = 1
                         break
             if not wrong_data:   
                 err_list_sml.append((x, 1)) # type(tuple of floor and wrong beam, err_message)   

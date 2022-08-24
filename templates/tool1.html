@@ -11,28 +11,28 @@
 </div>
 <h3>請輸入以下資訊：</h3>
 <div class="item">
-  <label for="name"><h3>專案名稱 (請記得修改此欄)</h3></label>
+  <label for="name"><h3>專案名稱 <font color="red">(請記得修改此欄)</font></h3></label>
   <input type="text" id="project_name" name="project_name" value="temp" required>
 </div>
 <h3>核對項目</h3>
 
-<label class="container">柱配筋
+<label class="container">柱配筋 (包含檢查漏配筋及尺寸比對)
   <input type="checkbox" id="xs-col" name="xs-col" checked onclick="showcol()">
   <span class="checkmark"></span>
 </label>
 
-<label class="container">梁配筋
+<label class="container">梁配筋 (<font color="red"><b>不</b></font>包含檢查漏配筋及尺寸比對)
   <input type="checkbox" id="xs-beam" name="xs-beam" checked onclick="showbeam()">
   <span class="checkmark"></span>
 </label>
 
 <div id='beam2' style='display: block;'>
-<label class="container">核對梁配筋時是否要順便核對梁配筋圖的尺寸和平面圖的尺寸是否相符
+<label class="container">核對梁配筋時是否要核對<font color="red">梁配筋圖的尺寸</font>和<font color="red">平面圖的尺寸</font>是否相符
   <input type="checkbox" id="sizing" name="sizing" checked onclick="showsize()">
   <span class="checkmark"></span>
 </label>
 
-<label class="container">核對梁配筋時是否要順便核對複線寬度和尺寸是否相符
+<label class="container">核對梁配筋時是否要核對<font color="red">梁配筋圖</font>的<font color="red">複線寬度</font>和<font color="red">尺寸</font>是否相符
   <input type="checkbox" id="mline_scaling" name="mline_scaling" checked onclick="showmline()">
   <span class="checkmark"></span>
 </label>
@@ -151,10 +151,10 @@
 CAD版本須為2016以前之版本。
 </li>
 <li>
-<p>每種物件的圖層要一致。</p>
+<p>每種物件的<font color="red">圖層要一致</font>。</p>
 </li>
 <li>
-請確認黃色標題後面是否有括號，括號內部需要有英文的樓層名稱。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。
+請確認黃色標題後面是否有括號，括號內部需要有<font color="red">英文的樓層名稱</font>。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。
 <ul style="list-style-type:disc;">
 <li>
 <p>範例圖：
@@ -169,7 +169,7 @@ CAD版本須為2016以前之版本。
 </ul>
 </li>
 <li>
-<p>顯示樓層的字串中，「2-5F」，「3F~6F」，「3F,5F,7F」等等都是可接受的，但盡量避免中文字元，可能會變成西班牙文亂碼。</p>
+<p>顯示樓層的字串中，「2-5F」，「3F~6F」，「3F,5F,7F」等等都是可接受的，但盡量<font color="red">避免中文字元</font>，可能會變成西班牙文亂碼。</p>
 <ul style="list-style-type:disc;">
 <li>
 <p>如下圖，使用中文頓號的話，文字顯示的內容會變成&#39;¡B&#39;，容易導致樓層讀取錯誤的問題。
@@ -197,10 +197,10 @@ CAD版本須為2016以前之版本。
 </li>
 
 <li>
-<p>在柱配筋圖中，請注意不要有多餘的表格線，容易造成讀取錯誤。</p>
+<p>在柱配筋圖中，請注意<font color="red">不要有多餘的表格線</font>，容易造成讀取錯誤。</p>
 <ul style="list-style-type:disc;">
 <li>
-<p>如下圖，藍色箭頭指的是多餘的表格線，這會導致9樓的柱讀取錯誤。
+<p>如下圖，<font color="blue">藍色箭頭⬇</font>指的是多餘的表格線，這會導致9樓的柱讀取錯誤。
 <br>
 <div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example4.png" alt="image"></p></div>
 </li>
