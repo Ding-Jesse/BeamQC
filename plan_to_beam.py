@@ -1206,8 +1206,10 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if x[2] != '':
                             err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct) 0是尺寸錯誤
+                            drawing = 1
                         else:
                             err_list_big_size.append(f'{(x[0], x[1])}\n')
+                            drawing = 0
                         wrong_data = 1
                         break
             if not wrong_data:
@@ -1221,8 +1223,10 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if x[2] != '':
                             err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
+                            drawing = 1
                         else:
                             err_list_sml_size.append(f'{(x[0], x[1])}\n')
+                            drawing = 0
                         wrong_data = 1
                         break
             if not wrong_data:   
@@ -1392,7 +1396,6 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
                     if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
                         if y[2] != '':
                             err_list_big.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-
                         wrong_data = 1
                         break
             if not wrong_data:
