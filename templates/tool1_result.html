@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Elements 配筋圖查核_beta 結果{% endblock %}
+{% block title %}配筋圖查核_beta 結果{% endblock %}
 
 {% block content %}
 <body>
 <div class="testbox">
 <form action="" method=post enctype=multipart/form-data>
     <div class="banner">
-          <h1>Elements 配筋圖查核_beta</h1>
+          <h1>配筋圖查核_beta</h1>
     </div>
     <div class="container">
         <div class="header">
@@ -17,7 +17,7 @@
         <div>     
             {% for file in filenames %}
                 <a href="{{url_for('result_file', 
-                filename=file)}}">{{file}}</a>
+                filename=file)}}" style='color: #279c96'>{{file}}</a>
                 <br>
             {% endfor %}
         </div>
@@ -26,7 +26,7 @@
 </div>
 
 <div class="banner2">
-<h3>&emsp;📖檔案介紹</h3>
+<h3>&emsp;📖輸出檔案介紹</h3>
 </div>
 <blockquote>
 <h3>核對XS-BEAM結果</h3>
@@ -82,5 +82,7 @@
 
 </li>
 </blockquote>
+
+<br>
 </body>
 {% endblock %}
