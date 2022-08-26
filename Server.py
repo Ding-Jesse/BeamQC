@@ -19,6 +19,10 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
+@app.route('/login')
+def login():
+    return render_template('statement.html', template_folder='./')
+
 @app.route('/')
 def index():
     return render_template('index.html', template_folder='./')
@@ -91,4 +95,4 @@ def result_file(filename):
     response.cache_control.max_age = 0
     return response
 if __name__ == '__main__':
-    app.run(host = '192.168.0.143',debug=True,port=8082)
+    app.run(host = '192.168.0.143',debug=True,port=8080)
