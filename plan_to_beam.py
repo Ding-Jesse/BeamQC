@@ -169,7 +169,7 @@ def mycmp(a, b): # a, b 皆為 tuple , 可能是 ((floor, beam), 0, correct) 或
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡B']
 beam_head1 = ['B', 'b', 'G', 'g']
-beam_head2 = ['CB', 'CG', 'cb']
+beam_head2 = ['FB','Fb','CB', 'CG', 'cb']
 
 def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, result_filename, progress_file, sizing, mline_scaling, date):
     error_count = 0

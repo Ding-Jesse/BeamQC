@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
 OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
-ALLOWED_EXTENSIONS = set(['dwg'])
+ALLOWED_EXTENSIONS = set(['dwg','DWG'])
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
@@ -187,4 +187,4 @@ def page_not_found(e):
 
 if __name__ == '__main__':
 
-    app.run(host = '192.168.0.188',debug=True,port=8080)
+    app.run(host = '192.168.0.143',debug=True,port=8080)
