@@ -1,13 +1,15 @@
 from multiprocessing import allow_connection_pickling
 import os
 from time import sleep
-from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g, Response, stream_with_context
+from urllib import response
+from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g, Response, stream_with_context,jsonify
 from werkzeug.utils import secure_filename
 from main import main_functionV3, main_col_function,storefile
 import functools
 import json
 import time
 from datetime import timedelta
+from auth import createPhoneCode
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
@@ -160,6 +162,52 @@ def NOT_FOUND():
 def tool5():
     return render_template('tool5.html')
 
+@app.route('/tool2', methods=['GET', 'POST'])
+def tool2():
+    if request.method == 'POST':
+        content = request.form['phone']
+        response = Response()
+        # response.data = str('{"phone":'+content+'}').encode()
+        # response.data = jsonify({'validate':})
+        response.data = json.dumps({'validate':f'send text to {content}'})
+        response.status_code = 200
+        response.content_type = 'application/json'
+        createPhoneCode(session)
+        print(session["phoneVerifyCode"])
+        return response
+        # session['phone_number'] = 
+    if 'isverify' not in session:
+        return render_template('verifycode.html')
+    elif session['isverify'] == 'expire':
+        return render_template('verifycode.html')
+    else:
+        return render_template('tool2.html')
+
+@app.route('/tool2/checkcode', methods=['POST'])
+def checkcode():
+    user_code = request.form.get('user_code')
+    if 'phoneVerifyCode' not in session:
+        response = Response()
+        response.status_code = 404
+        response.data = json.dumps({'validate':f'Wrong Code'})
+        response.content_type = 'application/json'
+        session['isverify'] = 'expire'
+        return response
+    if user_code == session["phoneVerifyCode"]['code']:
+        response = Response()
+        response.status_code = 200
+        response.data = json.dumps({'validate':f'Correct Code'})
+        response.content_type = 'application/json'
+        session['isverify'] = 'valid'
+        return response
+    else:
+        response = Response()
+        response.status_code = 404
+        response.data = json.dumps({'validate':f'Wrong Code'})
+        response.content_type = 'application/json'
+        session['isverify'] = 'expire'
+        return response
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -186,5 +234,5 @@ def page_not_found(e):
     return redirect(url_for('NOT_FOUND'))
 
 if __name__ == '__main__':
-
-    app.run(host = '192.168.0.188',debug=True,port=8080)
+    app.secret_key = 'dev'
+    app.run(host = '192.168.0.143',debug=True,port=8080)
