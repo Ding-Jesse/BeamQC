@@ -12,6 +12,11 @@
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
+::selection {
+  background: #eb8e3d;
+  color: white
+}
+
 /* testbox */
 html, body {
   min-height: 100%;

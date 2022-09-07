@@ -248,9 +248,6 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
 
     floor_to_coor_set = new_floor_to_coor_list
     
-    for x in floor_to_coor_set:
-        print(x)
-    
     new_coor_to_floor_list = []
     for x in coor_to_floor_set:
         string_coor = x[0]
@@ -260,11 +257,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             new_coor_to_floor_list.append((string_coor, floor_list))
 
     coor_to_floor_set = new_coor_to_floor_list
-    
-    print('---')
-    for x in coor_to_floor_set:
-        print(x)
-    
+
     # Step 10. 完成col_size_coor_set，格式: set(col, size, the coor of big_block(left, right, up, down))
     col_size_coor_set = set() 
     for x in coor_to_col_set:
