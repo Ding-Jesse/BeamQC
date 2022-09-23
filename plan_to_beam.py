@@ -1,5 +1,7 @@
 from gzip import READ
+from math import inf
 from multiprocessing.spawn import prepare
+from tabnanny import check
 from tkinter import HIDDEN
 from numpy import object_
 from openpyxl import load_workbook
@@ -12,6 +14,7 @@ import os
 import pandas as pd
 import sys
 from functools import cmp_to_key
+from math import inf
 
 def turn_floor_to_float(floor): # 把字串變成小數 (因為1MF = 1.5, 所以不能用整數)
 
@@ -399,6 +402,14 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
 
                     if object.Layer == size_layer and object.EntityName == "AcDbText" and object.GetBoundingBox()[0][1] >= 0:
                         coor = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        if 'FGn' in object.TextString:
+                            coor_to_size_beam.add((coor, 'FG'))
+                        if 'FBn' in object.TextString:
+                            coor_to_size_beam.add((coor, 'FB'))
+                        if 'FWB' in object.TextString:
+                            coor_to_size_beam.add((coor, 'FWB'))
+                        if 'Fbn' in object.TextString:
+                            coor_to_size_beam.add((coor, 'Fbn'))
                         if 'Gn' in object.TextString:
                             if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Gn') >= 2):
                                 coor_to_size_beam.add((coor, 'CG'))
@@ -618,7 +629,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
     # 如果沒有要對size -> set元素為 (floor, beam)
     # 如果有要對size但沒有要對mline -> set元素為 (floor, beam, size)
     # 如果有要對size和mline -> set元素為 (floor, beam, size, rotate)
-    
+    check_list = []
     # 遍歷所有beam，找這是幾樓的
     for x in coor_to_beam_set: # set(coor, (beam, size))
         beam_coor = x[0][0] # 取左下角即可
@@ -627,6 +638,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
         beam_size = x[1][1]
         beam_rotate = x[1][2]
         min_floor = ''
+        
         for z in floor_to_coor_set: # 我其實是list歐哈哈 (floor_list, block左下角和右上角的coor)
             floor_list = z[0]
             block_coor = z[1]
@@ -661,7 +673,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             for floor in floor_list:
                 if sizing or mline_scaling: 
                     if beam_size == '':
-                        min_diff = 10000
+                        min_diff = inf
                         min_size = ''
                         for y in floor_beam_size_coor_set:
                             if y[0] == floor and y[1] == beam_name: # 先看有沒有像g1, g2完全吻合的
@@ -696,14 +708,21 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                                         min_diff = diff
                                         min_size = y[2]
                             beam_size = min_size
-                    
+                    # if floor=='10F' and beam_name =='B1-4':
+                    #     print(check_list)
                     if beam_size != '':
+                        if (floor, beam_name, '', beam_rotate) in dic_plan:
+                            set_plan.remove((floor, beam_name, '', beam_rotate))
+                            dic_plan.pop((floor, beam_name, '', beam_rotate))
+                            error(f'read_plan error in step 12: {floor} {beam_name} duplicate. ')
                         set_plan.add((floor, beam_name, beam_size, beam_rotate))
                         dic_plan[(floor, beam_name, beam_size, beam_rotate)] = full_coor
+                        check_list.append((floor, beam_name))
                     else:
-                        set_plan.add((floor, beam_name, '', beam_rotate))
-                        dic_plan[(floor, beam_name, '', beam_rotate)] = full_coor
-                        error(f'read_plan error in step 12: {floor} {beam_name} cannot find size. ')
+                        if not (floor, beam_name) in check_list:
+                            set_plan.add((floor, beam_name, '', beam_rotate))
+                            dic_plan[(floor, beam_name, '', beam_rotate)] = full_coor
+                            error(f'read_plan error in step 12: {floor} {beam_name} cannot find size. ')
 
                 else: # 不用對尺寸
                     set_plan.add((floor, beam_name))
@@ -775,7 +794,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                     beam_layer = big_beam_layer
                 beam_rotate = x[3]
                 midpoint = ((beam_coor[0][0] + beam_coor[1][0]) / 2, (beam_coor[0][1] + beam_coor[1][1]) / 2)
-                min_diff = 1000
+                min_diff = inf
                 min_scale = ''
                 min_coor = ''
                 if beam_rotate != 1.57: # 橫的 or 歪的，90度 = pi / 2 = 1.57 (前面有取round到後二位)
@@ -839,19 +858,19 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             else:
                 f_sml.write(f"('{x[0]}', '{x[1]}'): {x[2]}")
 
-        # Step 13.7 把set_plan跟dic_plan調回去
-        new_set_plan = set()
-        new_dic_plan = {}
-        if not sizing:
-            for x in dic_plan:
-                new_set_plan.add((x[0], x[1]))
-                new_dic_plan[(x[0], x[1])] = dic_plan[x]
-        else:
-            for x in dic_plan:
-                new_set_plan.add((x[0], x[1], x[2]))
-                new_dic_plan[(x[0], x[1], x[2])] = dic_plan[x]
-        set_plan = new_set_plan
-        dic_plan = new_dic_plan
+    # Step 13.7 把set_plan跟dic_plan調回去
+    new_set_plan = set()
+    new_dic_plan = {}
+    if not sizing:
+        for x in dic_plan:
+            new_set_plan.add((x[0], x[1]))
+            new_dic_plan[(x[0], x[1])] = dic_plan[x]
+    else:
+        for x in dic_plan:
+            new_set_plan.add((x[0], x[1], x[2]))
+            new_dic_plan[(x[0], x[1], x[2])] = dic_plan[x]
+    set_plan = new_set_plan
+    dic_plan = new_dic_plan
         
     progress('平面圖讀取進度 13/13', progress_file)
     progress('平面圖讀取完畢。', progress_file)
@@ -1199,7 +1218,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     err_list_big_size = []
     err_list_sml_size = []
     for x in list1: 
-        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
+        if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G' or x[1][0] == 'F':
             wrong_data = 0
             if sizing:
                 for y in list2:
@@ -1492,18 +1511,18 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
-    beam_new_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
-    plan_new_filename = r"C:\Users\Vince\Desktop\BeamQC\data\task1\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"C:\Users\Vince\Desktop\BeamQC\data\task1\big.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"C:\Users\Vince\Desktop\BeamQC\data\task1\sml.txt"#sys.argv[6] # 小梁結果
+    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\大樑_Beam.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
+    plan_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
+    big_file = r"C:\Users\User\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"C:\Users\User\Desktop\BeamQC\TEST\sml.txt"#sys.argv[6] # 小梁結果
 
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = '0'#sys.argv[8] # 框框的圖層
+    block_layer = 'DEFPOINTS'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
@@ -1514,7 +1533,7 @@ if __name__=='__main__':
 
     progress_file = './result/tmp'#sys.argv[14]
 
-    sizing = 0 # 要不要對尺寸
+    sizing = 1 # 要不要對尺寸
     mline_scaling = 0 # 要不要對複線寬度
 
     plan_file = './result/plan.txt' # plan.txt的路徑
