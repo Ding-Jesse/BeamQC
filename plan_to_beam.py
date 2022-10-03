@@ -505,7 +505,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             coor = x[0]
             size_beam = x[1]
             min_size = ''
-            min_dist = 10000
+            min_dist = inf
             for y in coor_to_size_string:
                 coor2 = y[0]
                 size_string = y[1]
@@ -792,6 +792,8 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 beam_layer = sml_beam_layer
                 if x[1][0].isupper():
                     beam_layer = big_beam_layer
+                if 'Fb' in x[1]:
+                    beam_layer = sml_beam_layer
                 beam_rotate = x[3]
                 midpoint = ((beam_coor[0][0] + beam_coor[1][0]) / 2, (beam_coor[0][1] + beam_coor[1][1]) / 2)
                 min_diff = inf
@@ -1511,8 +1513,8 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\大樑_Beam.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-09-30-13-42花蓮煙波-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-09-30-13-42花蓮煙波-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
     big_file = r"C:\Users\User\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
@@ -1534,7 +1536,7 @@ if __name__=='__main__':
     progress_file = './result/tmp'#sys.argv[14]
 
     sizing = 1 # 要不要對尺寸
-    mline_scaling = 0 # 要不要對複線寬度
+    mline_scaling = 1 # 要不要對複線寬度
 
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
