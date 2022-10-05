@@ -1,12 +1,13 @@
 from gzip import READ
 from multiprocessing.spawn import prepare
 from tkinter import HIDDEN
-from numpy import object_
+from numpy import Inf, object_
 from openpyxl import load_workbook
 import win32com.client
 import pythoncom
 import re
 import time
+from math import inf
 import multiprocessing
 import os
 import pandas as pd
@@ -264,7 +265,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
         col_coor = x[0][0]
         col_full_coor = x[0]
         col_name = x[1]
-        min_diff = 1000
+        min_diff = inf
         match_size = ''
         match_size_coor = ''
         for y in coor_to_size_set:
@@ -278,7 +279,7 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 match_size = size
                 match_size_coor = size_full_coor
         
-        if min_diff != 1000 and match_size != '' and match_size_coor != '':
+        if min_diff != inf and match_size != '' and match_size_coor != '':
             left = min(col_full_coor[0][0], match_size_coor[0][0])
             right = max(col_full_coor[1][0], match_size_coor[1][0])
             up = max(col_full_coor[1][1], match_size_coor[1][1])
@@ -883,18 +884,18 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    col_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
-    plan_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
-    col_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
-    result_file = r'K:\100_Users\EI 202208 Bamboo\BeamQC\task25-list out of index\column.txt'#sys.argv[5] # 柱配筋結果
+    col_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-10-03H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XS-COL.DWG'#sys.argv[1] # XS-COL的路徑
+    plan_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-10-03H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XSh-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    col_new_filename = r'C:\Users\User\Desktop\BeamQC\TEST\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_new_filename = r'C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    result_file = r'C:\Users\User\Desktop\BeamQC\TEST\column.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層
     text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
     line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
 
     # 在plan裡面自訂圖層
-    block_layer = '0'#sys.argv[8] # 圖框的圖層
+    block_layer = 'DEFPOINTS'#sys.argv[8] # 圖框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
 
