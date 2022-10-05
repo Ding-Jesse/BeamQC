@@ -399,7 +399,6 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 # 找size
 
                 if sizing or mline_scaling:
-
                     if object.Layer == size_layer and object.EntityName == "AcDbText" and object.GetBoundingBox()[0][1] >= 0:
                         coor = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         if 'FGn' in object.TextString:
@@ -410,7 +409,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                             coor_to_size_beam.add((coor, 'FWB'))
                         if 'Fbn' in object.TextString:
                             coor_to_size_beam.add((coor, 'Fbn'))
-                        if 'Gn' in object.TextString:
+                        if 'Gn' in object.TextString and 'FGn' not in object.TextString:
                             if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Gn') >= 2):
                                 coor_to_size_beam.add((coor, 'CG'))
                                 coor_to_size_beam.add((coor, 'G'))
@@ -418,7 +417,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                                 coor_to_size_beam.add((coor, 'CG'))
                             else:
                                 coor_to_size_beam.add((coor, 'G'))
-                        if 'Bn' in object.TextString and 'W' not in object.TextString and 'D' not in object.TextString:
+                        if 'Bn' in object.TextString and 'W' not in object.TextString and 'D' not in object.TextString and 'FBn' not in object.TextString:
                             if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Bn') >= 2):
                                 coor_to_size_beam.add((coor, 'CB'))
                                 coor_to_size_beam.add((coor, 'B'))
@@ -456,7 +455,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                                         coor_to_size_beam.add((coor, 'cg'))
                                     else:
                                         coor_to_size_beam.add((coor, 'g'))
-                        if 'x' in object.TextString or 'X' in object.TextString:
+                        if 'x' in object.TextString or 'X' in object.TextString or 'x' in object.TextString:
                             string = (object.TextString.replace(' ', '')).replace('X', 'x')
                             try:
                                 first = string.split('x')[0]
@@ -1513,8 +1512,8 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-09-30-13-42花蓮煙波-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-09-30-13-42花蓮煙波-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-09-06H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-10-03H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XSh-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
     big_file = r"C:\Users\User\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
