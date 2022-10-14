@@ -20,6 +20,8 @@ weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡']
 
 def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
+    def _cal_ratio(pt1,pt2):
+        return abs(pt1[0]-pt2[0])/abs(pt1[1]-pt2[1])
     error_count = 0
     progress('開始讀取平面圖(核對項目: 柱配筋對應)', progress_file)
     # Step 1. 打開應用程式
@@ -170,6 +172,8 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     block_coor_list.append((coor1, coor2))
+                    if _cal_ratio(coor1,coor2) >= 1/5 and _cal_ratio(coor1,coor2) <= 5: #避免雜訊影響框框
+                        block_coor_list.append((coor1, coor2))
             flag = 1
 
         except Exception as e:
@@ -884,8 +888,8 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    col_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-10-03H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XS-COL.DWG'#sys.argv[1] # XS-COL的路徑
-    plan_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-10-03H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XSh-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
+    col_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-12-13-55p2020-12D 三重五谷王-XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
+    plan_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-12-13-55p2020-12D 三重五谷王-XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
     col_new_filename = r'C:\Users\User\Desktop\BeamQC\TEST\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
     plan_new_filename = r'C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
     result_file = r'C:\Users\User\Desktop\BeamQC\TEST\column.txt'#sys.argv[5] # 柱配筋結果
@@ -895,7 +899,7 @@ if __name__=='__main__':
     line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
 
     # 在plan裡面自訂圖層
-    block_layer = 'DEFPOINTS'#sys.argv[8] # 圖框的圖層
+    block_layer = '0'#sys.argv[8] # 圖框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
 
