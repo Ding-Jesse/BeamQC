@@ -1,5 +1,5 @@
 from gzip import READ
-from math import inf
+from math import inf, sqrt
 from multiprocessing.spawn import prepare
 from tabnanny import check
 from tkinter import HIDDEN
@@ -175,6 +175,8 @@ beam_head1 = ['B', 'b', 'G', 'g']
 beam_head2 = ['FB','Fb','CB', 'CG', 'cb']
 
 def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, result_filename, progress_file, sizing, mline_scaling, date):
+    def _cal_ratio(pt1,pt2):
+        return abs(pt1[0]-pt2[0])/abs(pt1[1]-pt2[1])
     error_count = 0
     progress('開始讀取平面圖(核對項目: 梁配筋對應)', progress_file)
     # Step 1. 打開應用程式
@@ -394,7 +396,8 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 elif object.Layer == block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    block_coor_list.append((coor1, coor2))
+                    if _cal_ratio(coor1,coor2) >= 1/5 and _cal_ratio(coor1,coor2) <= 5: #避免雜訊影響框框
+                        block_coor_list.append((coor1, coor2))
                 
                 # 找size
 
@@ -1512,8 +1515,8 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-09-06H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-05-10-03H2019-08A 苗栗造橋寶吉祥佛寺3FB1-XSh-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-11-16-46P2021-05K 彰化學士安居社宅-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-11-16-46P2021-05K 彰化學士安居社宅-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
     big_file = r"C:\Users\User\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
