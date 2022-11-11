@@ -15,6 +15,7 @@ import pandas as pd
 import sys
 from functools import cmp_to_key
 from math import inf
+import traceback
 
 def turn_floor_to_float(floor): # 把字串變成小數 (因為1MF = 1.5, 所以不能用整數)
 
@@ -176,6 +177,8 @@ beam_head2 = ['FB','Fb','CB', 'CG', 'cb']
 
 def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, result_filename, progress_file, sizing, mline_scaling, date):
     def _cal_ratio(pt1,pt2):
+        if abs(pt1[1]-pt2[1]) == 0:
+            return 1000
         return abs(pt1[0]-pt2[0])/abs(pt1[1]-pt2[1])
     error_count = 0
     progress('開始讀取平面圖(核對項目: 梁配筋對應)', progress_file)
@@ -485,6 +488,14 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
             flag = 1
 
         except Exception as e:
+            error_class = e.__class__.__name__ #取得錯誤類型
+            detail = e.args[0] #取得詳細內容
+            cl, exc, tb = sys.exc_info() #取得Call Stack
+            lastCallStack = traceback.extract_tb(tb)[-1] #取得Call Stack的最後一筆資料
+            fileName = lastCallStack[0] #取得發生的檔案名稱
+            lineNum = lastCallStack[1] #取得發生的行號
+            funcName = lastCallStack[2] #取得發生的函數名稱
+            errMsg = "File \"{}\", line {}, in {}: [{}] {}".format(fileName, lineNum, funcName, error_class, detail)
             error_count += 1
             time.sleep(5)
             error(f'read_plan error in step 7: {e}, error_count = {error_count}.')
@@ -1515,18 +1526,18 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-11-16-46P2021-05K 彰化學士安居社宅-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"C:\Users\User\Desktop\BeamQC\TEST\2022-10-11-16-46P2021-05K 彰化學士安居社宅-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
-    beam_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
-    plan_new_filename = r"C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"C:\Users\User\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"C:\Users\User\Desktop\BeamQC\TEST\sml.txt"#sys.argv[6] # 小梁結果
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2022-11-11-10-04P2022-03A 五股區登林段9FB3-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"D:\Desktop\BeamQC\TEST\2022-11-11-10-04P2022-03A 五股區登林段9FB3-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
+    plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
+    big_file = r"D:\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"D:\Desktop\BeamQC\TEST\sml.txt"#sys.argv[6] # 小梁結果
 
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = 'DEFPOINTS'#sys.argv[8] # 框框的圖層
+    block_layer = '0'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
