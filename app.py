@@ -9,7 +9,7 @@ import functools
 import json
 import time
 from datetime import timedelta
-from auth import createPhoneCode
+from auth import createPhoneCode,sendPhoneMessage
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
@@ -162,8 +162,8 @@ def NOT_FOUND():
 def tool5():
     return render_template('tool5.html')
 
-@app.route('/tool2', methods=['GET', 'POST'])
-def tool2():
+@app.route('/sendVerifyCode',methods=['POST'])
+def sendVerifyCode():
     if request.method == 'POST':
         content = request.form['phone']
         response = Response()
@@ -172,10 +172,12 @@ def tool2():
         response.data = json.dumps({'validate':f'send text to {content}'})
         response.status_code = 200
         response.content_type = 'application/json'
-        createPhoneCode(session)
+        sendPhoneMessage(content)
         print(session["phoneVerifyCode"])
         return response
-        # session['phone_number'] = 
+
+@app.route('/tool2', methods=['GET'])
+def tool2():
     if 'isverify' not in session:
         return render_template('verifycode.html')
     elif session['isverify'] == 'expire':
@@ -183,7 +185,7 @@ def tool2():
     else:
         return render_template('tool2.html')
 
-@app.route('/tool2/checkcode', methods=['POST'])
+@app.route('/checkcode', methods=['POST'])
 def checkcode():
     user_code = request.form.get('user_code')
     if 'phoneVerifyCode' not in session:

@@ -31,7 +31,7 @@
             $.ajax(
                 {
                     type:"POST",
-                    url:"/tool2",
+                    url:"/sendVerifyCode",
                     data:{
                         'phone':phone_number
                     },
@@ -56,7 +56,7 @@
             $.ajax(
                 {
                     type:"POST",
-                    url:"/tool2/checkcode",
+                    url:"/checkcode",
                     data:{
                         'user_code':password_number
                     },
