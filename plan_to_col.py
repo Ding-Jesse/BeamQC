@@ -21,6 +21,8 @@ weird_comma_list = [',', '、', '¡']
 
 def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
     def _cal_ratio(pt1,pt2):
+        if abs(pt1[1]-pt2[1]) == 0:
+            return 1000
         return abs(pt1[0]-pt2[0])/abs(pt1[1]-pt2[1])
     error_count = 0
     progress('開始讀取平面圖(核對項目: 柱配筋對應)', progress_file)
