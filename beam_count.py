@@ -420,13 +420,13 @@ def sort_noconcat_bend(no_concat_bend_list:list,head_to_data_dic:dict,tail_to_da
         horz_coor = bend[1]
         vert_coor = bend[0]
         line_length = bend[2]
-        overlap_line = {k: v for k, v in head_to_data_dic.items() if (k[0] <= horz_coor[0]) and (k[1] == horz_coor[1])}
+        overlap_line = {k: v for k, v in head_to_data_dic.items() if (k[0] <= horz_coor[0]) and (k[1] == horz_coor[1]) and (k[0] >= vert_coor[0])}
         if len(overlap_line.keys()) > 0:
             value_key,value_items = min(overlap_line.items(),key=lambda x:abs(x[0][0]-horz_coor[0]))
             coor_to_bend_rebar_list.append((vert_coor, value_key,line_length - abs(value_key[0] - horz_coor[0]),value_items['number'],value_items['size']))
             print(f'{horz_coor},{vert_coor} rebar:{coor_to_bend_rebar_list[-1][3]}-{coor_to_bend_rebar_list[-1][4]}')
             continue
-        overlap_line = {k: v for k, v in tail_to_data_dic.items() if (k[0] >= horz_coor[0]) and (k[1] == horz_coor[1])}
+        overlap_line = {k: v for k, v in tail_to_data_dic.items() if (k[0] >= horz_coor[0]) and (k[1] == horz_coor[1]) and (k[0] <= vert_coor[0]) }
         if len(overlap_line.keys()) > 0:
             value_key,value_items = max(overlap_line.items(),key=lambda x:abs(x[0][0]-horz_coor[0]))
             coor_to_bend_rebar_list.append((vert_coor, value_key,line_length - abs(value_key[0] - horz_coor[0]),value_items['number'],value_items['size']))
@@ -576,7 +576,7 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
         tail_coor,length,line_head_coor,number,size,line_tail_coor= arrow_item
         bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=arrow_head)]
         if len(bounding_box) == 0:
-            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < arrow_head]
+            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < arrow_head[1]]
             if len(coor_sorted_beam_list) == 0:continue
             nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],arrow_head))
         else:
@@ -587,48 +587,79 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
         else:
             nearest_beam[6][size] = int(number)*length
     pass
-    # for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
-    #     head_coor,tail_coor,length,number,size= rebar_line
-    #     mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
-    #     bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
-    #     if len(bounding_box) == 0:
-    #         coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt]
-    #         if len(coor_sorted_beam_list) == 0:continue
-    #         nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
-    #     else:
-    #         nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
-    #     nearest_beam[5].append({f'{number}-{size}':length})
-    #     if rebar_line[4] in nearest_beam[6]:
-    #         nearest_beam[6][size] += int(number)*length
-    #     else:
-    #         nearest_beam[6][size] = int(number)*length
+    for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
+        head_coor,tail_coor,length,number,size= rebar_line
+        mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
+        bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
+        if len(bounding_box) == 0:
+            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt[1]]
+            if len(coor_sorted_beam_list) == 0:continue
+            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
+        else:
+            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
+        nearest_beam[5].append({f'支承端{number}-{size}':length})
+        if rebar_line[4] in nearest_beam[6]:
+            nearest_beam[6][size] += int(number)*length
+        else:
+            nearest_beam[6][size] = int(number)*length
+    for bend_line in coor_to_bend_rebar_list:# (直的端點，橫的端點，長度，number，size)
+        head_coor,tail_coor,length,number,size= bend_line
+        # mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
+        mid_pt = head_coor
+        bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
+        if len(bounding_box) == 0:
+            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt[1]]
+            if len(coor_sorted_beam_list) == 0:continue
+            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
+        else:
+            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
+        nearest_beam[5].append({f'彎鉤{number}-{size}':length})
+        if bend_line[4] in nearest_beam[6]:
+            nearest_beam[6][size] += int(number)*length
+        else:
+            nearest_beam[6][size] = int(number)*length
 
 ## 輸出每隻梁的結果    
 def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
     # (string, midpoint, list of tie, tie_count_dic,(左下，右上),list of rebar,rebar count dict)
     lines=[]
-    
+    total_tie = {}
+    total_rebar = {}
+    def _add_total(size,number,total):
+        if size in total:
+            total[size] += number
+        else:
+            total[size] = number
+
     for beam in coor_to_beam_list:
         matches = re.findall(r"\((.*?)\)",beam[0],re.MULTILINE)
         if len(matches) == 0 or 'X' not in matches[0]:continue
         tie=0
         rebar=0
-        depth = int(matches[0].split('X')[1])
-        width = int(matches[0].split('X')[0])
+        try:
+            depth = int(matches[0].split('X')[1])
+            width = int(matches[0].split('X')[0])
+        except:
+            depth = 0
+            width = 0 
         tie_count = beam[3]
         rebar_count = beam[6]
         for size,count in tie_count.items():
             tie += count * RebarInfo(size) * ((depth - 10)+(width-10))*2
+            _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=total_tie)
         for size,length in rebar_count.items():
             rebar += RebarInfo(size) * length
-            pass
+            _add_total(size=size,number=RebarInfo(size) * length,total=total_rebar)
         lines.append('\n梁{}:'.format(beam[0]))
-        lines.append('\n主筋為{}:'.format(beam[5]))
-        lines.append('\n箍筋為{}:'.format(beam[2]))
-        lines.append('\n主筋量為{}:'.format(rebar))
-        lines.append('\n箍筋量為{}:'.format(tie))
+        lines.append('\n寬度:{}、高度:{}'.format(width,depth))
+        lines.append('\n主筋為:{}'.format(beam[5]))
+        lines.append('\n箍筋為:{}'.format(beam[2]))
+        lines.append('\n主筋量為:{}'.format(rebar))
+        lines.append('\n箍筋量為:{}'.format(tie))
         lines.append(f'==================================')
     with open(output_txt, 'w',encoding= 'utf-8') as f:
+        lines.append('\n箍筋總量{}:'.format(total_tie))
+        lines.append('\n主筋總量{}'.format(total_rebar))
         f.write('\n'.join(lines))
     pass
 
@@ -950,134 +981,135 @@ def cal_beam_rebar(data={},output_txt='',tie_txt='',progress_file=''):
     # Step 15. 印出每個框框的結果然後加在一起
     rebar_length_dic = {}
     tie_count_dic = {}
-    f = open(output_txt, "w", encoding = 'utf-8')
+    with open(output_txt, 'w',encoding= 'utf-8') as f:
+    # f = open(output_txt, "w", encoding = 'utf-8')
     
-    for x in coor_to_block_list:
-        if len(x[1]) != 0 or len(x[2]) != 0:
-            f.write(f'統計左下角為{x[0][0]}，右上角為{x[0][1]}的框框內結果：\n')
-            if len(x[1]) != 0:
-                f.write('鋼筋計算：\n')
-                for y in x[1]:
-                    f.write(f'{y}: 總長度(長度*數量)為 {x[1][y]}\n')
-                    if y in rebar_length_dic:
-                        rebar_length_dic[y] += x[1][y]
-                    else:
-                        rebar_length_dic[y] = x[1][y]
-            else:
-                f.write('此圖框內沒有鋼筋\n')
-                
-            if len(x[2]) != 0:    
-                f.write('箍筋計算：\n')
-                for y in x[2]:
-                    f.write(f'{y}: 總數量為 {x[2][y]}\n')
-                    if y in tie_count_dic:
-                        tie_count_dic[y] += x[2][y]
-                    else:
-                        tie_count_dic[y] = x[2][y]
-            else:
-                f.write('此圖框內沒有箍筋\n')
-                
-            f.write('\n')
-                
-    f.write(f'統計所有結果：\n')
-    f.write('鋼筋計算：\n')
-    for y in rebar_length_dic:
-        f.write(f'{y}: 總長度(長度*數量)為 {rebar_length_dic[y]}\n')
-        
-    f.write('箍筋計算：\n')
-    for y in tie_count_dic:
-        f.write(f'{y}: 總數量為 {tie_count_dic[y]}\n')
+        for x in coor_to_block_list:
+            if len(x[1]) != 0 or len(x[2]) != 0:
+                f.write(f'統計左下角為{x[0][0]}，右上角為{x[0][1]}的框框內結果：\n')
+                if len(x[1]) != 0:
+                    f.write('鋼筋計算：\n')
+                    for y in x[1]:
+                        f.write(f'{y}: 總長度(長度*數量)為 {x[1][y]}\n')
+                        if y in rebar_length_dic:
+                            rebar_length_dic[y] += x[1][y] * RebarInfo(y)
+                        else:
+                            rebar_length_dic[y] = x[1][y] * RebarInfo(y)
+                else:
+                    f.write('此圖框內沒有鋼筋\n')
+                    
+                if len(x[2]) != 0:    
+                    f.write('箍筋計算：\n')
+                    for y in x[2]:
+                        f.write(f'{y}: 總數量為 {x[2][y]}\n')
+                        if y in tie_count_dic:
+                            tie_count_dic[y] += x[2][y] * RebarInfo(y)
+                        else:
+                            tie_count_dic[y] = x[2][y] * RebarInfo(y)
+                else:
+                    f.write('此圖框內沒有箍筋\n')
+                    
+                f.write('\n')
+                    
+        f.write(f'統計所有結果：\n')
+        f.write('鋼筋計算：\n')
+        for y in rebar_length_dic:
+            f.write(f'{y}: 總長度(長度*數量)為 {rebar_length_dic[y]}\n')
+            
+        f.write('箍筋計算：\n')
+        for y in tie_count_dic:
+            f.write(f'{y}: 總數量為 {tie_count_dic[y]}\n')
     
-    f.close
+    # f.close
     
     progress('梁配筋圖讀取進度 15/15', progress_file)
     
     # Step 16. 把箍筋跟beam字串綁在一起
     # 先判斷beam字串在上面還是下面 -> 看最高的beam字串跟tie_text誰比較高
-    highest = 0
-    down = 1 # 預設在下
-    for x in coor_to_tie_text_list: # (字串，座標)
-        if x[1][1] > highest:
-            highest = x[1][1]
-    for x in coor_to_beam_list: # (string, midpoint, list of tie)
-        if x[1][1] > highest:
-            down = 0
-            break
-    for x in coor_to_tie_text_list: # (字串，座標)
-        # 先算出tie的根數和尺寸
-        if '-' in x[0] and x[0].split('-')[0].isdigit(): # 已經算好有幾根就直接用
-            count = int(x[0].split('-')[0])
-            size = (x[0].split('-')[1]).split('@')[0] # 用'-'和'@'來切
-            if size.split('#')[0].isdigit():
-                count *= int(size.split('#')[0])
-                size = f"#{size.split('#')[1]}"
+    # highest = 0
+    # down = 1 # 預設在下
+    # for x in coor_to_tie_text_list: # (字串，座標)
+    #     if x[1][1] > highest:
+    #         highest = x[1][1]
+    # for x in coor_to_beam_list: # (string, midpoint, list of tie)
+    #     if x[1][1] > highest:
+    #         down = 0
+    #         break
+    # for x in coor_to_tie_text_list: # (字串，座標)
+    #     # 先算出tie的根數和尺寸
+    #     if '-' in x[0] and x[0].split('-')[0].isdigit(): # 已經算好有幾根就直接用
+    #         count = int(x[0].split('-')[0])
+    #         size = (x[0].split('-')[1]).split('@')[0] # 用'-'和'@'來切
+    #         if size.split('#')[0].isdigit():
+    #             count *= int(size.split('#')[0])
+    #             size = f"#{size.split('#')[1]}"
 
-        else: # 沒算好自己算
-            left_diff = 1000
-            right_diff = 1000
-            for y in coor_to_tie_list: # (下座標，上座標，長度) 
-                if y[0][0] < x[1][0] and x[1][0] - y[0][0] < left_diff and y[0][1] < x[1][1] and x[1][1] < y[1][1]: # 箍筋在文字左邊且diff最小且文字有被上下的y夾住
-                    left_diff = x[1][0] - y[0][0]
-                elif y[0][0] > x[1][0] and y[0][0] - x[1][0] < right_diff and y[0][1] < x[1][1] and x[1][1] < y[1][1]: # 箍筋在文字右邊且diff最小且文字有被上下的y夾住
-                    right_diff = y[0][0] - x[1][0]
-            if left_diff != 1000 and right_diff != 1000:
-                size = x[0].split('@')[0] # 用'@'來切
-                bound = int(x[0].split('@')[1])
-                count = int((left_diff + right_diff) / bound)
-                if size.split('#')[0].isdigit():
-                    count *= int(size.split('#')[0])
-                    size = f"#{size.split('#')[1]}"
+    #     else: # 沒算好自己算
+    #         left_diff = 1000
+    #         right_diff = 1000
+    #         for y in coor_to_tie_list: # (下座標，上座標，長度) 
+    #             if y[0][0] < x[1][0] and x[1][0] - y[0][0] < left_diff and y[0][1] < x[1][1] and x[1][1] < y[1][1]: # 箍筋在文字左邊且diff最小且文字有被上下的y夾住
+    #                 left_diff = x[1][0] - y[0][0]
+    #             elif y[0][0] > x[1][0] and y[0][0] - x[1][0] < right_diff and y[0][1] < x[1][1] and x[1][1] < y[1][1]: # 箍筋在文字右邊且diff最小且文字有被上下的y夾住
+    #                 right_diff = y[0][0] - x[1][0]
+    #         if left_diff != 1000 and right_diff != 1000:
+    #             size = x[0].split('@')[0] # 用'@'來切
+    #             bound = int(x[0].split('@')[1])
+    #             count = int((left_diff + right_diff) / bound)
+    #             if size.split('#')[0].isdigit():
+    #                 count *= int(size.split('#')[0])
+    #                 size = f"#{size.split('#')[1]}"
                     
-        min_diff = 1000
-        min_string = ''
-        for y in coor_to_beam_list:
-            if (down == 1 and x[1][1] > y[1][1]) or (down == 0 and x[1][1] < y[1][1]):
-                x_diff = abs(x[1][0] - y[1][0])
-                y_diff = abs(x[1][1] - y[1][1])
-                if x_diff + y_diff < min_diff:
-                    min_diff = x_diff + y_diff
-                    min_string = y[0]
-        if min_string != '':
-            for y in coor_to_beam_list:
-                if y[0] == min_string:
-                    y[2].append(x[0])
-                    if size not in y[3]:
-                        y[3][size] = count
-                    else:
-                        y[3][size] += count
+    #     min_diff = 1000
+    #     min_string = ''
+    #     for y in coor_to_beam_list:
+    #         if (down == 1 and x[1][1] > y[1][1]) or (down == 0 and x[1][1] < y[1][1]):
+    #             x_diff = abs(x[1][0] - y[1][0])
+    #             y_diff = abs(x[1][1] - y[1][1])
+    #             if x_diff + y_diff < min_diff:
+    #                 min_diff = x_diff + y_diff
+    #                 min_string = y[0]
+    #     if min_string != '':
+    #         for y in coor_to_beam_list:
+    #             if y[0] == min_string:
+    #                 y[2].append(x[0])
+    #                 if size not in y[3]:
+    #                     y[3][size] = count
+    #                 else:
+    #                     y[3][size] += count
     
-        f = open(tie_txt, "w", encoding = 'utf-8')  
-        tie_length_dic = {}
-        for x in coor_to_beam_list: # (string, midpoint, list of tie)
-            try:
-                f.write(f'{x[0]}的箍筋列表：\n')  
-                for y in x[2]:
-                    f.write(f'  {y}\n')
-                f.write(f'統計：\n')  
-                for y in x[3]:
-                    f.write(f'  {y}: 總數量為 {x[3][y]}\n')
-                size = x[0].replace('X', 'x')
-                size = (size.split('(')[1]).split(')')[0]
-                num1 = int(size.split('x')[0]) - 10
-                num2 = int(size.split('x')[1]) - 10
-                total_len = (num1 + num2) * 2
-                for y in x[3]:
-                    ans = x[3][y] * total_len
-                    f.write(f'  {y}: 總長度為 {ans}\n')
-                    if y in tie_length_dic:
-                        tie_length_dic[y] += ans
-                    else:
-                        tie_length_dic[y] = ans
-            except:
-                pass
+    #     f = open(tie_txt, "w", encoding = 'utf-8')  
+    #     tie_length_dic = {}
+    #     for x in coor_to_beam_list: # (string, midpoint, list of tie)
+    #         try:
+    #             f.write(f'{x[0]}的箍筋列表：\n')  
+    #             for y in x[2]:
+    #                 f.write(f'  {y}\n')
+    #             f.write(f'統計：\n')  
+    #             for y in x[3]:
+    #                 f.write(f'  {y}: 總數量為 {x[3][y]}\n')
+    #             size = x[0].replace('X', 'x')
+    #             size = (size.split('(')[1]).split(')')[0]
+    #             num1 = int(size.split('x')[0]) - 10
+    #             num2 = int(size.split('x')[1]) - 10
+    #             total_len = (num1 + num2) * 2
+    #             for y in x[3]:
+    #                 ans = x[3][y] * total_len
+    #                 f.write(f'  {y}: 總長度為 {ans}\n')
+    #                 if y in tie_length_dic:
+    #                     tie_length_dic[y] += ans
+    #                 else:
+    #                     tie_length_dic[y] = ans
+    #         except:
+    #             pass
                 
-    f.write(f'統計所有結果：\n')
-    f.write('箍筋計算：\n')
-    for y in tie_length_dic:
-        f.write(f'{y}: 總長度(長度*數量)為 {tie_length_dic[y]}\n')
+    # f.write(f'統計所有結果：\n')
+    # f.write('箍筋計算：\n')
+    # for y in tie_length_dic:
+    #     f.write(f'{y}: 總長度(長度*數量)為 {tie_length_dic[y]}\n')
     
-    f.close
-    progress('梁配筋圖讀取完成', progress_file)
+    # f.close
+    # progress('梁配筋圖讀取完成', progress_file)
     return
 def draw_rebar():
     pass
