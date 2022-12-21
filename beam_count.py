@@ -126,7 +126,7 @@ def read_beam_cad(beam_filename, progress_file):
     # Step 7. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
     # progress('正在遍歷梁配筋圖上的物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候', progress_file)
     
-def sort_beam_cad(msp_beam,layer_config:dict, progress_file=''):
+def sort_beam_cad(msp_beam,layer_config:dict, progress_file='',temp_file=''):
 
     rebar_layer = layer_config['rebar_layer']
     rebar_data_layer = layer_config['rebar_data_layer']
@@ -206,7 +206,7 @@ def sort_beam_cad(msp_beam,layer_config:dict, progress_file=''):
                             'coor_to_block_list':coor_to_block_list,
                             'coor_to_beam_list':coor_to_beam_list,
                             'coor_to_bounding_block_list':coor_to_bounding_block_list
-                            })
+                            },temp_file)
 
 
 # Step 8-15 是在處理鋼筋的部分
@@ -314,6 +314,9 @@ def sort_arrow_to_word(coor_to_arrow_dic:dict,coor_to_data_list:list):
             print(f'{arrow_head} / {arrow_data } cant find pair arrow')
             continue
         rebar_data = list(arrow_data)
+        if '-' not in text:
+            print(f'{text} not satisfied rule')
+            continue
         number = text.split('-')[0]
         size =  text.split('-')[1]    
         rebar_data.extend([number,size ,coor])
@@ -583,9 +586,16 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
             nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],arrow_head))
         nearest_beam[5].append({f'{number}-{size}':length})
         if size in nearest_beam[6]:
-            nearest_beam[6][size] += int(number)*length
+            if 'E.F' in size:
+                nearest_beam[6][size] += length
+            else:
+                nearest_beam[6][size] += int(number)*length
         else:
-            nearest_beam[6][size] = int(number)*length
+            if 'E.F' in size:
+                nearest_beam[6][size] = length
+            else:
+                nearest_beam[6][size] = int(number)*length
+
     pass
     for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
         head_coor,tail_coor,length,number,size= rebar_line
@@ -615,16 +625,24 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
             nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
         nearest_beam[5].append({f'彎鉤{number}-{size}':length})
         if bend_line[4] in nearest_beam[6]:
-            nearest_beam[6][size] += int(number)*length
+            if 'E.F' in size:
+                nearest_beam[6][size] += length
+            else:
+                nearest_beam[6][size] += int(number)*length
         else:
-            nearest_beam[6][size] = int(number)*length
+            if 'E.F' in size:
+                nearest_beam[6][size] = length
+            else:
+                nearest_beam[6][size] = int(number)*length
 
 ## 輸出每隻梁的結果    
 def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
     # (string, midpoint, list of tie, tie_count_dic,(左下，右上),list of rebar,rebar count dict)
     lines=[]
     total_tie = {}
+    # total_tie_count = {}
     total_rebar = {}
+    floor_rebar = {}
     def _add_total(size,number,total):
         if size in total:
             total[size] += number
@@ -632,10 +650,15 @@ def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
             total[size] = number
 
     for beam in coor_to_beam_list:
+        count_floor = beam[0].split(' ')[0]
+        if count_floor not in floor_rebar:
+            floor_rebar.update({count_floor:{}})
+        # temp_dict = floor_rebar[count_floor]
         matches = re.findall(r"\((.*?)\)",beam[0],re.MULTILINE)
         if len(matches) == 0 or 'X' not in matches[0]:continue
         tie=0
         rebar=0
+        total_tie_count = 0
         try:
             depth = int(matches[0].split('X')[1])
             width = int(matches[0].split('X')[0])
@@ -646,18 +669,25 @@ def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
         rebar_count = beam[6]
         for size,count in tie_count.items():
             tie += count * RebarInfo(size) * ((depth - 10)+(width-10))*2
+            total_tie_count += count
             _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=total_tie)
+            _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=floor_rebar[count_floor])
+            # _add_total(size=size,number=count,total=total_tie_count)
         for size,length in rebar_count.items():
             rebar += RebarInfo(size) * length
             _add_total(size=size,number=RebarInfo(size) * length,total=total_rebar)
+            _add_total(size=size,number=RebarInfo(size) * length,total=floor_rebar[count_floor])
         lines.append('\n梁{}:'.format(beam[0]))
         lines.append('\n寬度:{}、高度:{}'.format(width,depth))
         lines.append('\n主筋為:{}'.format(beam[5]))
         lines.append('\n箍筋為:{}'.format(beam[2]))
+        lines.append('\n箍筋個數為:{}'.format(total_tie_count))
         lines.append('\n主筋量為:{}'.format(rebar))
         lines.append('\n箍筋量為:{}'.format(tie))
         lines.append(f'==================================')
     with open(output_txt, 'w',encoding= 'utf-8') as f:
+        for floor,item in floor_rebar.items():
+            lines.append('\n{0} 鋼筋量 :{1}'.format(floor,item))
         lines.append('\n箍筋總量{}:'.format(total_tie))
         lines.append('\n主筋總量{}'.format(total_rebar))
         f.write('\n'.join(lines))
@@ -922,7 +952,7 @@ def cal_beam_rebar(data={},output_txt='',tie_txt='',progress_file=''):
     combine_beam_tie(coor_sorted_tie_list=coor_sorted_tie_list,coor_to_beam_list=coor_to_beam_list)
     combine_beam_rebar(coor_to_arrow_dic=coor_to_arrow_dic,coor_to_rebar_list_straight = coor_to_rebar_list_straight,
                         coor_to_bend_rebar_list=coor_to_bend_rebar_list,coor_to_beam_list=coor_to_beam_list)
-    count_each_beam_rebar_tie(coor_to_beam_list=coor_to_beam_list,output_txt='test.txt')
+    count_each_beam_rebar_tie(coor_to_beam_list=coor_to_beam_list,output_txt='test_wu_1F.txt')
     # for x in coor_to_tie_text_list: # (字串，座標)
     #     if '-' in x[0] and x[0].split('-')[0].isdigit(): # 已經算好有幾根就直接用
     #         count = int(x[0].split('-')[0])
@@ -1003,9 +1033,9 @@ def cal_beam_rebar(data={},output_txt='',tie_txt='',progress_file=''):
                     for y in x[2]:
                         f.write(f'{y}: 總數量為 {x[2][y]}\n')
                         if y in tie_count_dic:
-                            tie_count_dic[y] += x[2][y] * RebarInfo(y)
+                            tie_count_dic[y] += x[2][y]
                         else:
-                            tie_count_dic[y] = x[2][y] * RebarInfo(y)
+                            tie_count_dic[y] = x[2][y]
                 else:
                     f.write('此圖框內沒有箍筋\n')
                     
@@ -1132,10 +1162,10 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2022-12-16-16-18temp-XS-BEAM.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2022-1221\1F.dwg"
     progress_file = './result/tmp'#sys.argv[14]
-    rebar_file = './result/rebar.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
-    tie_file = './result/tie.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
+    rebar_file = './result/rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
+    tie_file = './result/tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
 
     # 在beam裡面自訂圖層
     layer_config = {
@@ -1158,9 +1188,12 @@ if __name__=='__main__':
     # l = list(range(1,10))
     # test(l)
     # print(l)
+    start = time.time()
     # msp_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,progress_file=progress_file)
-    cal_beam_rebar(data=save_temp_file.read_temp('temp_1216.pkl'),output_txt=rebar_file,tie_txt=tie_file,progress_file=progress_file)
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,progress_file=progress_file,temp_file='temp_1221_1F.pkl')
+    
+    cal_beam_rebar(data=save_temp_file.read_temp('temp_1221_1F.pkl'),output_txt=rebar_file,tie_txt=tie_file,progress_file=progress_file)
+    print(f'Total Time:{time.time() - start}')
     # data=save_temp_file.read_temp('temp_1216.pkl')
     # import pprint
     # pprint.pprint(data['coor_to_bounding_block_list'])
