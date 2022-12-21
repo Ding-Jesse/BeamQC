@@ -236,9 +236,5 @@ def page_not_found(e):
     return redirect(url_for('NOT_FOUND'))
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-
-=======
     app.secret_key = 'dev'
->>>>>>> auth_session
     app.run(host = '192.168.0.143',debug=True,port=8080)
