@@ -123,7 +123,8 @@
 </div>
 
 <div class="btn-block">
-<button type="submit" id="but_search" onclick="showloader()">完成</button>
+<!-- <button type="submit" id="but_search" onclick="showloader()">完成</button> -->
+<button type="submit" id="but_search">完成</button>
 </div>
 </form>
 </div>
@@ -212,55 +213,55 @@ CAD版本須為2016以前之版本。
 </blockquote>
 <script> 
   document.getElementById("loader").style.visibility = "visible";
-  function showloader() { 
-      function delay(n){
-          return new Promise(function(resolve){
-              setTimeout(resolve,n*1000);
-          });
-      }
-      async function myAsyncFunction(){
-          document.getElementById("loader").style.display = "block"; 
-          // 顯示進度
+  // function showloader() { 
+  //     function delay(n){
+  //         return new Promise(function(resolve){
+  //             setTimeout(resolve,n*1000);
+  //         });
+  //     }
+  //     async function myAsyncFunction(){
+  //         document.getElementById("loader").style.display = "block"; 
+  //         // 顯示進度
 
-          var d = new Date();
+  //         var d = new Date();
 
-          let year = d.getFullYear();
-          let month = (d.getMonth() + 1).toString();
-          let day = d.getDate().toString();
-          let hour = d.getHours().toString();
-          let minute = d.getMinutes().toString();
-          if (month.length < 2) {
-            month = '0' + month;
-          }
-          if (day.length < 2) {
-            day = '0' + day;
-          }
-          if (hour.length < 2) {
-            hour = '0' + hour;
-          }
-          if (minute.length < 2) {
-            minute = '0' + minute;
-          }
-          d = [year, month, day, hour, minute].join('-');
+  //         let year = d.getFullYear();
+  //         let month = (d.getMonth() + 1).toString();
+  //         let day = d.getDate().toString();
+  //         let hour = d.getHours().toString();
+  //         let minute = d.getMinutes().toString();
+  //         if (month.length < 2) {
+  //           month = '0' + month;
+  //         }
+  //         if (day.length < 2) {
+  //           day = '0' + day;
+  //         }
+  //         if (hour.length < 2) {
+  //           hour = '0' + hour;
+  //         }
+  //         if (minute.length < 2) {
+  //           minute = '0' + minute;
+  //         }
+  //         d = [year, month, day, hour, minute].join('-');
 
-          var project_name = document.getElementById("project_name").value
+  //         var project_name = document.getElementById("project_name").value
           
-          await delay(10);
+  //         await delay(10);
 
-          var eventSource = new EventSource("/listen/" + d + project_name + "/")
-          eventSource.addEventListener("message", function(e) {
-            console.log(e.data)
-          }, false)
+  //         var eventSource = new EventSource("/listen/" + d + project_name + "/")
+  //         eventSource.addEventListener("message", function(e) {
+  //           console.log(e.data)
+  //         }, false)
 
-          eventSource.addEventListener("online", function(e) {
-            // console.log(e.data.color)
-            data = JSON.parse(e.data)
-            document.querySelector("#counter").innerText = data.counter
-            document.querySelector("body").style.backgroundColor= data.color
-          }, true)
-      }
-      myAsyncFunction();
-  } 
+  //         eventSource.addEventListener("online", function(e) {
+  //           // console.log(e.data.color)
+  //           data = JSON.parse(e.data)
+  //           document.querySelector("#counter").innerText = data.counter
+  //           document.querySelector("body").style.backgroundColor= data.color
+  //         }, true)
+  //     }
+  //     myAsyncFunction();
+  // } 
 
   function showcol() { 
     document.getElementById("col").style.visibility = "visible";

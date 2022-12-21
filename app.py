@@ -167,19 +167,19 @@ def login():
         return redirect(url_for('home'))
     return render_template('statement.html', template_folder='./')
 
-@app.route("/listen/<project_name>/")
-def listen(project_name):
+# @app.route("/listen/<project_name>/")
+# def listen(project_name):
 
-  def respond_to_client():
-    while True:
-      f = open(f'./OUTPUT/{project_name}_progress', 'a+', encoding="utf-8") 
-      lines = f.readlines() #一行一行讀
-      color = 'white'
-      _data = json.dumps({"color":color, "counter":''.join(lines)}, ensure_ascii=False)
-      yield f"id: 1\ndata: {_data}\nevent: online\n\n"
-      time.sleep(5)
-      f.close
-  return Response(respond_to_client(), mimetype='text/event-stream')
+#   def respond_to_client():
+#     while True:
+#       f = open(f'./OUTPUT/{project_name}_progress', 'a+', encoding="utf-8") 
+#       lines = f.readlines() #一行一行讀
+#       color = 'white'
+#       _data = json.dumps({"color":color, "counter":''.join(lines)}, ensure_ascii=False)
+#       yield f"id: 1\ndata: {_data}\nevent: online\n\n"
+#       time.sleep(5)
+#       f.close
+#   return Response(respond_to_client(), mimetype='text/event-stream')
 
 @app.errorhandler(404)
 def page_not_found(e):
