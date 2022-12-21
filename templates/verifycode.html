@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}認證頁面{% endblock %}
+
+{% block content %}
+<head>
+    <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js">
+    </script>
+</head>
+<body>
+<h2>手機認證</h2>
+<div class="item">
+    <labe>手機號碼</label>
+    <input type="text" id="phone_number" name="phone_number" placeholder="請輸入手機號碼" required >
+</div>
+<button id="sendtext">寄送驗證碼</button>
+<div class="item">
+    <labe>簡訊驗證碼</label>
+    <input type="text" id="password" name="password" placeholder="請輸入驗證碼" required >
+</div>
+<button id="checkcode">確認驗證碼</button>
+</body>
+<script>
+    $("#sendtext").click(
+        function(){
+            var phone_number = document.getElementById('phone_number').value;
+            if (phone_number ==""){
+                alert('請輸入電話號碼');
+                return;
+            }
+            $.ajax(
+                {
+                    type:"POST",
+                    url:"/sendVerifyCode",
+                    data:{
+                        'phone':phone_number
+                    },
+                    success:(data)=>{
+                        alert(data.validate);
+                    },
+                    error:(data)=>{
+                        alert(data.validate)
+                    },
+                    dataType:"json"
+                }
+            );
+        }
+    );
+    $("#checkcode").click(
+        function(){
+            var password_number = document.getElementById('password').value;
+            if (password_number ==""){
+                alert('請輸入驗證碼');
+                return;
+            }
+            $.ajax(
+                {
+                    type:"POST",
+                    url:"/checkcode",
+                    data:{
+                        'user_code':password_number
+                    },
+                    success:(data)=>{
+                        alert(data.validate);
+                        window.location.replace("/tool2");
+                    },
+                    error:(data)=>{
+                        alert(data.validate)
+                    },
+                    dataType:"json"
+                }
+            );
+        }
+    );
+</script>
+{% endblock %}
