@@ -10,15 +10,16 @@ import json
 import time
 from datetime import timedelta
 from auth import createPhoneCode,sendPhoneMessage
+from beam_count import count_beam_main
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
-OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
+# UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
+# OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
 ALLOWED_EXTENSIONS = set(['dwg','DWG'])
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
-app.config['SECRET_KEY'] = b'_5#y2L"F4Q8z\n\xec]/'
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+# app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
+# app.config['SECRET_KEY'] = b'_5#y2L"F4Q8z\n\xec]/'
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
@@ -41,7 +42,7 @@ def login_required(view):
 @app.before_request
 def before_request():
     session.permanent = True
-    app.permanent_session_lifetime = timedelta(minutes=15)
+    # app.permanent_session_lifetime = timedelta(minutes=15)
 
 @app.route('/tool1', methods=['GET', 'POST'])
 @login_required
@@ -133,11 +134,12 @@ def upload_file():
 @app.route('/results')
 @login_required
 def result_page():
-    filenames = session.get('filenames')
-    if filenames is None or len(filenames)==0:
-        return render_template('tool1_result.html', filenames=[])
-    else:
-        return render_template('tool1_result.html', filenames=filenames)
+    filenames = session.get('filenames',[])
+    count_filenames = session.get('count_filenames',[])
+    # if filenames is None or len(filenames)==0:
+    #     return render_template('tool1_result.html', filenames=[])
+    # else:
+    return render_template('tool1_result.html', filenames=filenames,count_filenames = count_filenames)
 
 @app.route('/results/<filename>/')
 def result_file(filename):
@@ -178,6 +180,7 @@ def sendVerifyCode():
 
 @app.route('/tool2', methods=['GET'])
 def tool2():
+    # return render_template('tool2.html')
     if 'isverify' not in session:
         return render_template('verifycode.html')
     elif session['isverify'] == 'expire':
@@ -217,6 +220,44 @@ def login():
         return redirect(url_for('home'))
     return render_template('statement.html', template_folder='./')
 
+@app.route('/count_beam',methods=['POST'])
+def count_beam():
+    uploaded_beams = request.files.getlist("file_beam")
+    project_name = request.form['project_name']
+    project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
+    beam_filename = ''
+    temp_file = ''
+    rebar_file = f'{project_name}-數量.txt'
+    tie_file = f'{project_name}-箍筋數量.txt'
+    rebar_input_file = os.path.join(app.config['OUTPUT_FOLDER'],rebar_file)
+    for uploaded_beam in uploaded_beams:
+        beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],request.form['project_name'])
+        beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{secure_filename(uploaded_beam.filename)}')
+        temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-temp.pkl')
+        print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
+    layer_config = {
+        'rebar_data_layer':request.form['rebar_data_layer'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':request.form['rebar_layer'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':request.form['tie_text_layer'], # 箍筋文字圖層
+        'block_layer':request.form['block_layer'], # 框框的圖層
+        'beam_text_layer' :request.form['beam_text_layer'], # 梁的字串圖層
+        'bounding_block_layer':request.form['bounding_block_layer']
+        }
+    if beam_filename != '' and temp_file != '':
+        # count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,rebar_file=rebar_input_file,tie_file=tie_file)
+        if 'count_filenames' in session:
+            session['count_filenames'].extend([rebar_file,tie_file])
+        else:
+            session['count_filenames'] = [rebar_file,tie_file]
+    response = Response()
+    
+    response.status_code = 200
+    response.data = json.dumps({'validate':f'Send Success'})
+    response.content_type = 'application/json'
+    # print(request.form['project_name'])
+    time.sleep(1)
+    return response
+
 # @app.route("/listen/<project_name>/")
 # def listen(project_name):
 
@@ -236,5 +277,6 @@ def page_not_found(e):
     return redirect(url_for('NOT_FOUND'))
 
 if __name__ == '__main__':
-    app.secret_key = 'dev'
+    app.config.from_object('config.config.DevConfig')
+    # app.secret_key = 'dev'
     app.run(host = '192.168.0.143',debug=True,port=8080)
