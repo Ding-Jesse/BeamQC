@@ -713,6 +713,7 @@ def cal_beam_rebar(data={},output_txt='',tie_txt='',progress_file=''):
     coor_to_block_list = data['coor_to_block_list'] # ((左下，右上), rebar_length_dic, tie_count_dic)
     coor_to_beam_list = data['coor_to_beam_list'] # (string, midpoint, list of tie, tie_count_dic)
     coor_to_bounding_block_list = data['coor_to_bounding_block_list']
+    class_beam_list = []
     # Step 8. 對應箭頭跟鋼筋
     # new_coor_to_arrow_dic = {}
     # for x in coor_to_arrow_dic: #此時的coor_to_arrow_dic為尖點座標->文字端坐標
@@ -1141,7 +1142,9 @@ def cal_beam_rebar(data={},output_txt='',tie_txt='',progress_file=''):
     # f.close
     # progress('梁配筋圖讀取完成', progress_file)
     return
-def draw_rebar():
+def draw_rebar(coor_to_beam_list:list):
+    for beam in coor_to_beam_list:
+
     pass
     # DEBUG # 畫線把文字跟左右的線連在一起
     # coor_list1 = [min_left_coor[0], min_left_coor[1], 0, x[1][0], x[1][1], 0]
