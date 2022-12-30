@@ -14,3 +14,7 @@ _rebar = {
 def RebarInfo(size="#3"):
     if "E.F" in size:return _rebar[size.replace("E.F","")]*2
     return _rebar[size]*7.85
+
+if __name__ == '__main__':
+    l = [0]
+    print(l[0])
