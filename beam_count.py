@@ -629,17 +629,19 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
             nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),arrow_head))
         nearest_beam.add_rebar(start_pt = line_mid_coor, end_pt = line_mid_coor,
                                 length = length, number = number, size = size,text=f'{number}-{size}')
-        # nearest_beam[5].append({f'{number}-{size}':length})
-        # if size in nearest_beam[6]:
-        #     if 'E.F' in size:
-        #         nearest_beam[6][size] += length
-        #     else:
-        #         nearest_beam[6][size] += int(number)*length
-        # else:
-        #     if 'E.F' in size:
-        #         nearest_beam[6][size] = length
-        #     else:
-        #         nearest_beam[6][size] = int(number)*length
+
+    for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
+        head_coor,tail_coor,length,number,size= rebar_line
+        mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
+        bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=mid_pt)]
+        if len(bounding_box) == 0:
+            coor_sorted_beam_list = [beam for beam in class_beam_list if beam.coor.y < mid_pt[1]]
+            if len(coor_sorted_beam_list) == 0:continue
+            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b.get_coor(),mid_pt))
+        else:
+            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),mid_pt))
+        nearest_beam.add_rebar(start_pt = mid_pt, end_pt = mid_pt,
+                                length = length, number = number, size = size,text=f'{number}-{size}',add_up='straight')
 
     for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
         head_coor,tail_coor,length,number,size= rebar_line
@@ -656,6 +658,7 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
             nearest_beam[6][size] += int(number)*length
         else:
             nearest_beam[6][size] = int(number)*length
+
     for bend_line in coor_to_bend_rebar_list:# (直的端點，橫的端點，長度，number，size)
         head_coor,tail_coor,length,number,size= bend_line
         # mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
@@ -678,6 +681,20 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
                 nearest_beam[6][size] = length
             else:
                 nearest_beam[6][size] = int(number)*length
+
+    for bend_line in coor_to_bend_rebar_list:# (直的端點，橫的端點，長度，number，size)
+        head_coor,tail_coor,length,number,size= bend_line
+        # mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
+        mid_pt = head_coor
+        bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=arrow_head)]
+        if len(bounding_box) == 0:
+            coor_sorted_beam_list = [beam for beam in class_beam_list  if beam.coor.y < mid_pt[1]]
+            if len(coor_sorted_beam_list) == 0:continue
+            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b.get_coor(),mid_pt))
+        else:
+            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),arrow_head))
+        nearest_beam.add_rebar(start_pt = mid_pt, end_pt = mid_pt,
+                                length = length, number = number, size = size,text=f'{number}-{size}',add_up='bend')
 
 ## 輸出每隻梁的結果    
 def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):

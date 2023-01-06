@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
 import pandas as pd
+from rebar import RebarInfo
 class Point:
     x = 0
     y = 0
@@ -17,7 +18,7 @@ class Rebar:
     text = 0
     number = 0
     size = ''
-    def __init__(self,start_pt,end_pt,length,number,size,text):
+    def __init__(self,start_pt,end_pt,length,number,size,text,add_up=''):
         self.start_pt = Point(start_pt)
         self.end_pt = Point(end_pt)
         self.number = number
@@ -40,15 +41,22 @@ class Tie:
         self.text = tie
         self.tie_num = tie_num
 class Beam:
+    middle_tie:list[Rebar]
     rebar_list:list[Rebar]
+    rebar_add_list:list[Rebar] #line with no arrow
+    rebar_bend_list:list[Rebar]
     tie_list:list[Tie]
     rebar:dict[str,list[Rebar]]
     tie:dict[str,Tie]
+    rebar_count:dict[str,float]
+    tie_count:dict[str,float]
     serial = ''
     floor = ''
     depth = 0
     width = 0
     length = 0
+    left_column = 0
+    right_column = 0
     start_pt:Point
     end_pt:Point
     # coor = Point
@@ -59,6 +67,8 @@ class Beam:
         self.start_pt = Point()
         self.end_pt = Point()
         self.rebar_list=[]
+        self.rebar_add_list= []
+        self.rebar_bend_list = []
         self.tie_list = []
         self.middle_tie = []
         self.rebar={
@@ -79,10 +89,17 @@ class Beam:
         self.coor.y = y
         self.get_beam_info()
     def add_rebar(self,**kwargs):
+        if 'add_up' in kwargs:
+            if kwargs['add_up'] == 'bend':
+                self.rebar_bend_list.append(Rebar(**kwargs))
+            else:
+                self.rebar_add_list.append(Rebar(**kwargs))
+            return
         if 'E.F' in kwargs['text']:
             self.middle_tie.append(Rebar(**kwargs))
         else:
             self.rebar_list.append(Rebar(**kwargs))
+ 
     def add_tie(self,*tie):
         self.tie_list.append(Tie(*tie))
     def set_bounding_box(self,pt1_x,pt1_y,pt2_x,pt2_y):
@@ -123,6 +140,28 @@ class Beam:
                 self.rebar['bot_second'].append(rebar)
             elif abs(rebar.start_pt.y - bot_y) >= self.depth/2:
                 self.rebar['top_second'].append(rebar)
+
+        for pos,rebar in self.rebar.items():
+            if 'second' in pos:
+                continue
+            left_rebar = min(rebar,key=lambda r:r.start_pt.x)
+            while left_rebar.start_pt.x > self.start_pt.x:
+                connect_rebar = [r for r in self.rebar_add_list if r.end_pt.x == left_rebar.start_pt.x and r.start_pt.y == left_rebar.start_pt.y]
+                if connect_rebar:
+                    rebar.append(connect_rebar[0])
+                    left_rebar = min(rebar,key=lambda r:r.start_pt.x)
+                else:
+                    print(f'{self.serial}')
+                    break
+            right_rebar = max(rebar,key=lambda r:r.end_pt.x)
+            while right_rebar.end_pt.x < self.end_pt.x:
+                connect_rebar = [r for r in self.rebar_add_list if r.start_pt.x == right_rebar.end_pt.x and r.start_pt.y == right_rebar.end_pt.y]
+                if connect_rebar:
+                    rebar.append(connect_rebar[0])
+                    right_rebar = max(rebar,key=lambda r:r.end_pt.x)
+                else:
+                    print(f'{self.serial}')
+                    break
     def sort_beam_tie(self):
         if not self.tie_list:return
         self.tie_list.sort(key=lambda tie:tie.start_pt.x)
@@ -134,5 +173,18 @@ class Beam:
                 self.tie['middle'] = tie
             if i == 2:
                 self.tie['right'] = tie
+    def cal_rebar(self):
+        for rebar_list in [self.rebar_list,self.rebar_add_list,self.rebar_bend_list,self.middle_tie]:
+            for rebar in rebar_list:
+                if rebar.size in self.rebar_count:
+                    self.rebar_count[rebar.size] += rebar.length * rebar.number * RebarInfo(rebar.size)
+                else:
+                    self.rebar_count[rebar.size] = rebar.length * rebar.number * RebarInfo(rebar.size)
+        for tie in self.tie_list:
+            if tie.size in self.tie_count:
+                self.tie_count[tie.size] += tie.count * RebarInfo(tie.tie_num) * (self.depth + self.width - 10) * 2
+            else:
+                self.tie_count[tie.size] = tie.count * RebarInfo(tie.tie_num) * (self.depth + self.width - 10) * 2
+        pass
     def write_beam(self,df:pd.DataFrame):
         pass
