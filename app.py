@@ -179,8 +179,10 @@ def sendVerifyCode():
         return response
 
 @app.route('/tool2', methods=['GET'])
+@login_required
 def tool2():
-    # return render_template('tool2.html')
+    if app.config['TESTING']:
+        return render_template('tool2.html')
     if 'isverify' not in session:
         return render_template('verifycode.html')
     elif session['isverify'] == 'expire':
@@ -224,16 +226,16 @@ def login():
 def count_beam():
     uploaded_beams = request.files.getlist("file_beam")
     project_name = request.form['project_name']
-    project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
+    # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
     beam_filename = ''
     temp_file = ''
-    rebar_file = f'{project_name}-數量.txt'
-    tie_file = f'{project_name}-箍筋數量.txt'
-    rebar_input_file = os.path.join(app.config['OUTPUT_FOLDER'],rebar_file)
+    rebar_txt = ''
+    rebar_excel = ''
+    # rebar_input_file = os.path.join(app.config['OUTPUT_FOLDER'],rebar_file)
     for uploaded_beam in uploaded_beams:
-        beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],request.form['project_name'])
-        beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{secure_filename(uploaded_beam.filename)}')
-        temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-temp.pkl')
+        beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+        beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_beam.filename)}')
+        temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
         print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
     layer_config = {
         'rebar_data_layer':request.form['rebar_data_layer'], # 箭頭和鋼筋文字的塗層
@@ -243,16 +245,17 @@ def count_beam():
         'beam_text_layer' :request.form['beam_text_layer'], # 梁的字串圖層
         'bounding_block_layer':request.form['bounding_block_layer']
         }
+    print(layer_config)
     if beam_filename != '' and temp_file != '':
-        # count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,rebar_file=rebar_input_file,tie_file=tie_file)
+        rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name)
         if 'count_filenames' in session:
-            session['count_filenames'].extend([rebar_file,tie_file])
+            session['count_filenames'].extend([rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
         else:
-            session['count_filenames'] = [rebar_file,tie_file]
+            session['count_filenames'] = [rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg]
     response = Response()
     
     response.status_code = 200
-    response.data = json.dumps({'validate':f'Send Success'})
+    response.data = json.dumps({'validate':f'計算完成，請至輸出結果查看'})
     response.content_type = 'application/json'
     # print(request.form['project_name'])
     time.sleep(1)

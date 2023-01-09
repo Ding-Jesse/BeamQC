@@ -10,6 +10,11 @@
         <div class="banner">
             <h1>梁配筋圖數量計算_beta</h1>
         </div>
+        <select id = 'company'>
+            <option value="0">選項1</option>
+            <option value="1">選項2</option>
+            <option value="2">選項3</option>
+        </select>
         <h3>請輸入以下資訊：</h3>
         <div class="item">
             <labe>專案名稱</label>
@@ -17,17 +22,17 @@
             <labe>選擇檔案</label>
             <input type=file name="file_beam" value="dwg" multiple>
             <labe>鋼筋指示箭頭及文字圖層</label>
-            <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" required >
+            <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required >
             <labe>鋼筋線圖層</label>
-            <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" required >
+            <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required >
             <labe>箍筋文字圖層</label>
-            <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" required >
+            <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
             <labe>圖框圖層</label>
-            <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" required >
+            <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
             <labe>梁編號圖層</label>
-            <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" required >
+            <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required >
             <labe>梁邊框圖層(選填)</label>
-            <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱">
+            <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
             <div class="btn-block">
             <button id="count_beam">完成</button>
             </div>
@@ -59,6 +64,8 @@
 </body>
 <script type="text/javascript">
     $(document).ready(function(){
+        $('#company').change(function(){
+        });
         // var form = $('#dataForm');
         $('#count_beam').click(function(){
             const form = document.getElementById('dataForm');
@@ -79,6 +86,7 @@
                 .then(response=>response.text())
                 .then(data =>{
                 console.log(data);
+                alert(JSON.parse(data));
             }).catch((error)=>{
                 console.log(error);
             })
@@ -87,6 +95,7 @@
             //         console.log(response);
             // },'json');
             console.log('wait for response')
+            alert('成功傳送，請稍等結果');
             return false;
         });
     });

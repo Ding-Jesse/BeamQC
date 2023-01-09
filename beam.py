@@ -16,12 +16,12 @@ class Rebar:
     end_pt = Point
     length = 0
     text = 0
-    number = 0
+    number=0
     size = ''
     def __init__(self,start_pt,end_pt,length,number,size,text,add_up=''):
         self.start_pt = Point(start_pt)
         self.end_pt = Point(end_pt)
-        self.number = number
+        self.number = int(number)
         self.size = size
         self.length = length
         self.text = text
@@ -71,6 +71,8 @@ class Beam:
         self.rebar_bend_list = []
         self.tie_list = []
         self.middle_tie = []
+        self.rebar_count = {}
+        self.tie_count = {}
         self.rebar={
             'top_first':[],
             'top_second':[],
@@ -182,9 +184,22 @@ class Beam:
                     self.rebar_count[rebar.size] = rebar.length * rebar.number * RebarInfo(rebar.size)
         for tie in self.tie_list:
             if tie.size in self.tie_count:
-                self.tie_count[tie.size] += tie.count * RebarInfo(tie.tie_num) * (self.depth + self.width - 10) * 2
+                self.tie_count[tie.size] += tie.count * RebarInfo(tie.size) * (self.depth + self.width - 10) * 2
             else:
-                self.tie_count[tie.size] = tie.count * RebarInfo(tie.tie_num) * (self.depth + self.width - 10) * 2
+                self.tie_count[tie.size] = tie.count * RebarInfo(tie.size) * (self.depth + self.width - 10) * 2
         pass
+    def get_rebar_weight(self):
+        temp = 0
+        for size,rebar in self.rebar_count.items():
+            temp += rebar
+        return temp
+    def get_tie_weight(self):
+        temp = 0
+        for size,rebar in self.tie_count.items():
+            temp += rebar
+        return temp
+    def get_middle_tie(self):
+        if(self.middle_tie):return self.middle_tie[0].text
+        return 
     def write_beam(self,df:pd.DataFrame):
         pass

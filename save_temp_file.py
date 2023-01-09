@@ -10,4 +10,4 @@ def read_temp(tmp_file=''):
     return data
 
 if __name__=='__main__':
-    read_temp()
+    print(read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\temp-0107-2023-01-07-11-09-temp.pkl'))
