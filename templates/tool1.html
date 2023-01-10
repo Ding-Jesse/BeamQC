@@ -5,7 +5,7 @@
 {% block content %}
 <body>
 <div class="testbox">
-<form action="" method=post enctype=multipart/form-data>
+<form action="" name="compareForm" enctype="multipart/form-data" method="POST" id="compareForm">
 <div class="banner">
   <h1>配筋圖查核_beta</h1>
 </div>
@@ -44,7 +44,7 @@
 <div><h4>柱配筋圖</h4></div>
 <div class="item">
 <labe>選擇檔案</label>
-<input type=file name=file_col value="dwg" multiple>
+<input type=file id=file_col name=file_col value="dwg" multiple>
 </div>
 <div class="item">
 <labe>柱配筋圖文字圖層名稱</label>
@@ -60,7 +60,7 @@
 <div><h4>梁配筋圖</h4></div>
 <div class="item">
 <label>選擇檔案</label>
-<input type=file name=file1 value="dwg" multiple>
+<input type=file id=file1 name=file1 value="dwg" multiple>
 </div>
 <div class="item">
 <label>梁配筋圖文字圖層名稱</label>
@@ -72,7 +72,7 @@
 <div><h4>結構平面圖</h4></div>
 <div class="item">
 <label>選擇檔案</label>
-<input type=file name=file2 value="dwg" multiple>
+<input type=file id=file2 name=file2 value="dwg" multiple>
 </div>
 <div class="item">
 <label>結構平面圖圖框圖層名稱</label>
@@ -124,7 +124,8 @@
 
 <div class="btn-block">
 <!-- <button type="submit" id="but_search" onclick="showloader()">完成</button> -->
-<button type="submit" id="but_search">完成</button>
+<button id="compare_beam">完成</button>
+<!-- <button type="submit" id="but_search">完成</button> -->
 </div>
 </form>
 </div>
@@ -212,6 +213,44 @@ CAD版本須為2016以前之版本。
 </ol>
 </blockquote>
 <script> 
+  $(document).ready(function(){
+    $('#compare_beam').click(function(){
+      const form = document.getElementById('compareForm');
+      const formData = new FormData(form);
+      let file_col = $('#file_col');
+      let file_beam = $('#file1')[0].files;
+      let file_plan = $('#file2')[0].files;
+      var col_chosen = $('#xs-col').is(':checked');
+      var beam_chosen = $('#xs-beam').is(':checked');
+      if(!file_col.val() & col_chosen){
+          alert('未上傳"柱"檔案')
+          return false
+      };
+      if(!file_beam.length & beam_chosen){
+          alert('未上傳"梁"檔案')
+          return false
+      };
+      if(!file_plan.length){
+          alert('未上傳"平面圖"檔案')
+          return false
+      };
+      // if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){
+      //     alert('檔案類型錯誤')
+      //     return
+      // };
+      fetch("/compare_beam",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
+          .then(response=>response.text())
+          .then(data =>{
+          console.log(data['validate']);
+          alert(JSON.parse(data));
+      }).catch((error)=>{
+          console.log(error);
+      })
+        console.log('wait for response')
+        alert('成功傳送，請稍等結果');
+        return false;
+      });
+  });
   document.getElementById("loader").style.visibility = "visible";
   // function showloader() { 
   //     function delay(n){

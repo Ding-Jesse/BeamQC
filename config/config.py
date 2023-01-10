@@ -2,7 +2,7 @@ from os import environ, path
 from datetime import timedelta
 class Config:
     TESTING = True
-    permanent_session_lifetime = timedelta(minutes=15)
+    permanent_session_lifetime = timedelta(minutes=60)
     PROGRESS_FILE = './TEST/OUTPUT'
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB
     # GEVENT_SUPPORT =True
