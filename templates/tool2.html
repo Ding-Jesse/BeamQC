@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}數量計算{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+    select {
+        width: 200px;
+        height: 50px;
+        line-height: 50px;
+        font-size:large;
+        -webkit-appearance: menulist-button;  
+        -moz-appearance:none;
+        padding: 2px;
+      }
+    </style>
+</head>
+<body>
+
+<div class="testbox">
+    <form action="" name="dataForm" enctype="multipart/form-data" method="POST" id="dataForm">
+        <div class="banner">
+            <h1>梁配筋圖數量計算_beta</h1>
+        </div>
+        <div style="padding-bottom: 10px;padding-top: 10px;">
+        <span>選擇公司樣板:</span>
+        <select id = 'company' size="1">
+            <option value="0">選項1</option>
+            <option value="1">選項2</option>
+            <option value="2">選項3</option>
+        </select>
+        </div>
+        <!-- <p id = "download_sample">輸入/輸出範例檔下載</p> -->
+        <div> 
+        <a href="{{url_for('result_file', filename='sample.zip')}}" style='color: #279c96'>輸入/輸出範例檔下載</a>
+        </div>
+        <h3>請輸入以下資訊：</h3>
+        <div class="item">
+            <labe>專案名稱</label>
+            <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
+            <labe>選擇檔案(.dwg)</label>
+            <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
+            <labe>鋼筋指示箭頭及文字圖層</label>
+            <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required >
+            <labe>鋼筋線圖層</label>
+            <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required >
+            <labe>箍筋文字圖層</label>
+            <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
+            <labe>圖框圖層</label>
+            <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
+            <labe>梁編號圖層</label>
+            <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required >
+            <labe>梁邊框圖層(選填)</label>
+            <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
+            <div class="btn-block">
+            <button id="count_beam">完成</button>
+            </div>
+        </div>
+    </form> 
+        
+</div>
+<div class="banner2">
+    <h3>&emsp;⚠️注意事項</h3>
+</div>
+<ol>
+<li>圖層分類示意圖
+    <ul style="list-style-type:disc;">
+        <li>
+            <p>梁配筋圖示意圖。
+            <br>
+            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_demo_example.png" alt="image"></p></div>
+        </li>
+    </ul>
+    <ul style="list-style-type:disc;">
+        <li>
+            <p>圖框示意圖，梁邊框能提升數量計算精確度。
+            <br>
+            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_demo_example2.png" alt="image"></p></div>
+        </li>
+    </ul>
+</li>
+</ol>
+</body>
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('#company').change(function(){
+        });
+        // $('#download_sample').click(function(){
+        //     fetch("/results/sample.zip",{method:'post',contentType : false,cache: 'no-cache',credentials: 'same-origin'}).then(
+        //         response=>response.text()
+        //     ).then(
+        //         data=>{
+        //             console.log(data);
+        //         }
+        //     )
+        // })
+        // var form = $('#dataForm');
+        $('#count_beam').click(function(){
+            const form = document.getElementById('dataForm');
+            const formData = new FormData(form);
+            var file = $('#file_beam');
+            if(!file.val()){
+                alert('未上傳檔案')
+                return false
+            }
+            if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){
+                alert('檔案類型錯誤')
+                return false
+            }
+            // $.ajax({
+            //     type:"POST",
+            //     url:"/count_beam",
+            //     // 告訴jQuery不要去處理髮送的資料
+            //     processData : false, 
+            //     // 告訴jQuery不要去設定Content-Type請求頭
+            //     contentType : false,
+            //     data:formData,
+            //     success:function(data){
+            //         console.log(data);
+            //     }
+            // })
+            fetch("/count_beam",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
+                .then(response=>response.text())
+                .then(data =>{
+                console.log(data);
+                alert(JSON.parse(data['validate']));
+            }).catch((error)=>{
+                console.log(error);
+            })
+            
+            // $.post("/count_beam",formData,function(response){
+            //         console.log(response);
+            // },'json');
+            console.log('wait for response')
+            alert('成功傳送，請稍等結果');
+            return false;
+        });
+    });
+    function getExtension(filename) {
+        var parts = filename.split('.');
+        return parts[parts.length - 1];
+    }
+</script>
+{% endblock %}
