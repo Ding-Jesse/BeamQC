@@ -67,6 +67,7 @@ def upload_file():
             uploaded_beams = request.files.getlist("file1")
             uploaded_plans = request.files.getlist("file2")
             uploaded_columns = request.files.getlist("file_col")
+            email_address = request.form['email_address']
             beam_type = '大梁'
             sbeam_type = '小梁'
             beam_file =[]
@@ -143,6 +144,11 @@ def upload_file():
                     session['filenames'].extend(filenames)
                 else:
                     session['filenames'] = filenames
+            if(email_address):
+                try:
+                    sendResult(email_address,filenames)
+                except:
+                    pass
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate':f'完成，請至輸出結果查看'})
@@ -287,7 +293,11 @@ def count_beam():
                 session['count_filenames'].extend([rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
             else:
                 session['count_filenames'] = [rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg]
-        if(email_address):sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
+        if(email_address):
+            try:
+                sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
+            except:
+                pass
         response = Response()
         response.status_code = 200
         response.data = json.dumps({'validate':f'計算完成，請至輸出結果查看'})
