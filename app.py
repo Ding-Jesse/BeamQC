@@ -3,6 +3,7 @@ import os
 from time import sleep
 from urllib import response
 from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g, Response, stream_with_context,jsonify
+from flask_mail import Mail, Message
 from werkzeug.utils import secure_filename
 from main import main_functionV3, main_col_function,storefile
 import functools
@@ -12,7 +13,16 @@ from datetime import timedelta
 from auth import createPhoneCode,sendPhoneMessage
 from beam_count import count_beam_main
 app = Flask(__name__)
-
+app.config.from_object('config.config.Config')
+# app.config['MAIL_SERVER']='smtp.gmail.com'
+# app.config['MAIL_PORT']=465
+# app.config['MAIL_USE_SSL']=True
+# app.config['MAIL_DEFAULT_SENDER']=('freerccheck', 'elements.users27@gmail.com')
+# app.config['MAIL_MAX_EMAILS']=10
+# app.config['MAIL_USERNAME']='elements.users27@gmail.com'
+# app.config['MAIL_PASSWORD']='vzxwtbnbssfnfukq'
+# app.config['MAIL_ASCII_ATTACHMENTS']  =True
+mail= Mail(app)
 # UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
 # OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
 ALLOWED_EXTENSIONS = set(['dwg','DWG'])
@@ -244,6 +254,8 @@ def count_beam():
     try:
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
+        email_address = request.form['email_address']
+        print(email_address)
         # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
         beam_filename = ''
         temp_file = ''
@@ -275,8 +287,8 @@ def count_beam():
                 session['count_filenames'].extend([rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
             else:
                 session['count_filenames'] = [rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg]
+        if(email_address):sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
         response = Response()
-        
         response.status_code = 200
         response.data = json.dumps({'validate':f'計算完成，請至輸出結果查看'})
         response.content_type = 'application/json'
@@ -289,6 +301,22 @@ def count_beam():
         response.content_type = 'application/json'
     return response
 
+# @app.route('/send_email',methods=['POST'])
+def sendResult(recipients:str,filenames:list):
+    output_folder = app.config['OUTPUT_FOLDER']
+    # recipients = "elements.users29@gmail.com"
+    # filenames = ["temp-0110_Markon.dwg","temp-0110_20230110_160947_rebar.txt","temp-0110_20230110_160947_rebar_floor.txt","temp-0110_20230110_160949_Count.xlsx"]
+    with app.app_context():
+        msg = Message("梁配筋數量計算結果",recipients=[recipients])
+        for filename in filenames:
+            # filename = os.path.join(output_folder,filename)
+            if('.txt' in filename):content_type = "text/plain"
+            if('.xlsx' in filename):content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            if('.dwg' in filename):content_type = "application/x-dwg"
+            with app.open_resource(os.path.join(output_folder,filename)) as fp:
+                msg.attach(filename=filename,disposition="attachment",content_type=content_type,data=fp.read())
+        mail.send(msg)
+    return 200
 # @app.route("/listen/<project_name>/")
 # def listen(project_name):
 
@@ -309,6 +337,8 @@ def page_not_found(e):
 
 if __name__ == '__main__':
     app.config.from_object('config.config.DevConfig')
+    print('load config')
     # app.secret_key = 'dev'
     app.run(host = '192.168.0.143',debug=True,port=8080)
+
     # print(secure_filename('2022-11-18-17-16temp-大梁.txt'))

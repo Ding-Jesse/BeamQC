@@ -5,6 +5,16 @@ class Config:
     permanent_session_lifetime = timedelta(minutes=60)
     PROGRESS_FILE = './TEST/OUTPUT'
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB
+    MAIL_SERVER='smtp.gmail.com'
+    MAIL_PORT=465
+    MAIL_USE_SSL=True
+    MAIL_DEFAULT_SENDER=('freerccheck', 'elements.users27@gmail.com')
+    MAIL_MAX_EMAILS=10
+    MAIL_USERNAME='elements.users27@gmail.com'
+    MAIL_PASSWORD='vzxwtbnbssfnfukq'
+    MAIL_ASCII_ATTACHMENTS  =True
+    DEBUG = False
+    TESTING = False
     # GEVENT_SUPPORT =True
     
 class DevConfig(Config):
