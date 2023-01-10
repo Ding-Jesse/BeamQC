@@ -31,4 +31,15 @@ def sendPhoneMessage(phoneNumber = ''):
     print(json.dumps(parse_qs(response.text)))
 
 if __name__ == '__main__':
+    url = 'http://smsapi.mitake.com.tw/api/mtk/SmQuery'
+    params = {
+                'username': '45008175SMS', 
+                'password': "Elements25926882",
+                # 'clinetid': clientid,
+                # 'dstaddr':phoneNumber,
+                # 'smbody':smbody,
+            }
+
+    response = requests.post(url, params=params)
+    print(json.dumps(parse_qs(response.text)))
     print(str(uuid.uuid4()))
