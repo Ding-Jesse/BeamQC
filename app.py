@@ -45,8 +45,8 @@ def login_required(view):
 
 @app.before_request
 def before_request():
-    print(app.config['SESSION_PERMANENT'])
-    print(app.config['PERMANENT_SESSION_LIFETIME'])
+    # print(app.config['SESSION_PERMANENT'])
+    # print(app.config['PERMANENT_SESSION_LIFETIME'])
     pass
     # session.permanent = True
     # app.permanent_session_lifetime = timedelta(minutes=15)
@@ -147,7 +147,7 @@ def upload_file():
             if(email_address):
                 try:
                     print(f'send_email:{email_address}, filenames:{filenames}')
-                    sendResult(email_address,filenames)
+                    sendResult(email_address,filenames,"配筋圖核對結果")
                 except  Exception as e: 
                     print(e)
             response = Response()
@@ -264,7 +264,7 @@ def count_beam():
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
         email_address = request.form['email_address']
-        print(email_address)
+        # print(email_address)
         # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
         beam_filename = ''
         temp_file = ''
@@ -298,7 +298,7 @@ def count_beam():
                 session['count_filenames'] = [rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg]
         if(email_address):
             try:
-                sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
+                sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg],"梁配筋圖數量計算結果")
             except:
                 pass
         response = Response()
@@ -315,12 +315,12 @@ def count_beam():
     return response
 
 # @app.route('/send_email',methods=['POST'])
-def sendResult(recipients:str,filenames:list):
+def sendResult(recipients:str,filenames:list,mail_title:str):
     output_folder = app.config['OUTPUT_FOLDER']
     # recipients = "elements.users29@gmail.com"
     # filenames = ["temp-0110_Markon.dwg","temp-0110_20230110_160947_rebar.txt","temp-0110_20230110_160947_rebar_floor.txt","temp-0110_20230110_160949_Count.xlsx"]
     with app.app_context():
-        msg = Message("梁配筋數量計算結果",recipients=[recipients])
+        msg = Message(mail_title,recipients=[recipients])
         for filename in filenames:
             # filename = os.path.join(output_folder,filename)
             if('.txt' in filename):content_type = "text/plain"
