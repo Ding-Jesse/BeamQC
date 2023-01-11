@@ -4,6 +4,7 @@ from time import sleep
 from urllib import response
 from flask import Flask, request, redirect, url_for, render_template,send_from_directory,session,g, Response, stream_with_context,jsonify
 from flask_mail import Mail, Message
+from flask_session import Session
 from werkzeug.utils import secure_filename
 from main import main_functionV3, main_col_function,storefile
 import functools
@@ -14,14 +15,7 @@ from auth import createPhoneCode,sendPhoneMessage
 from beam_count import count_beam_main
 app = Flask(__name__)
 app.config.from_object('config.config.Config')
-# app.config['MAIL_SERVER']='smtp.gmail.com'
-# app.config['MAIL_PORT']=465
-# app.config['MAIL_USE_SSL']=True
-# app.config['MAIL_DEFAULT_SENDER']=('freerccheck', 'elements.users27@gmail.com')
-# app.config['MAIL_MAX_EMAILS']=10
-# app.config['MAIL_USERNAME']='elements.users27@gmail.com'
-# app.config['MAIL_PASSWORD']='vzxwtbnbssfnfukq'
-# app.config['MAIL_ASCII_ATTACHMENTS']  =True
+Session(app)
 mail= Mail(app)
 # UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
 # OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
@@ -51,12 +45,16 @@ def login_required(view):
 
 @app.before_request
 def before_request():
-    session.permanent = True
+    print(app.config['SESSION_PERMANENT'])
+    print(app.config['PERMANENT_SESSION_LIFETIME'])
+    pass
+    # session.permanent = True
     # app.permanent_session_lifetime = timedelta(minutes=15)
 
 @app.route('/tool1', methods=['GET'])
 @login_required
 def tool1():
+    # print(session.get('filenames',[]))
     return render_template('tool1.html')
 
 @app.route('/compare_beam', methods=['POST'])
@@ -96,7 +94,7 @@ def upload_file():
             beam_ok = False
             plan_ok = False
             column_ok = False
-            filenames = ['']
+            filenames = []
             project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
             progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
             if len(uploaded_beams) > 1: dwg_type = 'muti'
@@ -140,15 +138,18 @@ def upload_file():
                 filenames_column = [f'{project_name}-column.txt']
                 filenames.extend(filenames_column)
             if column_ok or beam_ok:
+                print(f'filenames:{filenames}')
                 if 'filenames' in session:
                     session['filenames'].extend(filenames)
                 else:
                     session['filenames'] = filenames
+                print(f'filenames:{session["filenames"]}')
             if(email_address):
                 try:
+                    print(f'send_email:{email_address}, filenames:{filenames}')
                     sendResult(email_address,filenames)
-                except:
-                    pass
+                except  Exception as e: 
+                    print(e)
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate':f'完成，請至輸出結果查看'})
@@ -169,6 +170,7 @@ def upload_file():
 def result_page():
     filenames = session.get('filenames',[])
     count_filenames = session.get('count_filenames',[])
+    # print(session.get('filenames',[]))
     # if filenames is None or len(filenames)==0:
     #     return render_template('tool1_result.html', filenames=[])
     # else:
@@ -176,6 +178,7 @@ def result_page():
 
 @app.route('/results/<filename>/',methods=['GET','POST'])
 def result_file(filename):
+    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[])):return redirect('/tool1')
     response = send_from_directory(app.config['OUTPUT_FOLDER'],
                                filename, as_attachment = True)
     response.cache_control.max_age = 0
