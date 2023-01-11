@@ -1363,7 +1363,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\tmp-2F-2023-01-07-15-09-2F.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2022-1221\1F-withREC.dwg"
     progress_file = './result/tmp'#sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
@@ -1392,9 +1392,9 @@ if __name__=='__main__':
     # print(l)
     start = time.time()
     msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,progress_file=progress_file,temp_file='temp_0107_2F.pkl')
+    sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,progress_file=progress_file,temp_file='temp_0111_1F.pkl')
     
-    output_txt,output_txt_2,output_excel,class_beam_list = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0107_2F.pkl'),output_folder=output_folder,project_name=project_name,progress_file=progress_file)
+    output_txt,output_txt_2,output_excel,class_beam_list = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0111_1F.pkl'),output_folder=output_folder,project_name=project_name,progress_file=progress_file)
     draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
     print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])

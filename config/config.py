@@ -1,8 +1,12 @@
 from os import environ, path
 from datetime import timedelta
 class Config:
-    TESTING = True
-    permanent_session_lifetime = timedelta(minutes=60)
+    # TESTING = True
+    # permanent_session_lifetime = timedelta(minutes=60)
+    SESSION_PERMANENT = True
+    SESSION_TYPE = "filesystem"
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=60)
+    SESSION_USE_SIGNER = True
     PROGRESS_FILE = './TEST/OUTPUT'
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB
     MAIL_SERVER='smtp.gmail.com'
