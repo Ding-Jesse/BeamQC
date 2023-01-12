@@ -178,7 +178,7 @@ def result_page():
 
 @app.route('/results/<filename>/',methods=['GET','POST'])
 def result_file(filename):
-    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[])):return redirect('/tool1')
+    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[]) and filename != "sample.zip"):return redirect('/tool1')
     response = send_from_directory(app.config['OUTPUT_FOLDER'],
                                filename, as_attachment = True)
     response.cache_control.max_age = 0
