@@ -153,8 +153,8 @@
             fetch("/count_beam",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
                 .then(response=>response.text())
                 .then(data =>{
-                console.log(data);
-                alert(JSON.parse(data['validate']));
+                console.log(JSON.parse(data));
+                alert(JSON.parse(data)['validate']);
             }).catch((error)=>{
                 console.log(error);
             })

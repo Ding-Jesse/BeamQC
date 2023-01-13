@@ -45,9 +45,20 @@ def login_required(view):
 
 @app.before_request
 def before_request():
+    if request.path == '/compare_beam':
+        if 'last_post_time' not in session:
+            session['last_post_time'] = time.time()
+            # print(time.time())
+        else:
+            if time.time() - session['last_post_time'] < 60:
+                print(f'last_post_time exist {session["last_post_time"]}')
+                time.sleep(60)
+                # session['post_status'] = 'disable'
+                # return redirect(url_for('tool1'))
+            else:
+                session['last_post_time'] = time.time()
     # print(app.config['SESSION_PERMANENT'])
     # print(app.config['PERMANENT_SESSION_LIFETIME'])
-    pass
     # session.permanent = True
     # app.permanent_session_lifetime = timedelta(minutes=15)
 
@@ -57,11 +68,25 @@ def tool1():
     # print(session.get('filenames',[]))
     return render_template('tool1.html')
 
+def send_error_response(warning_message:str):
+    print(warning_message)
+    response = Response()
+    response.status_code = 200
+    response.data = json.dumps({'validate':f'{warning_message}'})
+    response.content_type = 'application/json'
+    return response
+
 @app.route('/compare_beam', methods=['POST'])
-@login_required
+# @login_required
 def upload_file():
     if request.method == 'POST':
         try:
+            # if session.get('post_status','accept') == 'disable':raise TabError
+            # if time.time() - session['last_post_time'] < 60:
+            #     raise ConnectionRefusedError
+            # else:
+            #     session['last_post_time'] = time.time()
+
             uploaded_beams = request.files.getlist("file1")
             uploaded_plans = request.files.getlist("file2")
             uploaded_columns = request.files.getlist("file_col")
@@ -74,6 +99,7 @@ def upload_file():
             txt_file =''
             dwg_type = 'single'
             project_name = request.form['project_name']
+
             text_col_layer = request.form['text_col_layer']
             line_layer = request.form['line_layer']
             text_layer = request.form['text_layer']
@@ -96,6 +122,7 @@ def upload_file():
             column_ok = False
             filenames = []
             project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
+            print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
             progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
             if len(uploaded_beams) > 1: dwg_type = 'muti'
             for uploaded_beam in uploaded_beams:
@@ -138,28 +165,33 @@ def upload_file():
                 filenames_column = [f'{project_name}-column.txt']
                 filenames.extend(filenames_column)
             if column_ok or beam_ok:
-                print(f'filenames:{filenames}')
                 if 'filenames' in session:
                     session['filenames'].extend(filenames)
                 else:
                     session['filenames'] = filenames
-                print(f'filenames:{session["filenames"]}')
             if(email_address):
                 try:
                     print(f'send_email:{email_address}, filenames:{filenames}')
                     sendResult(email_address,filenames,"配筋圖核對結果")
-                except  Exception as e: 
+                except Exception as e: 
                     print(e)
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate':f'完成，請至輸出結果查看'})
             response.content_type = 'application/json'
             time.sleep(1)
-        except:
+        except ConnectionRefusedError:
+            response = Response()
+            response.status_code = 200
+            response.data = json.dumps({'validate':f'發送請求過於頻繁，請稍等'})
+            response.content_type = 'application/json'
+        except Exception as ex:
+            print(ex)
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate':f'發生錯誤'})
             response.content_type = 'application/json'
+        print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} end {project_name}')
         return response
     return 400 
             # return render_template('tool1_result.html', filenames=filenames)
@@ -255,6 +287,7 @@ def checkcode():
 def login():
     if request.method == 'POST':
         session['user_agree'] = 'agree'
+        
         return redirect(url_for('home'))
     return render_template('statement.html', template_folder='./')
 
@@ -299,6 +332,7 @@ def count_beam():
         if(email_address):
             try:
                 sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg],"梁配筋圖數量計算結果")
+                print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
             except:
                 pass
         response = Response()
