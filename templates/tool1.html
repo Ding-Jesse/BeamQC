@@ -112,7 +112,7 @@
 
 <div id='size' style='display: block;'>
 <div class="item">
-<label>結構平面圖顯示量尺寸表格文字圖層名稱</label>
+<label>結構平面圖顯示梁尺寸表格文字圖層名稱</label>
 <input type="text" id="size_layer" name="size_layer" value="S-TEXT" required>
 </div>
 </div>
@@ -126,7 +126,7 @@
 
 <div class="btn-block">
 <!-- <button type="submit" id="but_search" onclick="showloader()">完成</button> -->
-<button id="compare_beam">完成</button>
+<button type='button' id="compare_beam">完成</button>
 <!-- <button type="submit" id="but_search">完成</button> -->
 </div>
 </form>
@@ -214,9 +214,10 @@ CAD版本須為2016以前之版本。
 
 </ol>
 </blockquote>
-<script> 
+<script crossorigin="anonymous"> 
   $(document).ready(function(){
-    $('#compare_beam').click(function(){
+    $('#compare_beam').click(function(e){
+      e.preventDefault()
       const form = document.getElementById('compareForm');
       const formData = new FormData(form);
       let file_col = $('#file_col');
@@ -242,9 +243,12 @@ CAD版本須為2016以前之版本。
       // };
       fetch("/compare_beam",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
           .then(response=>response.text())
+          .catch((error)=>{
+          console.log(error);
+          })
           .then(data =>{
-          console.log(data['validate']);
-          alert(JSON.parse(data));
+          console.log(JSON.parse(data));
+          alert(JSON.parse(data)['validate']);
       }).catch((error)=>{
           console.log(error);
       })

@@ -1227,7 +1227,7 @@ def draw_rebar(coor_to_beam_list:list,class_beam_list:list):
     # line1.color = 101
     # line2.color = 101
 def draw_rebar_line(class_beam_list:list[Beam],msp_beam:object,doc_beam:object,output_folder:str,project_name:str):
-    output_dwg = os.path.join(output_folder,f'{project_name}_Markon.dwg')
+    output_dwg = os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_Markon.dwg')
     for beam in class_beam_list:
         for pos,rebar_list in beam.rebar.items():
             for rebar in rebar_list:
