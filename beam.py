@@ -57,6 +57,8 @@ class Beam:
     length = 0
     left_column = 0
     right_column = 0
+    concrete = 0
+    formwork = 0
     start_pt:Point
     end_pt:Point
     # coor = Point
@@ -116,10 +118,12 @@ class Beam:
     def get_beam_info(self):
         self.floor = self.serial.split(' ')[0]
         matches= re.findall(r"\((.*?)\)",self.serial,re.MULTILINE)
-        if len(matches) == 0 or 'X' not in matches[0]:return
+        # if len(matches) == 0 or 'X' not in matches[0]:return
+        if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE))==0:return
+        split_char = re.findall(r"X|x",matches[0])[0]
         try:
-            self.depth = int(matches[0].split('X')[1])
-            self.width = int(matches[0].split('X')[0])
+            self.depth = int(matches[0].split(split_char)[1])
+            self.width = int(matches[0].split(split_char)[0])
         except:
             self.depth = 0
             self.width = 0
@@ -146,6 +150,7 @@ class Beam:
         for pos,rebar in self.rebar.items():
             if 'second' in pos:
                 continue
+            if len(rebar) == 0: continue
             left_rebar = min(rebar,key=lambda r:r.start_pt.x)
             while left_rebar.start_pt.x > self.start_pt.x:
                 connect_rebar = [r for r in self.rebar_add_list if r.end_pt.x == left_rebar.start_pt.x and r.start_pt.y == left_rebar.start_pt.y]
@@ -184,10 +189,11 @@ class Beam:
                     self.rebar_count[rebar.size] = rebar.length * rebar.number * RebarInfo(rebar.size)
         for tie in self.tie_list:
             if tie.size in self.tie_count:
-                self.tie_count[tie.size] += tie.count * RebarInfo(tie.size) * (self.depth + self.width - 10) * 2
+                self.tie_count[tie.size] += tie.count * RebarInfo(tie.size) * (self.depth - 10 + self.width - 10) * 2
             else:
-                self.tie_count[tie.size] = tie.count * RebarInfo(tie.size) * (self.depth + self.width - 10) * 2
-        pass
+                self.tie_count[tie.size] = tie.count * RebarInfo(tie.size) * (self.depth - 10 + self.width - 10) * 2
+        self.concrete = (self.depth - 15)*self.width*self.length 
+        self.formwork = (self.width + (self.depth - 15)*2)*self.length 
     def get_rebar_weight(self):
         temp = 0
         for size,rebar in self.rebar_count.items():
@@ -201,5 +207,9 @@ class Beam:
     def get_middle_tie(self):
         if(self.middle_tie):return self.middle_tie[0].text
         return 
+    def get_concrete(self):
+        return self.concrete
+    def get_formwork(self):
+        return self.formwork
     def write_beam(self,df:pd.DataFrame):
         pass

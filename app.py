@@ -294,10 +294,13 @@ def login():
 @app.route('/count_beam',methods=['POST'])
 def count_beam():
     try:
+        print('1')
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
         email_address = request.form['email_address']
-        # print(email_address)
+        print(request.form['company'])
+        template_name = request.form['company']
+        
         # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
         beam_filename = ''
         temp_file = ''
@@ -324,7 +327,8 @@ def count_beam():
             }
         print(layer_config)
         if beam_filename != '' and temp_file != '' and beam_ok:
-            rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name)
+            rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
+                                                                                output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
             if 'count_filenames' in session:
                 session['count_filenames'].extend([rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
             else:
@@ -341,7 +345,8 @@ def count_beam():
         response.content_type = 'application/json'
         # print(request.form['project_name'])
         time.sleep(1)
-    except:
+    except Exception as ex:
+        print(ex)
         response = Response()
         response.status_code = 200
         response.data = json.dumps({'validate':f'發生錯誤'})
