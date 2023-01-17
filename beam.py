@@ -204,6 +204,16 @@ class Beam:
         for size,rebar in self.tie_count.items():
             temp += rebar
         return temp
+    def get_rebar_list(self):
+        temp = []
+        for rebar in self.rebar_list:
+            temp.append(f'{rebar.text}:{rebar.length}')
+        return temp
+    def get_tie_list(self):
+        temp = []
+        for rebar in self.tie_list:
+            temp.append(rebar.text)
+        return temp
     def get_middle_tie(self):
         if(self.middle_tie):return self.middle_tie[0].text
         return 
