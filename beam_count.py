@@ -728,6 +728,10 @@ def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
     # total_tie_count = {}
     total_rebar = {}
     floor_rebar = {}
+    floor_concrete = {}
+    floor_formwork = {}
+    total_concrete = {}
+    total_formwork={}
     def _add_total(size,number,total):
         if size in total:
             total[size] += number
@@ -738,6 +742,8 @@ def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
         count_floor = beam[0].split(' ')[0]
         if count_floor not in floor_rebar:
             floor_rebar.update({count_floor:{}})
+            floor_concrete.update({count_floor:0})
+            floor_formwork.update({count_floor:0})
         # temp_dict = floor_rebar[count_floor]
         matches= re.findall(r"\((.*?)\)",beam[0],re.MULTILINE)
         # if len(matches) == 0 or 'X' not in matches[0]:return
@@ -777,6 +783,63 @@ def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
             lines.append('\n{0} 鋼筋量 :{1}'.format(floor,item))
         lines.append('\n箍筋總量{}:'.format(total_tie))
         lines.append('\n主筋總量{}'.format(total_rebar))
+        lines.append('\n混凝土體積已扣除與版共構區域')
+        lines.append('\n模板已扣除與版共構區域')
+        f.write('\n'.join(lines))
+    pass
+def count_floor_total_beam_rebar_tie(class_to_beam_list:list[Beam],output_txt='test.txt'):
+    lines=[]
+    total_tie = {}
+    # total_tie_count = {}
+    total_rebar = {}
+    floor_rebar = {}
+    floor_concrete = {}
+    floor_formwork = {}
+    total_concrete = 0
+    total_formwork = 0
+    def _add_total(size,number,total):
+        if size in total:
+            total[size] += number
+        else:
+            total[size] = number
+    for beam in class_to_beam_list:
+        matches= re.findall(r"\((.*?)\)",beam.serial,re.MULTILINE)
+        if len(matches) == 0 or len(re.findall(r"X|x",beam.serial,re.MULTILINE)) == 0:continue
+        count_floor = beam.floor
+        if count_floor not in floor_rebar:
+            floor_rebar.update({count_floor:{}})
+            floor_concrete.update({count_floor:0})
+            floor_formwork.update({count_floor:0})
+        floor_concrete[count_floor] += beam.concrete
+        floor_formwork[count_floor] += beam.formwork
+        lines.append('\n梁{}:'.format(beam.serial))
+        lines.append('\n寬度:{}、深度:{}'.format(beam.width,beam.depth))
+        lines.append('\n主筋為:{}'.format(beam.get_rebar_list()))
+        lines.append('\n箍筋為:{}'.format(beam.get_tie_list()))
+        lines.append('\n主筋量(g)為:{}'.format(beam.get_rebar_weight()))
+        lines.append('\n箍筋量(g)為:{}'.format(beam.get_tie_weight()))
+        lines.append(f'==================================')
+        for size,weight in beam.rebar_count.items():
+            _add_total(size=size,number=weight,total=total_rebar)
+            _add_total(size=size,number=weight,total=floor_rebar[count_floor])
+        for size,weight in beam.tie_count.items():
+            _add_total(size=size,number=weight,total=total_tie)
+            _add_total(size=size,number=weight,total=floor_rebar[count_floor])
+
+    with open(output_txt, 'w',encoding= 'utf-8') as f:
+        for floor,item in floor_rebar.items():
+            total_concrete +=floor_concrete[count_floor]
+            total_formwork +=floor_formwork[count_floor]
+            lines.append('\n{0} 鋼筋量(g) :{1}'.format(floor,item))
+            lines.append('\n{0} 混凝土體積(cm3) :{1}'.format(floor,floor_concrete[count_floor]))
+            lines.append('\n{0} 模板量(cm2) :{1}'.format(floor,floor_formwork[count_floor]))
+            lines.append(f'==================================')
+        lines.append('\n箍筋總量(g):{}'.format(total_tie))
+        lines.append('\n主筋總量(g):{}'.format(total_rebar))
+        lines.append('\n混凝土總體積(cm3):{}'.format(total_concrete))
+        lines.append('\n模板總量(cm2):{}'.format(total_formwork))
+        lines.append('\n混凝土體積已扣除與版共構區域')
+        lines.append('\n模板已扣除與版共構區域')
         f.write('\n'.join(lines))
     pass
 
@@ -1047,7 +1110,8 @@ def cal_beam_rebar(data={},output_folder = '',project_name = '',progress_file=''
                         coor_to_bend_rebar_list=coor_to_bend_rebar_list,coor_to_beam_list=coor_to_beam_list,class_beam_list=class_beam_list)
     sort_beam(class_beam_list=class_beam_list)
     output_excel = output_beam(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name)
-    count_each_beam_rebar_tie(coor_to_beam_list=coor_to_beam_list,output_txt=output_txt)
+    # count_each_beam_rebar_tie(coor_to_beam_list=coor_to_beam_list,output_txt=output_txt)
+    count_floor_total_beam_rebar_tie(class_to_beam_list=class_beam_list,output_txt=output_txt)
     # for x in coor_to_tie_text_list: # (字串，座標)
     #     if '-' in x[0] and x[0].split('-')[0].isdigit(): # 已經算好有幾根就直接用
     #         count = int(x[0].split('-')[0])
