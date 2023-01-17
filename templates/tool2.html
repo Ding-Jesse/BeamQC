@@ -25,10 +25,9 @@
         </div>
         <div style="padding-bottom: 10px;padding-top: 10px;">
         <span>選擇公司樣板:</span>
-        <select id = 'company' size="1">
-            <option value="0">選項1</option>
-            <option value="1">選項2</option>
-            <option value="2">選項3</option>
+        <select id = 'company' name="company" size="1">
+            <option value="公司1">公司1</option>
+            <option value="公司2">公司2</option>
         </select>
         </div>
         <!-- <p id = "download_sample">輸入/輸出範例檔下載</p> -->
@@ -115,6 +114,21 @@
 <script type="text/javascript">
     $(document).ready(function(){
         $('#company').change(function(){
+            if ($('#company').val() == '公司2'){
+                $('#rebar_data_layer').val('NBAR');
+                $('#rebar_layer').val('RBAR');
+                $('#tie_text_layer').val('NBAR');
+                $('#block_layer').val('DEFPOINTS');
+                $('#beam_text_layer').val('TITLE');
+            }
+            if($('#company').val() == "公司1"){
+                $('#rebar_data_layer').val("S-LEADER" );
+                $('#rebar_layer').val("S-REINF");
+                $('#tie_text_layer').val("S-TEXT" );
+                $('#block_layer').val("S-GRID");
+                $('#beam_text_layer').val("S-RC");
+            }
+            
         });
         // $('#download_sample').click(function(){
         //     fetch("/results/sample.zip",{method:'post',contentType : false,cache: 'no-cache',credentials: 'same-origin'}).then(

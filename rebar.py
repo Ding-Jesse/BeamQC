@@ -20,6 +20,7 @@ _rebar = {
 }
 
 def RebarInfo(size="#3"):
+    if "(E.F)" in size:return _rebar[size.replace("(E.F)","").replace(" ","")]*2
     if "E.F" in size:return _rebar[size.replace("E.F","")]*2
     return _rebar[size]*7.85
 
