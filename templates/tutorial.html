@@ -3,21 +3,34 @@
 {% block title %}配筋圖查核使用教學{% endblock %}
 
 {% block content %}
-
+<head>
+    <style>
+    .banner::before {
+      background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-04.png");
+    }
+    </style>
+  </head>
 <body>
 <div class="testbox">
 <form action="" method=post enctype=multipart/form-data>
-    <div class="banner">
-          <h1>配筋圖查核使用教學</h1>
+    <div class = "banner">
+        <h1  class ="header1" >使用教學<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
     </div>
 </form>
 </div>
 
 <div class="banner2">
-<h3>&emsp;🎞️操作影片</h3>
+<h3>&emsp;🎞️RC梁柱配筋圖自動查核操作影片</h3>
 </div>
 <p align = 'center'>
 <video src="./static/配筋圖示範.mp4" controls style="width: 90%;border-width: 5px; border-style:solid; border-color: #000000; border-radius: 30px; border-style:dashed; padding: 8px"></video>
+</p>
+
+<div class="banner2">
+    <h3>&emsp;🎞️RC梁數量計算操作影片</h3>
+</div>
+<p align = 'center'>
+    <video src="../static/數量計算.mp4" controls style="width: 90%;border-width: 5px; border-style:solid; border-color: #000000; border-radius: 30px; border-style:dashed; padding: 8px"></video>
 </p>
 
 <div class="banner2">
