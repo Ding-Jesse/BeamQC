@@ -3,12 +3,20 @@
 {% block title %}配筋圖查核_beta{% endblock %}
 
 {% block content %}
+<head>
+  <style>
+  .banner::before {
+    background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-02.png");
+  }
+  </style>
+</head>
 <body>
 <div class="testbox">
 <form action="" name="compareForm" enctype="multipart/form-data" method="POST" id="compareForm">
-<div class="banner">
-  <h1>配筋圖查核_beta</h1>
+<div class = "banner">
+  <h1  class ="header1" >RC梁柱配筋圖 自動查核<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
 </div>
+
 <h3>請輸入以下資訊：</h3>
 <div class="item">
   <label for="name"><h3>專案名稱 <font color="red">(請記得修改此欄)</font></h3></label>

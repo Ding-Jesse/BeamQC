@@ -5,7 +5,7 @@ class Config:
     # permanent_session_lifetime = timedelta(minutes=60)
     SESSION_PERMANENT = True
     SESSION_TYPE = "filesystem"
-    PERMANENT_SESSION_LIFETIME = timedelta(minutes=60)
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=120)
     SESSION_USE_SIGNER = True
     PROGRESS_FILE = './TEST/OUTPUT'
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB

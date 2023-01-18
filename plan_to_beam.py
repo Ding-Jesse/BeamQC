@@ -1526,8 +1526,8 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2022-11-11-10-04P2022-03A 五股區登林段9FB3-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"D:\Desktop\BeamQC\TEST\2022-11-11-10-04P2022-03A 五股區登林段9FB3-XS-PLAN.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0118\小檜溪D_S4-01~S6-22_梁配筋詳圖_1110825.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"D:\Desktop\BeamQC\TEST\2023-0118\小檜溪D_S2-01~28_結構平面圖_1110825.dwg"#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
     big_file = r"D:\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果

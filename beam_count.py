@@ -839,7 +839,7 @@ def count_floor_total_beam_rebar_tie(class_to_beam_list:list[Beam],output_txt='t
         lines.append('\n混凝土總體積(cm3):{}'.format(total_concrete))
         lines.append('\n模板總量(cm2):{}'.format(total_formwork))
         lines.append('\n混凝土體積已扣除與版共構區域')
-        lines.append('\n模板已扣除與版共構區域')
+        lines.append('\n模板僅考慮梁兩側及底面')
         f.write('\n'.join(lines))
     pass
 
