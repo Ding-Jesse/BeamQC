@@ -282,7 +282,7 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
     progress('正在遍歷平面圖上的物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候', progress_file)
     flag = 0
     coor_to_floor_set = set() # set (字串的coor, floor)，Ex. 求'1F'這個字串的座標在哪
-    coor_to_beam_set = set() # set (coor, (beam, size))，Ex. 求'B1-6'這個字串的座標在哪，如果後面有括號的話，順便紀錄尺寸，否則size = ''
+    coor_to_beam_set = set() # set (coor, [beam, size])，Ex. 求'B1-6'這個字串的座標在哪，如果後面有括號的話，順便紀錄尺寸，否則size = ''
     block_coor_list = [] # 存取方框最左下角的點座標
     none_concat_size_text_list = []
     # for sizing
@@ -406,9 +406,9 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                         beam = matches.group()
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        size = re.findall(r'\d+(x|X)\d+')
+                        size = re.search(r'(\d+(x|X)\d+)',beam).groups()
                         if len(size) != 0:
-                            none_concat_size_text_list.append(((coor1, coor2),size))
+                            none_concat_size_text_list.append(((coor1, coor2),size[0]))
                             continue
                         else:
                             print(object.TextString)
@@ -512,12 +512,17 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
     progress('平面圖讀取進度 7/13', progress_file)
     def get_distance(coor1,coor2):
         if isinstance(coor1,tuple) and isinstance(coor2,tuple):
-            return abs(coor1[0]-coor2[0]) + abs(coor1[1]-coor2[1])
-        return 1000
-
+            return abs(coor1[0][0]-coor2[0][0]) + abs(coor1[0][1]-coor2[0][1])
+        return 10000
+    # 2023-0119
     for none_concat_size in none_concat_size_text_list:
         coor,size = none_concat_size
-        temp_list = [s for s in coor_to_beam_set]
+        temp_list = [s for s in coor_to_beam_set if s[1][1] == '']
+        closet_beam = min(temp_list,key=lambda x : get_distance(x[0],coor))
+        coor_to_beam_set.remove(closet_beam)
+        coor_to_beam_set.add((closet_beam[0],(closet_beam[1][0],size,closet_beam[1][2])))
+        # closet_beam[1][1] = size
+
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
         try:
