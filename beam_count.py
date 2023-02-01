@@ -1470,19 +1470,19 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\DEMO\數量計算\地梁\B3.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0131\XS-BEAM-新市.dwg"
     # beam_filename = r"D:\Desktop\BeamQC\TEST\DEMO\數量計算\Other-大梁\2F-大梁 - Rec.dwg"
     progress_file = './result/tmp'#sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    project_name = 'test_B3'
+    project_name = 'test_1F'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':'S-LEADER', # 箭頭和鋼筋文字的塗層
         'rebar_layer':'S-REINF', # 鋼筋和箍筋的線的塗層
         'tie_text_layer':'S-TEXT', # 箍筋文字圖層
-        'block_layer':'S-GRID', # 框框的圖層
+        'block_layer':'DwFm', # 框框的圖層
         'beam_text_layer' :'S-RC', # 梁的字串圖層
         'bounding_block_layer':'S-ARCH'
     }
@@ -1521,9 +1521,9 @@ if __name__=='__main__':
     # print(l)
     start = time.time()
     # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0116_1F.pkl')
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0201_1F.pkl')
     
-    output_txt,output_txt_2,output_excel,class_beam_list = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0116_1F.pkl'),output_folder=output_folder,project_name=project_name,progress_file=progress_file)
+    output_txt,output_txt_2,output_excel,class_beam_list = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0201_1F.pkl'),output_folder=output_folder,project_name=project_name,progress_file=progress_file)
     # draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
     print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])

@@ -406,9 +406,9 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                         beam = matches.group()
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        size = re.search(r'(\d+(x|X)\d+)',beam).groups()
-                        if len(size) != 0:
-                            none_concat_size_text_list.append(((coor1, coor2),size[0]))
+                        size = re.search(r'(\d+(x|X)\d+)',beam)
+                        if size:
+                            none_concat_size_text_list.append(((coor1, coor2),size.group(0)))
                             continue
                         else:
                             print(object.TextString)
@@ -419,19 +419,28 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     size = ''
-                    if '(' in beam:
-                        size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
-                        if 'x' not in size:
-                            size = ''
-                        else:
-                            try:
-                                first = size.split('x')[0]
-                                second = size.split('x')[1]
-                                if not (float(first) and float(second)):
-                                    size = ''
-                            except:
-                                size = ''
-                        beam = beam.split('(')[0] # 取括號前內容即可
+                    matches = re.match(r'(.+(\(|\uff08).+(\)|\uff09))',object.TextString)
+                    if matches:
+                        beam_size = re.search(r'((\d+)[x|X](\d+))',beam)
+                        beam_name = re.search(r'(.+\b(?=\(|\uff08))',beam)
+                        if beam_size:
+                            size = beam_size.group(0).replace('X','x')
+                        if beam_name:
+                            beam = beam_name.group(0)
+                            # beam = beam.replace('X','x')
+                    # if '(' in beam:
+                    #     size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
+                    #     if 'x' not in size:
+                    #         size = ''
+                    #     else:
+                    #         try:
+                    #             first = size.split('x')[0]
+                    #             second = size.split('x')[1]
+                    #             if not (float(first) and float(second)):
+                    #                 size = ''
+                    #         except:
+                    #             size = ''
+                    #     beam = beam.split('(')[0] # 取括號前內容即可
                     comma_char = ','
                     for char in weird_comma_list:
                         if char in beam:
@@ -833,25 +842,34 @@ def read_plan(plan_filename, plan_new_filename, big_file, sml_file, floor_layer,
                 min_diff = inf
                 min_scale = ''
                 min_coor = ''
-                if beam_rotate != 1.57: # 橫的 or 歪的，90度 = pi / 2 = 1.57 (前面有取round到後二位)
-                    for y in beam_direction_mid_scale_set:
-                        if y[0] == beam_layer and y[1] == 0:
-                            coor = y[2]
-                            diff = abs(midpoint[0] - coor[0]) + abs(midpoint[1] - coor[1])
-                            if diff < min_diff:
-                                min_diff = diff
-                                min_scale = y[3]
-                                min_coor = coor
+                if abs(beam_rotate - 1.57) < 0.1: # 橫的 or 歪的，90度 = pi / 2 = 1.57 (前面有取round到後二位)
+                    temp_list = [mline for mline in beam_direction_mid_scale_set if mline[1] == 1 and beam_layer == mline[0]]
+                elif abs(beam_rotate - 0)< 0.1: # 直的 or 歪的
+                    temp_list = [mline for mline in beam_direction_mid_scale_set if mline[1] == 0 and beam_layer == mline[0]]
+                else:
+                    temp_list = [mline for mline in beam_direction_mid_scale_set if beam_layer == mline[0]]
+                if len(temp_list) != 0:
+                    closet_mline = min(temp_list,key = lambda m:abs(midpoint[0] -m[2][0]) + abs(midpoint[1]-m[2][1]))
+                    min_scale = closet_mline[3]
+                    min_coor = closet_mline[2]
+                    # for y in beam_direction_mid_scale_set:
+                    #     if y[0] == beam_layer and y[1] == 0:
+                    #         coor = y[2]
+                    #         diff = abs(midpoint[0] - coor[0]) + abs(midpoint[1] - coor[1])
+                    #         if diff < min_diff:
+                    #             min_diff = diff
+                    #             min_scale = y[3]
+                    #             min_coor = coor
 
-                if beam_rotate != 0: # 直的 or 歪的
-                    for y in beam_direction_mid_scale_set:
-                        if y[0] == beam_layer and y[1] == 1:
-                            coor = y[2]
-                            diff = abs(midpoint[0] - coor[0]) + abs(midpoint[1] - coor[1])
-                            if diff < min_diff:
-                                min_diff = diff
-                                min_scale = y[3]
-                                min_coor = coor
+                # if beam_rotate != 0: # 直的 or 歪的
+                #     for y in beam_direction_mid_scale_set:
+                #         if y[0] == beam_layer and y[1] == 1:
+                #             coor = y[2]
+                #             diff = abs(midpoint[0] - coor[0]) + abs(midpoint[1] - coor[1])
+                #             if diff < min_diff:
+                #                 min_diff = diff
+                #                 min_scale = y[3]
+                #                 min_coor = coor
 
                 # 全部連線
                 # coor_list = [min_coor[0], min_coor[1], 0, midpoint[0], midpoint[1], 0]
@@ -1547,8 +1565,8 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0118\小檜溪D_S4-01~S6-22_梁配筋詳圖_1110825.dwg"#sys.argv[1] # XS-BEAM的路徑
-    plan_filename = r"D:\Desktop\BeamQC\TEST\2023-0118\小檜溪_結構平面圖_1F.dwg"#sys.argv[2] # XS-PLAN的路徑
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0131\XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
+    plan_filename = r"D:\Desktop\BeamQC\TEST\2023-0131\XS-PLAN-1F.dwg"#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
     big_file = r"D:\Desktop\BeamQC\TEST\big.txt"#sys.argv[5] # 大梁結果
@@ -1558,7 +1576,7 @@ if __name__=='__main__':
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = '0'#sys.argv[8] # 框框的圖層
+    block_layer = 'DEFPOINTS'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
@@ -1595,8 +1613,8 @@ if __name__=='__main__':
     for i in range(plan_file_count):
         res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date))
 
-    # for i in range(beam_file_count):
-    #     res_beam[i] = pool.apply_async(read_beam, (beam_filename.split(',')[i], text_layer, beam_file, progress_file, sizing))
+    for i in range(beam_file_count):
+        res_beam[i] = pool.apply_async(read_beam, (beam_filename.split(',')[i], text_layer, beam_file, progress_file, sizing))
     
     for i in range(plan_file_count):
         final_plan = res_plan[i].get()
@@ -1604,11 +1622,11 @@ if __name__=='__main__':
         if plan_file_count == 1 and beam_file_count == 1:
             dic_plan = final_plan[1]
 
-    # for i in range(beam_file_count):
-    #     final_beam = res_beam[i].get()
-    #     set_beam = set_beam | final_beam[0]
-    #     if plan_file_count == 1 and beam_file_count == 1:
-    #         dic_beam = final_beam[1]
+    for i in range(beam_file_count):
+        final_beam = res_beam[i].get()
+        set_beam = set_beam | final_beam[0]
+        if plan_file_count == 1 and beam_file_count == 1:
+            dic_beam = final_beam[1]
 
     drawing = 0
     if plan_file_count == 1 and beam_file_count == 1:
