@@ -8,8 +8,10 @@ import save_temp_file
 from math import sqrt,pow
 from rebar import RebarInfo
 from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error
-from column import Column
+from column import Column,Floor
 from beam_count import vtPnt
+import pandas as pd
+import numpy as np
 def read_column_cad(column_filename,layer_config:dict[list]):
     layer_list = [layer for key,layer in layer_config.items()]
     # line_layer = layer_config['line_layer']
@@ -228,6 +230,8 @@ def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = N
     # draw_grid_line(new_coor_to_floor_line_list=new_coor_to_floor_line_list,new_coor_to_col_line_list=new_coor_to_col_line_list,msp_beam=msp_column,doc_beam=doc_column)
     output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
     combine_col_rebar(column_list=output_column_list,coor_to_rebar_list=coor_to_rebar_list,coor_to_rebar_text_list=coor_to_rebar_text_list)
+    combine_col_tie(column_list=output_column_list,coor_to_tie_list=coor_to_tie_list,coor_to_tie_text_list=coor_to_tie_text_list)
+    output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
     pass
 
 def concat_grid_line(line_list:list,start_line:list,overlap:function):
@@ -267,19 +271,6 @@ def concat_col_to_grid(coor_to_col_set:set,coor_to_col_line_list:list):
         bot = min(left_closet_line[1],right_closet_line[1])
         new_coor_to_col_line_list.append((col,(left_closet_line[0],right_closet_line[0],bot,top)))
     return new_coor_to_col_line_list
-        # for vert_grid_line in coor_to_col_line_list: # (縱線x座標, start, end)
-        #     # line_x = vert_grid_line[0]
-        #     # line_top_y = vert_grid_line[1]
-        #     # line_bot_y = vert_grid_line[2]
-            
-        #     if y[1] <= coor[0][1] <= y[2]: # 先看y座標有沒有被夾住
-        #         new_coor_to_col_line_list.append(y)
-        # tmp_set = set(new_coor_to_col_line_list)
-        # new_coor_to_col_line_list = list(tmp_set)
-        # new_coor_to_col_line_list.sort(key = lambda x: x[0])
-        # for y in range(len(new_coor_to_col_line_list)): # 再看x座標被哪兩條線夾住
-        #     if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
-        #         col_to_line_set.add((col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
 def concat_floor_to_grid(coor_to_floor_set:set,coor_to_floor_line_list:list):
     def _overlap(l1,l2):
         return (l2[1] - l1[2])*(l2[2] - l1[1]) <= 0
@@ -331,7 +322,7 @@ def concat_name_to_col_floor(coor_to_size_set:set,new_coor_to_col_line_list:list
         new_column = Column()
         coor = element[0]
         size = element[1]
-        new_column.size = size
+        new_column.set_size(size)
         col = [c for c in new_coor_to_col_line_list if _ingrid(size_coor=coor[0],grid_coor=c[1])]
         floor = [f for f in new_coor_to_floor_line_list if _ingrid(size_coor=coor[0],grid_coor=f[1])]
         if len(col) > 1:
@@ -360,8 +351,66 @@ def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_r
     for column in column_list:
         column.sort_rebar()
         print(f'{column.floor}:{column.serial} x:{column.x_row} y:{column.y_row}')
-    pass
 
+def combine_col_tie(column_list:list[Column],coor_to_tie_text_list:list,coor_to_tie_list:list):
+    for tie in coor_to_tie_list:
+        column = [c for c in column_list if c.in_grid(coor=tie[0]) and c.in_grid(coor=tie[1])]
+        if len(column) > 0:
+            column[0].add_tie(tie)
+    for coor,tie_text in coor_to_tie_text_list:
+        column = [c for c in column_list if c.in_grid(coor=coor[0]) and c.in_grid(coor=coor[1])]
+        if len(column) > 0:
+            column[0].add_tie_text(coor=coor,text=tie_text)
+    for column in column_list:
+        column.sort_tie()
+        print(f'{column.floor}:{column.serial} x:{column.x_tie} y:{column.y_tie} tie:{column.tie_dict}')
+
+
+def output_col_excel(column_list:list[Column],output_folder:str,project_name:str):
+    header_info_1 = [('樓層', ''), ('柱編號', ''), ('X向 柱寬', 'cm'), ('Y向 柱寬', 'cm')]
+    header_rebar = [('柱主筋', '主筋'),('柱主筋', 'X向支數'),('柱主筋', 'Y向支數'),('柱箍筋', '圍束區'),('柱箍筋', '非圍束區'),('柱箍筋', 'X向繫筋'),('柱箍筋', 'Y向繫筋')]
+    sorted(column_list,key = lambda c:c.serial)
+    header = pd.MultiIndex.from_tuples(header_info_1 + header_rebar)
+    column_df = pd.DataFrame(np.empty([len(column_list),len(header)],dtype='<U16'),columns=header)
+    row = 0
+    for c in column_list:
+        if c.serial == '': continue
+        column_df.at[row,('樓層', '')] = c.floor
+        column_df.at[row,('柱編號', '')] = c.serial
+        column_df.at[row,('X向 柱寬', 'cm')] = c.x_size
+        column_df.at[row,('Y向 柱寬', 'cm')] = c.y_size
+        column_df.at[row,('柱主筋', '主筋')] = c.rebar_text
+        column_df.at[row,('柱主筋', 'X向支數')] = c.x_row
+        column_df.at[row,('柱主筋', 'Y向支數')] = c.y_row
+        if c.tie_dict:
+            column_df.at[row,('柱箍筋', '圍束區')] = c.tie_dict['端部'][1]
+            column_df.at[row,('柱箍筋', '非圍束區')] = c.tie_dict['中央'][1]
+            column_df.at[row,('柱箍筋', 'X向繫筋')] = c.x_tie
+            column_df.at[row,('柱箍筋', 'Y向繫筋')] = c.y_tie
+        row += 1
+    excel_filename = (
+            f'{output_folder}/'
+            f'{project_name}_'
+            f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+            f'Count.xlsx'
+        )
+    writer = pd.ExcelWriter(excel_filename)
+    column_df.to_excel(writer,'Count')
+    writer.save()
+    return excel_filename
+def floor_parameter():
+    floor_list = []
+    parameter_df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱樓層參數.xlsx')
+    parameter_df.set_index(['樓層'],inplace=True)
+    for floor_name in parameter_df.index:
+        temp_floor = Floor(floor_name)
+        floor_list.append(temp_floor)
+        temp_floor.set_prop(parameter_df.loc[floor_name])
+    floor_list = [Floor(x) for x in parameter_df]
+    print(parameter_df)
+def read_parameter_df(read_file):
+    return pd.read_excel(
+        read_file, sheet_name='參數表',header=[0])
 if __name__ == '__main__':
     col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱.dwg'#sys.argv[1] # XS-COL的路徑
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
@@ -385,7 +434,8 @@ if __name__ == '__main__':
     doc_column = None
     # msp_column,doc_column = read_column_cad(col_filename,layer_config)
     # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_0203.pkl')
-    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_0203.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
+    # cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_0203.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
+    floor_parameter()
     # coor_to_col_set = set()
     # coor_to_col_set.add((((0,0),(10,10)),"C1"))
     # coor_to_col_line_list = [(-5,0,10),(-5,0,10),(-5,5,15),(-5,15,20),(-5,18,25),(-5,-5,30),(-5,-5,30),(10,0,10)]
