@@ -10,8 +10,14 @@ from rebar import RebarInfo
 from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error
 from column import Column,Floor
 from beam_count import vtPnt
+from column_scan import column_check,create_column_scan
 import pandas as pd
 import numpy as np
+import copy
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment,Font,PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 def read_column_cad(column_filename,layer_config:dict[list]):
     layer_list = [layer for key,layer in layer_config.items()]
     # line_layer = layer_config['line_layer']
@@ -213,7 +219,12 @@ def sort_col_cad(msp_column,layer_config,temp_file):
 def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = None ,doc_column = None):
     output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
     output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
-    output_excel = ''
+    excel_filename = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'Count.xlsx'
+    )
     if not data:
         return
     coor_to_col_set = data['coor_to_col_set']
@@ -231,8 +242,18 @@ def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = N
     output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
     combine_col_rebar(column_list=output_column_list,coor_to_rebar_list=coor_to_rebar_list,coor_to_rebar_text_list=coor_to_rebar_text_list)
     combine_col_tie(column_list=output_column_list,coor_to_tie_list=coor_to_tie_list,coor_to_tie_text_list=coor_to_tie_text_list)
-    output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
-    pass
+    floor_list = floor_parameter(column_list=output_column_list)
+    sort_floor_column(floor_list=floor_list,column_list=output_column_list)
+    cs_list = create_column_scan()
+    scan_df = column_check(column_list=output_column_list,column_scan_list=cs_list)
+    OutputExcel(df=scan_df,file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+                columns_list=range(2,len(scan_df.columns)+2),rows_list=range(2,len(scan_df.index)+2))
+    rebar_df,concrete_df,coupler_df = summary_floor_rebar(floor_list=floor_list)
+    column_df = output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
+    OutputExcel(df=rebar_df,file_path=excel_filename,sheet_name='鋼筋統計表')
+    OutputExcel(df=concrete_df,file_path=excel_filename,sheet_name='混凝土統計表')
+    OutputExcel(df=coupler_df,file_path=excel_filename,sheet_name='續接器統計表')
+    OutputExcel(df=column_df,file_path=excel_filename,sheet_name='柱統計表')
 
 def concat_grid_line(line_list:list,start_line:list,overlap:function):
     while True:
@@ -325,17 +346,19 @@ def concat_name_to_col_floor(coor_to_size_set:set,new_coor_to_col_line_list:list
         new_column.set_size(size)
         col = [c for c in new_coor_to_col_line_list if _ingrid(size_coor=coor[0],grid_coor=c[1])]
         floor = [f for f in new_coor_to_floor_line_list if _ingrid(size_coor=coor[0],grid_coor=f[1])]
-        if len(col) > 1:
-            print(f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
-        if len(floor) > 1:
-            print(f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
+        if col and floor:
+            new_column.set_border(col[0][1],floor[0][1])
         if len(col) > 0:
             new_column.serial = col[0][0]
         if len(floor) > 0:
             new_column.floor = floor[0][0]
-        if col and floor:
-            new_column.set_border(col[0][1],floor[0][1])
-        output_column_list.append(new_column)
+        if len(col) > 1:
+            print(f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
+        if len(floor) > 1:
+            print(f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
+            new_column.multi_floor.extend(list(map(lambda c:c[0],floor[1:])))
+
+        if new_column.serial != '':output_column_list.append(new_column)
     return output_column_list
 
 def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_rebar_text_list:list):
@@ -350,7 +373,7 @@ def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_r
             column[0].add_rebar_coor(rebar)
     for column in column_list:
         column.sort_rebar()
-        print(f'{column.floor}:{column.serial} x:{column.x_row} y:{column.y_row}')
+        # print(f'{column.floor}:{column.serial} x:{column.x_row} y:{column.y_row}')
 
 def combine_col_tie(column_list:list[Column],coor_to_tie_text_list:list,coor_to_tie_list:list):
     for tie in coor_to_tie_list:
@@ -363,7 +386,7 @@ def combine_col_tie(column_list:list[Column],coor_to_tie_text_list:list,coor_to_
             column[0].add_tie_text(coor=coor,text=tie_text)
     for column in column_list:
         column.sort_tie()
-        print(f'{column.floor}:{column.serial} x:{column.x_tie} y:{column.y_tie} tie:{column.tie_dict}')
+        # print(f'{column.floor}:{column.serial} x:{column.x_tie} y:{column.y_tie} tie:{column.tie_dict}')
 
 
 def output_col_excel(column_list:list[Column],output_folder:str,project_name:str):
@@ -388,29 +411,105 @@ def output_col_excel(column_list:list[Column],output_folder:str,project_name:str
             column_df.at[row,('柱箍筋', 'X向繫筋')] = c.x_tie
             column_df.at[row,('柱箍筋', 'Y向繫筋')] = c.y_tie
         row += 1
-    excel_filename = (
-            f'{output_folder}/'
-            f'{project_name}_'
-            f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
-            f'Count.xlsx'
-        )
-    writer = pd.ExcelWriter(excel_filename)
-    column_df.to_excel(writer,'Count')
-    writer.save()
-    return excel_filename
-def floor_parameter():
+    
+    # output_column_list = sorted(output_column_list,key=lambda c:c.serial)
+    # column_df.sort_values(by=[('柱編號', '')],ascending=True,inplace=True)
+    return column_df
+def floor_parameter(column_list:list[Column]):
+    floor_list:list[Floor]
     floor_list = []
     parameter_df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱樓層參數.xlsx')
     parameter_df.set_index(['樓層'],inplace=True)
+    for c in column_list:
+        for floor in c.multi_floor:
+           new_c = copy.deepcopy(c)
+           new_c.floor = floor
+           new_c.multi_floor = []
+           column_list.append(new_c) 
     for floor_name in parameter_df.index:
         temp_floor = Floor(floor_name)
         floor_list.append(temp_floor)
         temp_floor.set_prop(parameter_df.loc[floor_name])
-    floor_list = [Floor(x) for x in parameter_df]
-    print(parameter_df)
+        temp_floor.add_column([c for c in column_list if c.floor == floor_name])
+    
+    return floor_list
+def sort_floor_column(floor_list:list[Floor],column_list:list[Column]):
+    def match_column(col:Column,col_list:list[Column],pos:str):
+        temp_list = [c for c in col_list if c.serial == col.serial]
+        if temp_list and pos == 'up':
+            col.up_column = temp_list[0]
+        if temp_list and pos == 'bot':
+            col.bot_column = temp_list[0]
+    floor_seq = list(map(lambda f:f.floor_name,floor_list))
+    list(map(lambda c:c.set_seq(floor_seq),column_list))
+    for i in range(0,len(floor_list) - 1):
+        temp_list = floor_list[i].column_list
+        bot_list = floor_list[i + 1].column_list
+        list(map(lambda c:match_column(c,bot_list,'bot'),temp_list))
+    for i in range(1,len(floor_list)):
+        temp_list = floor_list[i].column_list
+        up_list = floor_list[i - 1].column_list
+        list(map(lambda c:match_column(c,up_list,'up'),temp_list))
+    column_list.sort(key=lambda c:(c.serial,-1*c.seq))
+def summary_floor_rebar(floor_list:list[Floor]):
+    df = pd.DataFrame(columns=['#3','#4','#5','#6','#7','#8','#10','#11'],index=[])
+    concrete_df = pd.DataFrame(columns=[],index=[])
+    coupler_df = pd.DataFrame(columns=[],index=[])
+    for floor in floor_list:
+        list(map(lambda c:c.calculate_rebar() ,floor.column_list))
+        floor.summary_rebar()
+        new_row = pd.DataFrame(floor.rebar_count,index=[floor.floor_name])
+        new_row_concrete = pd.DataFrame(floor.concrete_count,index=[floor.floor_name])
+        new_row_coupler = pd.DataFrame(floor.coupler,index=[floor.floor_name])
+        df = pd.concat([df, new_row], verify_integrity=True)
+        concrete_df = pd.concat([concrete_df,new_row_concrete],verify_integrity=True)
+        coupler_df = pd.concat([coupler_df,new_row_coupler],verify_integrity=True)
+    df.fillna(value=0,inplace=True)
+    df.loc['Sum'] = df.sum()
+    concrete_df.loc['Sum'] = concrete_df.sum()
+    return df,concrete_df,coupler_df    
 def read_parameter_df(read_file):
     return pd.read_excel(
         read_file, sheet_name='參數表',header=[0])
+
+def OutputExcel(df:pd.DataFrame,file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[]):
+    if os.path.exists(file_path):
+        book = load_workbook(file_path)
+        writer = pd.ExcelWriter(file_path, engine='openpyxl') 
+        writer.book = book
+        # sheet = book[sheet_name]
+        # sheet.column_dimensions['A'] =ColumnDimension(sheet,'L',bestFit=True)
+    else:
+        writer = pd.ExcelWriter(file_path, engine='xlsxwriter') 
+    df.to_excel(writer,sheet_name=sheet_name)
+    writer.save()
+
+    book = load_workbook(file_path)
+    writer = pd.ExcelWriter(file_path, engine='openpyxl') 
+    writer.book = book
+    if os.path.exists(file_path) and len(auto_fit_columns) >0:
+        AutoFit_Columns(book[sheet_name],auto_fit_columns,auto_fit_rows)
+    if os.path.exists(file_path) and len(columns_list) >0:
+        Decorate_Worksheet(book[sheet_name],columns_list,rows_list)
+    writer.save()
+    return file_path
+
+def Decorate_Worksheet(sheet:Worksheet,columns_list:list,rows_list:list):
+    for i in columns_list:
+        for j in rows_list:
+            sheet.cell(j,i).alignment = Alignment(vertical='center',wrap_text=True,horizontal='center')
+            sheet.cell(j,i).font = Font(name='Calibri')
+            if sheet.cell(j,i).value == 'NG.':sheet.cell(j,i).fill = PatternFill("solid",start_color='00FF0000')
+
+def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
+    for i in auto_fit_columns:
+        sheet.column_dimensions[get_column_letter(i)].width = 80
+    for i in auto_fit_rows:
+        sheet.row_dimensions[i].height = 20
+    for i in auto_fit_rows:
+        for j in auto_fit_columns:
+            sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
+
 if __name__ == '__main__':
     col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱.dwg'#sys.argv[1] # XS-COL的路徑
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
@@ -434,11 +533,12 @@ if __name__ == '__main__':
     doc_column = None
     # msp_column,doc_column = read_column_cad(col_filename,layer_config)
     # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_0203.pkl')
-    # cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_0203.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
-    floor_parameter()
+    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_0203.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
+    # floor_list = floor_parameter(column_list)
     # coor_to_col_set = set()
     # coor_to_col_set.add((((0,0),(10,10)),"C1"))
     # coor_to_col_line_list = [(-5,0,10),(-5,0,10),(-5,5,15),(-5,15,20),(-5,18,25),(-5,-5,30),(-5,-5,30),(10,0,10)]
     # print(temp(coor_to_col_set,coor_to_col_line_list))
     # temp = [[1,2],[3,4]]
     # print(f'{list(map(lambda t:t[0],temp))}')
+    # print(pd.DataFrame({'#1':0,"#2":10},index=[]))
