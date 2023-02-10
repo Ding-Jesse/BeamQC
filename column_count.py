@@ -18,6 +18,9 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment,Font,PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
+
+slash_pattern = r'(.+)[~](.+)' #~
+commom_pattern = r'(,)|(、)'
 def read_column_cad(column_filename,layer_config:dict[list]):
     layer_list = [layer for key,layer in layer_config.items()]
     # line_layer = layer_config['line_layer']
@@ -123,6 +126,7 @@ def sort_col_cad(msp_column,layer_config,temp_file):
     rebar_layer = layer_config['rebar_layer']
     tie_layer = layer_config['tie_layer']
     tie_text_layer = layer_config['tie_text_layer']
+    column_rc_layer = layer_config['column_rc_layer']
     coor_to_floor_set = set() # set(coor, floor)
     coor_to_col_set = set() # set(coor, col)
     coor_to_size_set = set() # set(coor, size)
@@ -132,79 +136,112 @@ def sort_col_cad(msp_column,layer_config,temp_file):
     coor_to_rebar_list = []
     coor_to_tie_text_list = []
     coor_to_tie_list = []
+    coor_to_section_list = []
     flag = 0
     error_count = 0
     while not flag and error_count <= 10:
-        try:
-            count = 0
-            total = msp_column.Count
-            # progress(f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-            for object in msp_column:
-                count += 1
-                # if count % 1000 == 0:
-                #     progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
-                if object.Layer in tie_layer:
-                    print(f'{object.Layer}:{object.ObjectName}')
-                    if object.ObjectName == "AcDbPolyline":
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        coor_to_tie_list.append((coor1,coor2))
-                if object.Layer in tie_text_layer:
-                    if object.ObjectName == "AcDbText":
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        coor_to_tie_text_list.append(((coor1,coor2),object.TextString))
-                if object.Layer in rebar_text_layer and object.ObjectName == "AcDbText":
-                    if re.match(r'\d+.#\d+',object.TextString):
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        coor_to_rebar_text_list.append(((coor1,coor2),object.TextString))
-                if object.Layer in rebar_layer:
-                    if object.ObjectName == "AcDbCircle":
-                        coor1 = (round(object.Center[0],2),round(object.Center[1],2))
-                        coor_to_rebar_list.append(coor1)
-                    # if object.ObjectName == "AcDbPolyline":
-                    #     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    #     coor_to_rebar_list.append(coor1)
-                    if object.ObjectName == "AcDbBlockReference":
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        coor_to_rebar_list.append(coor1)
-                if object.Layer in text_layer and object.ObjectName == "AcDbText": 
-                    if object.TextString[0] == 'C' and len(object.TextString) <= 7:
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+        # try:
+        count = 0
+        total = msp_column.Count
+        # progress(f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+        for object in msp_column:
+            count += 1
+            # if count % 1000 == 0:
+            #     progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
+            if object.Layer in tie_layer:
+                print(f'{object.Layer}:{object.ObjectName}')
+                if object.ObjectName == "AcDbPolyline":
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    coor_to_tie_list.append((coor1,coor2))
+            if object.Layer in tie_text_layer:
+                if object.ObjectName == "AcDbText":
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    coor_to_tie_text_list.append(((coor1,coor2),object.TextString))
+            if object.Layer in rebar_text_layer and object.ObjectName == "AcDbText":
+                if re.match(r'\d+.#\d+',object.TextString):
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    coor_to_rebar_text_list.append(((coor1,coor2),object.TextString))
+            if object.Layer in rebar_layer:
+                if object.ObjectName == "AcDbCircle":
+                    coor1 = (round(object.Center[0],2),round(object.Center[1],2))
+                    coor_to_rebar_list.append((coor1,'circle'))
+                # if object.ObjectName == "AcDbPolyline":
+                #     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                #     coor_to_rebar_list.append(coor1)
+                if object.ObjectName == "AcDbBlockReference":
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor_to_rebar_list.append((coor1,object.Name))
+
+            if object.Layer in text_layer and object.ObjectName == "AcDbText": 
+                if object.TextString[0] == 'C' and len(object.TextString) <= 7:
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    match_obj = re.search(slash_pattern,object.TextString)
+                    if match_obj:
+                        suffix_index = re.search(r'(\D+)\d+(\D+)',match_obj.group(1))
+                        first_column = re.search(r'\d+',match_obj.group(1))
+                        last_column = re.search(r'\d+',match_obj.group(2))
+                        for column_number in range(first_column,last_column):
+                            temp_string = f'{suffix_index.group(1)}{column_number}{suffix_index.group(2)}'
+                            coor_to_col_set.add(((coor1, coor2), temp_string))
+                    elif re.search(commom_pattern,object.TextString):
+                        sep = re.search(commom_pattern,object.TextString).group(1)
+                        for column_text in object.TextString.split(sep):
+                            coor_to_col_set.add(((coor1, coor2), column_text))
+                    else:
                         coor_to_col_set.add(((coor1, coor2), object.TextString))
 
-                    elif 'x' in object.TextString or 'X' in object.TextString:
-                        size = object.TextString.replace('X', 'x')
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                        coor_to_size_set.add(((coor1, coor2), size))
-                    elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString: # 可能有樓層
-                        floor = object.TextString
-                        if '_' in floor: # 可能有B_6F表示B棟的6F
-                            floor = floor.split('_')[1]
+                elif 'x' in object.TextString or 'X' in object.TextString:
+                    size = object.TextString.replace('X', 'x')
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    coor_to_size_set.add(((coor1, coor2), size))
+                elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString: # 可能有樓層
+                    floor = object.TextString
+                    if '_' in floor: # 可能有B_6F表示B棟的6F
+                        floor = floor.split('_')[1]
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                    if '~' in floor:
+                        match_obj = re.search(r'(.+)[~](.+)',floor)
+                        first_floor = int(turn_floor_to_float(match_obj.group(1)))
+                        last_floor = int(turn_floor_to_float(match_obj.group(2)))
+                        for floor_float in range(first_floor,last_floor + 1):
+                            coor_to_floor_set.add(((coor1, coor2), turn_floor_to_string(floor_float)))
+                    elif re.search(commom_pattern,floor):
+                        sep = re.search(commom_pattern,object.TextString).group(1)
+                        for floor_float in floor.split(sep):
+                            coor_to_floor_set.add(((coor1, coor2), turn_floor_to_string(floor_float)))
+                    else:   
                         if turn_floor_to_float(floor):
                             coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                             coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                             floor = turn_floor_to_float(floor)
                             floor = turn_floor_to_string(floor)
                             coor_to_floor_set.add(((coor1, coor2), floor))
-                
-                elif object.Layer in line_layer:
+            
+            elif object.Layer in line_layer:
+                coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                if coor1[0] == coor2[0]:
+                    coor_to_col_line_list.append((coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
+                elif coor1[1] == coor2[1]:
+                    coor_to_floor_line_list.append((coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
+            if object.Layer in column_rc_layer:
+                if object.ObjectName == "AcDbPolyline":
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    if coor1[0] == coor2[0]:
-                        coor_to_col_line_list.append((coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
-                    elif coor1[1] == coor2[1]:
-                        coor_to_floor_line_list.append((coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
-            flag = 1
-            coor_to_col_line_list.sort(key = lambda x: x[0])
-            coor_to_floor_line_list.sort(key = lambda x: x[0])
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(f'read_col error in step 7: {e}, error_count = {error_count}.')
+                    coor_to_section_list.append((coor1,coor2))
+        flag = 1
+        coor_to_col_line_list.sort(key = lambda x: x[0])
+        coor_to_floor_line_list.sort(key = lambda x: x[0])
+        # except Exception as e:
+        #     error_count += 1
+        #     time.sleep(5)
+        #     error(f'read_col error in step 7: {e}, error_count = {error_count}.')
     save_temp_file.save_pkl({'coor_to_col_set':coor_to_col_set,
                     'coor_to_size_set':coor_to_size_set,
                     'coor_to_floor_set': coor_to_floor_set,
@@ -213,7 +250,8 @@ def sort_col_cad(msp_column,layer_config,temp_file):
                     'coor_to_rebar_text_list':coor_to_rebar_text_list,
                     'coor_to_rebar_list':coor_to_rebar_list,
                     'coor_to_tie_text_list':coor_to_tie_text_list,
-                    'coor_to_tie_list':coor_to_tie_list
+                    'coor_to_tie_list':coor_to_tie_list,
+                    'coor_to_section_list':coor_to_section_list
                     },temp_file)
 
 def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = None ,doc_column = None):
@@ -236,10 +274,13 @@ def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = N
     coor_to_rebar_list= data['coor_to_rebar_list']
     coor_to_tie_text_list= data['coor_to_tie_text_list']
     coor_to_tie_list= data['coor_to_tie_list']
+    coor_to_section_list = data['coor_to_section_list']
     new_coor_to_col_line_list = concat_col_to_grid(coor_to_col_set=coor_to_col_set,coor_to_col_line_list=coor_to_col_line_list)
     new_coor_to_floor_line_list = concat_floor_to_grid(coor_to_floor_set=coor_to_floor_set,coor_to_floor_line_list=coor_to_floor_line_list)
     # draw_grid_line(new_coor_to_floor_line_list=new_coor_to_floor_line_list,new_coor_to_col_line_list=new_coor_to_col_line_list,msp_beam=msp_column,doc_beam=doc_column)
-    output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
+    # output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
+    output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list
+                                               ,coor_to_section_list=coor_to_section_list,coor_to_size_set=coor_to_size_set)
     combine_col_rebar(column_list=output_column_list,coor_to_rebar_list=coor_to_rebar_list,coor_to_rebar_text_list=coor_to_rebar_text_list)
     combine_col_tie(column_list=output_column_list,coor_to_tie_list=coor_to_tie_list,coor_to_tie_text_list=coor_to_tie_text_list)
     floor_list = floor_parameter(column_list=output_column_list)
@@ -328,15 +369,15 @@ def draw_grid_line(new_coor_to_floor_line_list:list,new_coor_to_col_line_list:li
     doc_beam.SaveAs(output_dwg)
     doc_beam.Close(SaveChanges=True)
         # points2 = vtFloat(coor_list2)
+def _ingrid(size_coor,grid_coor):
+    pt_x = size_coor[0]
+    pt_y = size_coor[1]
+    if len(grid_coor) == 0:return False
+    if (pt_x - grid_coor[0])*(pt_x - grid_coor[1])<0 and (pt_y - grid_coor[2])*(pt_y - grid_coor[3])<0:
+        return True
+    return False
+def concat_name_to_col_floor(coor_to_size_set:set,new_coor_to_col_line_list:list,new_coor_to_floor_line_list:list,coor_to_section_list:list):
 
-def concat_name_to_col_floor(coor_to_size_set:set,new_coor_to_col_line_list:list,new_coor_to_floor_line_list:list):
-    def _ingrid(size_coor,grid_coor):
-        pt_x = size_coor[0]
-        pt_y = size_coor[1]
-        if len(grid_coor) == 0:return False
-        if (pt_x - grid_coor[0])*(pt_x - grid_coor[1])<0 and (pt_y - grid_coor[2])*(pt_y - grid_coor[3])<0:
-            return True
-        return False
     output_column_list:list[Column]
     output_column_list = []
     for element in coor_to_size_set:
@@ -350,6 +391,7 @@ def concat_name_to_col_floor(coor_to_size_set:set,new_coor_to_col_line_list:list
             new_column.set_border(col[0][1],floor[0][1])
         if len(col) > 0:
             new_column.serial = col[0][0]
+            new_column.multi_column.extend(list(map(lambda c:c[0],col[0:])))
         if len(floor) > 0:
             new_column.floor = floor[0][0]
         if len(col) > 1:
@@ -357,18 +399,50 @@ def concat_name_to_col_floor(coor_to_size_set:set,new_coor_to_col_line_list:list
         if len(floor) > 1:
             print(f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c:c[0],floor[1:])))
-
         if new_column.serial != '':output_column_list.append(new_column)
     return output_column_list
-
+def get_size_from_section(new_coor_to_col_line_list:list,new_coor_to_floor_line_list:list,coor_to_section_list:list,coor_to_size_set:set):
+    output_column_list:list[Column]
+    output_column_list = []
+    size_text = ''
+    for coor1,coor2 in coor_to_section_list:
+        new_column = Column()
+        x_size = abs(coor1[0] - coor2[0])
+        y_size = abs(coor1[1] - coor2[1])
+        size = f'{x_size}x{y_size}'
+        col = [c for c in new_coor_to_col_line_list if _ingrid(size_coor=coor1,grid_coor=c[1])]
+        floor = [f for f in new_coor_to_floor_line_list if _ingrid(size_coor=coor1,grid_coor=f[1])]
+        if col and floor:
+            new_column.set_border(col[0][1],floor[0][1])
+            size_text = [s for s in coor_to_size_set if new_column.in_grid(coor=s[0][0])]
+            if size_text:
+                print(f'CAD:{size}  TEXT:{size_text[0][1]}')
+                size = size_text[0][1]
+            new_column.set_size(size)
+        if len(col) > 0:
+            new_column.serial = col[0][0]
+            new_column.multi_column.extend(list(map(lambda c:c[0],col[0:])))
+        if len(floor) > 0:
+            new_column.floor = floor[0][0]
+        if len(col) > 1:
+            print(f'{size}:{coor1} => {list(map(lambda c:c[0],col))}')
+        if len(floor) > 1:
+            print(f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
+            new_column.multi_floor.extend(list(map(lambda c:c[0],floor[1:])))
+        if new_column.serial != '':output_column_list.append(new_column)
+    return output_column_list
 def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_rebar_text_list:list):
     for coor,rebar_text in coor_to_rebar_text_list:
         column = [c for c in column_list if c.in_grid(coor=coor[0])]
         if len(column) > 0:
-            column[0].rebar_text = rebar_text
-            column[0].rebar_text_coor = coor[0]
+            if column[0].rebar_text == '':
+                column[0].rebar_text = rebar_text
+                column[0].rebar_text_coor = coor[0]
+                column[0].multi_rebar_text.append((coor[0],rebar_text))
+            else:
+                column[0].multi_rebar_text.append((coor[0],rebar_text))
     for rebar in coor_to_rebar_list:
-        column = [c for c in column_list if c.in_grid(rebar)]
+        column = [c for c in column_list if c.in_grid(rebar[0])]
         if len(column) > 0:
             column[0].add_rebar_coor(rebar)
     for column in column_list:
@@ -422,10 +496,12 @@ def floor_parameter(column_list:list[Column]):
     parameter_df.set_index(['樓層'],inplace=True)
     for c in column_list:
         for floor in c.multi_floor:
-           new_c = copy.deepcopy(c)
-           new_c.floor = floor
-           new_c.multi_floor = []
-           column_list.append(new_c) 
+           for column_name in c.multi_column:
+                new_c = copy.deepcopy(c)
+                new_c.floor = floor
+                new_c.serial = column_name
+                new_c.multi_floor = []
+                column_list.append(new_c) 
     for floor_name in parameter_df.index:
         temp_floor = Floor(floor_name)
         floor_list.append(temp_floor)
@@ -511,7 +587,7 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱-RCAD.dwg'#sys.argv[1] # XS-COL的路徑
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     project_name = 'test_column'
     layer_config = {
@@ -523,17 +599,29 @@ if __name__ == '__main__':
         'tie_layer':['RBAR'], # 箍筋文字圖層
         'block_layer':['DwFm'], # 框框的圖層
     }
+    #DrawRC
     entity_type ={
         'rebar_layer':['AcDbPolyline'],
         'rebar_data_layer':['AcDbMText'],
         'rebar_data_leader_layer':['AcDbLeader'],
         'tie_text_layer':['AcDbText']
     }
+    #RCAD
+    layer_config = {
+        'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
+        'line_layer':['GirdInner'],
+        'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':['主筋斷面'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區'], # 箍筋文字圖層
+        'tie_layer':['箍筋線'], # 箍筋文字圖層
+        'block_layer':['DEFPOINTS'], # 框框的圖層
+        'column_rc_layer':['柱斷面線']
+    }
     msp_column = None
     doc_column = None
-    # msp_column,doc_column = read_column_cad(col_filename,layer_config)
-    # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_0203.pkl')
-    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_0203.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
+    msp_column,doc_column = read_column_cad(col_filename,layer_config)
+    sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_RCAD_0210.pkl')
+    # cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_RCAD_0210.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
     # floor_list = floor_parameter(column_list)
     # coor_to_col_set = set()
     # coor_to_col_set.add((((0,0),(10,10)),"C1"))
@@ -542,3 +630,4 @@ if __name__ == '__main__':
     # temp = [[1,2],[3,4]]
     # print(f'{list(map(lambda t:t[0],temp))}')
     # print(pd.DataFrame({'#1':0,"#2":10},index=[]))
+    # print(re.search(r'(\D+)\d+(\D+)','C15CC').group(2))

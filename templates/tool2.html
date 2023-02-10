@@ -8,6 +8,9 @@
     .banner::before {
         background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
     }
+    .banner_col::before {
+        background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
+    }
     select {
         width: 200px;
         height: 50px;
@@ -63,6 +66,46 @@
         </div>
     </form> 
         
+</div>
+<div class="testbox">
+    <form action="" name="dataForm" enctype="multipart/form-data" method="POST" id="dataForm">
+        <div class = "banner">
+            <h1  class ="header1">RC柱數量計算<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
+            <div style="padding-bottom: 10px;padding-top: 10px;">
+                <span>選擇公司樣板:</span>
+                <select id = 'company' name="company" size="1">
+                    <option value="公司1">公司1</option>
+                    <option value="公司2">公司2</option>
+                </select>
+            </div>
+            <h3>請輸入以下資訊：</h3>
+            <div class="item">
+                <labe>專案名稱</label>
+                <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
+                <labe>Email(選填)，若有填寫會寄送一份結果至信箱</label>
+                <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
+                <labe>選擇檔案(.dwg)</label>
+                <input type=file id="file_column" name="file_column" value="dwg" multiple>
+                <labe>鋼筋圖層</label>
+                <input type="text" id="column_rebar_layer" name="column_rebar_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required >
+                <labe>鋼筋文字圖層</label>
+                <input type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required >
+                <labe>格線圖層</label>
+                <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
+                <labe>圖框圖層</label>
+                <input type="text" id="column_block_layer" name="column_block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
+                <labe>柱編號/樓層圖層</label>
+                <input type="text" id="column_text_layer" name="column_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required >
+                <labe>箍筋線圖層</label>
+                <input type="text" id="column_tie_layer" name="column_tie_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
+                <labe>箍筋文字圖層</label>
+                <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">    
+                <div class="btn-block">
+                <button id="count_column">完成</button>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
 <div class="banner2">
     <h3>&emsp;⚠️注意事項</h3>

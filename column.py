@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Tuple
 import re
 import pandas as pd
 from rebar import RebarInfo,RebarArea
@@ -11,7 +12,6 @@ class Column:
     serial = ''
     floor = ''
     rebar_text = ''
-    total_rebar:Rebar|None
     rebar_text_coor =''
     rebar_coor:list[Point]
     rebar:list[Rebar]
@@ -19,28 +19,31 @@ class Column:
     confine_tie:Tie
     middle_tie:Tie
     grid_coor:dict[str,Point]
-    tie_list:list[tuple(Point,Point)]
-    tie_text_list:list[tuple(Point,str)]
-    tie_dict:dict[str,tuple(Point,str)]
+    tie_list:list[Tuple[Point,Point]]
+    tie_text_list:list[Tuple[Point,str]]
+    tie_dict:dict[str,Tuple[Point,str]]
     up_column:Column|None
     bot_column:Column|None
     rebar_count:dict[str,float] #以樓層作為區分
     multi_floor:list[str]
-    coupler:dict[(str,str):int]
+    coupler:dict[Tuple[str,str],int]
     floor_object:Floor
+    total_rebar:list[Tuple[Rebar,str]]
     fc:int
     fy:int
     concrete:float
     formwork:float
     def __init__(self):
+        self.rebar_text = ''
         self.fc = 0
         self.fy = 0
-        self.x_row = 0
-        self.y_row = 0
+        self.x_row = set()
+        self.y_row = set()
         self.x_tie = 0
         self.y_tie = 0
         self.concrete = 0
         self.formwork = 0
+        self.total_rebar = []
         self.rebar = []
         self.tie = []
         self.coupler = {}
@@ -48,6 +51,8 @@ class Column:
         self.rebar_coor = []
         self.tie_list = []
         self.multi_floor = []
+        self.multi_column = []
+        self.multi_rebar_text = []
         self.tie_text_list = []
         self.tie_dict = {}
         self.up_column = None
@@ -73,7 +78,7 @@ class Column:
         return False
     def set_size(self,size):
         self.size = size
-        match_obj = re.search(r'(\d+)[x|X](\d+)',size)
+        match_obj = re.search(r'([\d|.]+)[x|X]([\d|.]+)',size)
         if match_obj:
             self.x_size = float(match_obj.group(1))
             self.y_size = float(match_obj.group(2))
@@ -91,12 +96,15 @@ class Column:
         pt = Point(((coor[0][0] + coor[1][0])/2,(coor[0][1] + coor[1][1])/2))
         self.tie_text_list.append((pt,text))
     def sort_rebar(self):
-        self.total_rebar = Rebar(self.rebar_text)
+        # self.total_rebar = Rebar(self.rebar_text)
         if not self.rebar_coor:return
         if self.rebar_text_coor =='':return
-        self.rebar_coor.remove(min(self.rebar_coor,key=lambda r:abs(r[0]-self.rebar_text_coor[0])+abs(r[1]-self.rebar_text_coor[1])))
-        self.x_row = len(set(map(lambda r:r[0],self.rebar_coor)))
-        self.y_row = len(set(map(lambda r:r[1],self.rebar_coor)))
+        for rebar_coor,rebar_text in self.multi_rebar_text:
+            target_rebar = min(self.rebar_coor,key=lambda r:abs(r[0]-rebar_coor[0])+abs(r[1]-rebar_coor[1]))[0]
+            self.total_rebar.append((Rebar(rebar_text),target_rebar[1]))
+        self.total_As = sum([r[0].As for r in self.total_rebar])
+        self.x_row = set(map(lambda r:(r[0][0],r[1]),self.rebar_coor))
+        self.y_row = set(map(lambda r:(r[0][1],r[1]),self.rebar_coor))
     def cal_length(self,coor1:Point,coor2:Point):
         return sqrt(pow((coor1.x - coor2.x),2) + pow((coor1.y - coor2.y),2))
     def sort_tie(self):
@@ -110,7 +118,7 @@ class Column:
             if '接頭' in tie_text:
                 joint_text = min(temp_list,key = lambda r:self.cal_length(coor,r[0]))
                 self.tie_dict.update({'接頭':joint_text})
-            if '端部' in tie_text:
+            if '端部' in tie_text or '圍束' in tie_text:
                 confine_text = min(temp_list,key = lambda r:self.cal_length(coor,r[0]))
                 self.tie_dict.update({'端部':confine_text})
                 self.confine_tie = Tie(self.tie_dict['端部'][1],0)
@@ -138,19 +146,32 @@ class Column:
         copy_up_rebar = copy.deepcopy(self.total_rebar)
         copy_bot_rebar = copy.deepcopy(self.total_rebar)
         if self.up_column:
-            up_rebar = self.up_column.total_rebar
-            if up_rebar.As > self.total_rebar.As:
-                copy_up_rebar = copy.deepcopy(up_rebar)
+            # up_rebar = self.up_column.total_rebar
+            if self.up_column.total_As > self.total_As:
+                copy_up_rebar = copy.deepcopy(self.up_column.total_rebar)
         if self.bot_column:
-            bot_rebar = self.bot_column.total_rebar
-            if bot_rebar.As > self.total_rebar.As:
-                copy_bot_rebar = copy.deepcopy(bot_rebar)
-        copy_up_rebar.length = self.height/2
-        copy_bot_rebar.length = self.height/2
-        self.rebar.append(copy_up_rebar)
-        self.rebar.append(copy_bot_rebar)
-        self.coupler.update({(copy_up_rebar.size,copy_bot_rebar.size):min(copy_up_rebar.number,copy_bot_rebar.number)})
-    
+            # bot_rebar = self.bot_column.total_rebar
+            if self.bot_column.total_As > self.total_As:
+                copy_bot_rebar = copy.deepcopy(self.bot_column.total_rebar)
+        for rebar,text in copy_up_rebar:
+            rebar.length = self.height/2
+            self.rebar.append(rebar)
+        for rebar,text in copy_bot_rebar:
+            rebar.length = self.height/2
+            self.rebar.append(rebar)  
+        # copy_up_rebar.length = self.height/2
+        # copy_bot_rebar.length = self.height/2
+        # self.rebar.append(copy_up_rebar)
+        # self.rebar.append(copy_bot_rebar)
+        # self.coupler.update({(copy_up_rebar.size,copy_bot_rebar.size):min(copy_up_rebar.number,copy_bot_rebar.number)})
+    def cal_coupler(self,up_rebar:list[Tuple[Rebar,str]],bot_rebar:list[Tuple[Rebar,str]]):
+        for rebar,text in bot_rebar:
+            same_size_rebar = [r[0] for r in up_rebar if r[0].size == rebar.size]
+            if same_size_rebar:
+                if rebar.number > same_size_rebar[0].number:
+                    self.coupler.update({(same_size_rebar[0].size,rebar.size):same_size_rebar[0].number})
+                    
+        pass
     def cal_tie(self):
         if '端部' in self.tie_dict:
             self.tie.append(Tie(self.tie_dict['端部'][1],(1/6)*self.height*2))
