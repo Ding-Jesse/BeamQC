@@ -296,6 +296,8 @@ def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = N
     OutputExcel(df=coupler_df,file_path=excel_filename,sheet_name='續接器統計表')
     OutputExcel(df=column_df,file_path=excel_filename,sheet_name='柱統計表')
 
+    return excel_filename
+
 def concat_grid_line(line_list:list,start_line:list,overlap:function):
     while True:
         temp_coor = (start_line[1],start_line[2])
@@ -435,12 +437,13 @@ def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_r
     for coor,rebar_text in coor_to_rebar_text_list:
         column = [c for c in column_list if c.in_grid(coor=coor[0])]
         if len(column) > 0:
-            if column[0].rebar_text == '':
-                column[0].rebar_text = rebar_text
-                column[0].rebar_text_coor = coor[0]
-                column[0].multi_rebar_text.append((coor[0],rebar_text))
-            else:
-                column[0].multi_rebar_text.append((coor[0],rebar_text))
+            column[0].multi_rebar_text.append((coor[0],rebar_text))
+            # if column[0].rebar_text == '':
+            #     column[0].rebar_text = rebar_text
+            #     column[0].rebar_text_coor = coor[0]
+            #     column[0].multi_rebar_text.append((coor[0],rebar_text))
+            # else:
+            #     column[0].multi_rebar_text.append((coor[0],rebar_text))
     for rebar in coor_to_rebar_list:
         column = [c for c in column_list if c.in_grid(rebar[0])]
         if len(column) > 0:
@@ -466,6 +469,7 @@ def combine_col_tie(column_list:list[Column],coor_to_tie_text_list:list,coor_to_
 def output_col_excel(column_list:list[Column],output_folder:str,project_name:str):
     header_info_1 = [('樓層', ''), ('柱編號', ''), ('X向 柱寬', 'cm'), ('Y向 柱寬', 'cm')]
     header_rebar = [('柱主筋', '主筋'),('柱主筋', 'X向支數'),('柱主筋', 'Y向支數'),('柱箍筋', '圍束區'),('柱箍筋', '非圍束區'),('柱箍筋', 'X向繫筋'),('柱箍筋', 'Y向繫筋')]
+    header_second_rebar = [('次柱主筋', '主筋'),('次柱主筋', 'X向支數'),('次柱主筋', 'Y向支數')]
     sorted(column_list,key = lambda c:c.serial)
     header = pd.MultiIndex.from_tuples(header_info_1 + header_rebar)
     column_df = pd.DataFrame(np.empty([len(column_list),len(header)],dtype='<U16'),columns=header)
@@ -476,9 +480,14 @@ def output_col_excel(column_list:list[Column],output_folder:str,project_name:str
         column_df.at[row,('柱編號', '')] = c.serial
         column_df.at[row,('X向 柱寬', 'cm')] = c.x_size
         column_df.at[row,('Y向 柱寬', 'cm')] = c.y_size
-        column_df.at[row,('柱主筋', '主筋')] = c.rebar_text
-        column_df.at[row,('柱主筋', 'X向支數')] = c.x_row
-        column_df.at[row,('柱主筋', 'Y向支數')] = c.y_row
+        if len(c.total_rebar) > 0: 
+            column_df.at[row,('柱主筋', '主筋')] = c.total_rebar[0][0].text
+            column_df.at[row,('柱主筋', 'X向支數')] = c.x_dict[c.total_rebar[0][0].size]
+            column_df.at[row,('柱主筋', 'Y向支數')] = c.y_dict[c.total_rebar[0][0].size]
+        if len(c.total_rebar) == 2:
+            column_df.at[row,('次柱主筋', '主筋')] = c.total_rebar[1][0].text
+            column_df.at[row,('次柱主筋', 'X向支數')] = c.x_dict[c.total_rebar[1][0].size]
+            column_df.at[row,('次柱主筋', 'Y向支數')] = c.y_dict[c.total_rebar[1][0].size]
         if c.tie_dict:
             column_df.at[row,('柱箍筋', '圍束區')] = c.tie_dict['端部'][1]
             column_df.at[row,('柱箍筋', '非圍束區')] = c.tie_dict['中央'][1]
@@ -586,8 +595,18 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
         for j in auto_fit_columns:
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
+
+def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name=''):
+    progress_file = './result/tmp'
+    start = time.time()
+    msp_column,doc_column = read_column_cad(beam_filename=column_filename,progress_file=progress_file)
+    sort_col_cad(msp_beam=msp_column,layer_config=layer_config,temp_file=temp_file)
+    output_excel = cal_column_rebar(data=save_temp_file.read_temp(temp_file),output_folder=output_folder,project_name=project_name,progress_file=progress_file)
+    # output_dwg = draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_column,doc_beam=doc_column,output_folder=output_folder,project_name=project_name)
+    print(f'Total Time:{time.time() - start}')
+    return os.path.basename(output_excel)
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱-RCAD.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱.dwg'#sys.argv[1] # XS-COL的路徑
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     project_name = 'test_column'
     layer_config = {
@@ -598,6 +617,7 @@ if __name__ == '__main__':
         'tie_text_layer':['NBAR'], # 箍筋文字圖層
         'tie_layer':['RBAR'], # 箍筋文字圖層
         'block_layer':['DwFm'], # 框框的圖層
+        'column_rc_layer':['OLINE'] #斷面圖層
     }
     #DrawRC
     entity_type ={
@@ -607,21 +627,21 @@ if __name__ == '__main__':
         'tie_text_layer':['AcDbText']
     }
     #RCAD
-    layer_config = {
-        'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
-        'line_layer':['GirdInner'],
-        'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
-        'rebar_layer':['主筋斷面'], # 鋼筋和箍筋的線的塗層
-        'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區'], # 箍筋文字圖層
-        'tie_layer':['箍筋線'], # 箍筋文字圖層
-        'block_layer':['DEFPOINTS'], # 框框的圖層
-        'column_rc_layer':['柱斷面線']
-    }
+    # layer_config = {
+    #     'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
+    #     'line_layer':['GirdInner'],
+    #     'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer':['主筋斷面'], # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區'], # 箍筋文字圖層
+    #     'tie_layer':['箍筋線'], # 箍筋文字圖層
+    #     'block_layer':['DEFPOINTS'], # 框框的圖層
+    #     'column_rc_layer':['柱斷面線'] #斷面圖層
+    # }
     msp_column = None
     doc_column = None
-    msp_column,doc_column = read_column_cad(col_filename,layer_config)
-    sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_RCAD_0210.pkl')
-    # cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_RCAD_0210.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
+    # msp_column,doc_column = read_column_cad(col_filename,layer_config)
+    # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_DrawRc_0213.pkl')
+    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_DrawRc_0213.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
     # floor_list = floor_parameter(column_list)
     # coor_to_col_set = set()
     # coor_to_col_set.add((((0,0),(10,10)),"C1"))

@@ -246,7 +246,7 @@ def sendVerifyCode():
         print(session["phoneVerifyCode"])
         return response
 
-@app.route('/tool2', methods=['GET'])
+@app.route('/tool2', methods=['GET','POST'])
 @login_required
 def tool2():
     if app.config['TESTING']:
@@ -352,7 +352,42 @@ def count_beam():
         response.data = json.dumps({'validate':f'發生錯誤'})
         response.content_type = 'application/json'
     return response
-
+@app.route('/count_column',methods=['POST'])
+def count_column():
+    try:
+        uploaded_columns = request.files.getlist("file_column")
+        project_name = request.form['project_name']
+        email_address = request.form['email_address']
+        beam_filename = ''
+        column_excel = ''
+        if len(uploaded_columns) == 0:
+            response.status_code = 404
+            response.data = json.dumps({'validate':f'未上傳檔案'})
+            response.content_type = 'application/json'
+            return response
+        for uploaded_beam in uploaded_columns:
+            pass
+        # temp = request.form['column_rebar_layer']
+        layer_config = {
+            'text_layer':request.form['column_text_layer'].split('\r\n'),
+            'line_layer':request.form['column_line_layer'].split('\r\n'),
+            'rebar_text_layer':request.form['column_rebar_text_layer'].split('\r\n'), # 箭頭和鋼筋文字的塗層
+            'rebar_layer':request.form['column_rebar_layer'].split('\r\n'), # 鋼筋和箍筋的線的塗層
+            'tie_text_layer':request.form['column_tie_text_layer'].split('\r\n'), # 箍筋文字圖層
+            'tie_layer':request.form['column_tie_layer'], # 箍筋文字圖層
+            'block_layer':request.form['column_block_layer'], # 框框的圖層
+            'column_rc_layer':request.form['column_rc_layer'] #斷面圖層
+        }
+        print(layer_config)
+        # count_column_main
+        response = Response()
+        response.status_code = 200
+        response.data = json.dumps({'validate':f'{layer_config}'})
+        response.content_type = 'application/json'
+        return response
+    except:
+        print('error')
+    
 # @app.route('/send_email',methods=['POST'])
 def sendResult(recipients:str,filenames:list,mail_title:str):
     output_folder = app.config['OUTPUT_FOLDER']

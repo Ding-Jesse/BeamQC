@@ -11,6 +11,20 @@
     .banner_col::before {
         background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
     }
+    textarea {
+        display: block;
+        width: 100%;
+        overflow: visible;
+        resize: both;
+        min-height: 100px;
+        line-height: 20px;
+        font-size: 20px;
+        color:red;
+        line-height: 1.25;
+    }
+    p strong {
+    display: block;
+    }
     select {
         width: 200px;
         height: 50px;
@@ -44,21 +58,21 @@
         <div class="item">
             <labe>專案名稱</label>
             <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
-            <labe>Email(選填)，若有填寫會寄送一份結果至信箱</label>
+            <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
             <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
-            <labe>選擇檔案(.dwg)</label>
+            <label>選擇檔案(.dwg)</label>
             <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
-            <labe>鋼筋指示箭頭及文字圖層</label>
+            <label>鋼筋指示箭頭及文字圖層</label>
             <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required >
-            <labe>鋼筋線圖層</label>
+            <label>鋼筋線圖層</label>
             <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required >
-            <labe>箍筋文字圖層</label>
+            <label>箍筋文字圖層</label>
             <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
-            <labe>圖框圖層</label>
+            <label>圖框圖層</label>
             <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
-            <labe>梁編號圖層</label>
+            <label>梁編號圖層</label>
             <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required >
-            <labe>梁邊框圖層(選填)</label>
+            <label>梁邊框圖層(選填)</label>
             <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
             <div class="btn-block">
             <button id="count_beam">完成</button>
@@ -68,38 +82,45 @@
         
 </div>
 <div class="testbox">
-    <form action="" name="dataForm" enctype="multipart/form-data" method="POST" id="dataForm">
+    <form action="" name="dataFormColumn" enctype="multipart/form-data" method="POST" id="dataFormColumn">
         <div class = "banner">
             <h1  class ="header1">RC柱數量計算<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
-            <div style="padding-bottom: 10px;padding-top: 10px;">
-                <span>選擇公司樣板:</span>
-                <select id = 'company' name="company" size="1">
-                    <option value="公司1">公司1</option>
-                    <option value="公司2">公司2</option>
-                </select>
-            </div>
-            <h3>請輸入以下資訊：</h3>
+        </div> 
+        <div style="padding-bottom: 10px;padding-top: 10px;">
+            <span>選擇公司樣板:</span>
+            <select id = 'companyColumn' name="companyColumn" size="1" >
+                <option value="" selected disabled hidden>選擇公司</option>
+                <option value="公司1">DrawRC</option>
+                <option value="公司2">RCAD</option>
+            </select>
+        </div>
+        <h3>請輸入以下資訊：</h3>
             <div class="item">
-                <labe>專案名稱</label>
+                <label>專案名稱</label>
                 <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
-                <labe>Email(選填)，若有填寫會寄送一份結果至信箱</label>
+                <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
                 <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
-                <labe>選擇檔案(.dwg)</label>
+                <label>選擇檔案(.dwg)</label>
                 <input type=file id="file_column" name="file_column" value="dwg" multiple>
-                <labe>鋼筋圖層</label>
-                <input type="text" id="column_rebar_layer" name="column_rebar_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required >
-                <labe>鋼筋文字圖層</label>
-                <input type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required >
-                <labe>格線圖層</label>
+                <p><strong>鋼筋圖層</strong><textarea type="text" id="column_rebar_layer" name="column_rebar_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>鋼筋文字圖層</strong><textarea type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>格線圖層</strong><textarea type="text" id="column_line_layer" name="column_line_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>圖框圖層</strong><textarea type="text" id="column_block_layer" name="column_block_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>柱編號/樓層圖層</strong><textarea type="text" id="column_text_layer" name="column_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>箍筋線圖層</strong><textarea type="text" id="column_tie_layer" name="column_tie_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>箍筋文字圖層</strong><textarea type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <p><strong>柱斷面圖層</strong><textarea type="text" id="column_rc_layer" name="column_rc_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                <!-- <input type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required > -->
+                <!-- <label>格線圖層</label>
                 <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
-                <labe>圖框圖層</label>
+                <label>圖框圖層</label>
                 <input type="text" id="column_block_layer" name="column_block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
-                <labe>柱編號/樓層圖層</label>
-                <input type="text" id="column_text_layer" name="column_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required >
+                <label>柱編號/樓層圖層</label>
+                <input type="text" id="column_text_layer" name="column_text_layer" placeholder="請輸入圖層名稱" value = "S-RC">
                 <labe>箍筋線圖層</label>
                 <input type="text" id="column_tie_layer" name="column_tie_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
-                <labe>箍筋文字圖層</label>
-                <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">    
+                <label>箍筋文字圖層</label>
+                <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">     -->
                 <div class="btn-block">
                 <button id="count_column">完成</button>
                 </div>
@@ -158,6 +179,7 @@
 
 </body>
 <script type="text/javascript">
+    const container = document.getElementById('input-cont');
     $(document).ready(function(){
         $('#company').change(function(){
             if ($('#company').val() == '公司2'){
@@ -175,6 +197,28 @@
                 $('#beam_text_layer').val("S-RC");
             }
             
+        });
+        $('#companyColumn').change(function(){
+            if($('#companyColumn').val() == '公司1'){
+                $('#column_rebar_text_layer').val('NBAR');
+                $('#column_rebar_layer').val('RBAR');
+                $('#column_tie_text_layer').val('NBAR');
+                $('#column_tie_layer').val('RBAR');
+                $('#column_block_layer').val('DEFPOINTS');
+                $('#column_text_layer').val('TABLE\r\nSIZE');
+                $('#column_line_layer').val('TABLE');
+                $('#column_rc_layer').val('OLINE');
+            }
+            if($('#companyColumn').val() == '公司2'){
+                $('#column_text_layer').val('文字-柱線名稱\r\n文字-樓層名稱\r\n文字-斷面尺寸');
+                $('#column_line_layer').val('GridInner\r\nGirdBoundary');
+                $('#column_rebar_text_layer').val('文字-主筋根數');
+                $('#column_rebar_layer').val('主筋斷面');
+                $('#column_tie_text_layer').val('文字-剪力筋 中央區\r\n文字-剪力筋-BC\r\n文字-剪力筋-圍束區');
+                $('#column_tie_layer').val('箍筋線');
+                $('#column_block_layer').val('DEFPOINTS');
+                $('#column_rc_layer').val('柱斷面線');
+            }
         });
         // $('#download_sample').click(function(){
         //     fetch("/results/sample.zip",{method:'post',contentType : false,cache: 'no-cache',credentials: 'same-origin'}).then(
@@ -218,7 +262,6 @@
             }).catch((error)=>{
                 console.log(error);
             })
-            
             // $.post("/count_beam",formData,function(response){
             //         console.log(response);
             // },'json');
@@ -226,6 +269,20 @@
             alert('成功傳送，請稍等結果');
             return false;
         });
+        $('#count_column').click(function(){
+            const form = document.getElementById('dataFormColumn');
+            const formData = new FormData(form);
+            fetch("/count_column",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
+            .then(response=>response.text())
+            .then(data=>{
+                console.log(data);
+            }).catch(()=>{
+                console.log('error');
+            })
+            console.log('wait for column response')
+            alert('成功傳送，請稍等結果');
+            return false;
+        })
     });
     function getExtension(filename) {
         var parts = filename.split('.');

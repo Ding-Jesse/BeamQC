@@ -11,8 +11,8 @@ class Column:
     size = ''
     serial = ''
     floor = ''
-    rebar_text = ''
-    rebar_text_coor =''
+    # rebar_text = ''
+    # rebar_text_coor =''
     rebar_coor:list[Point]
     rebar:list[Rebar]
     tie:list[Tie]
@@ -29,12 +29,16 @@ class Column:
     coupler:dict[Tuple[str,str],int]
     floor_object:Floor
     total_rebar:list[Tuple[Rebar,str]]
+    total_mass:float
+    total_As:float
     fc:int
     fy:int
     concrete:float
     formwork:float
+    x_dict:dict[str,float]
+    y_dict:dict[str,float]
     def __init__(self):
-        self.rebar_text = ''
+        # self.rebar_text = ''
         self.fc = 0
         self.fy = 0
         self.x_row = set()
@@ -43,11 +47,14 @@ class Column:
         self.y_tie = 0
         self.concrete = 0
         self.formwork = 0
+        self.total_As = 0
         self.total_rebar = []
         self.rebar = []
         self.tie = []
         self.coupler = {}
         self.grid_coor = {}
+        self.x_dict = {}
+        self.y_dict = {}
         self.rebar_coor = []
         self.tie_list = []
         self.multi_floor = []
@@ -98,13 +105,25 @@ class Column:
     def sort_rebar(self):
         # self.total_rebar = Rebar(self.rebar_text)
         if not self.rebar_coor:return
-        if self.rebar_text_coor =='':return
+        if not self.multi_rebar_text:return
+        # if self.rebar_text_coor =='':return
         for rebar_coor,rebar_text in self.multi_rebar_text:
-            target_rebar = min(self.rebar_coor,key=lambda r:abs(r[0]-rebar_coor[0])+abs(r[1]-rebar_coor[1]))[0]
+            target_rebar = min(self.rebar_coor,key=lambda r:abs(r[0][0]-rebar_coor[0])+abs(r[0][1]-rebar_coor[1]))
+            self.rebar_coor.remove(target_rebar)
             self.total_rebar.append((Rebar(rebar_text),target_rebar[1]))
         self.total_As = sum([r[0].As for r in self.total_rebar])
+        self.total_mass = sum([r[0].mass for r in self.total_rebar])
+
         self.x_row = set(map(lambda r:(r[0][0],r[1]),self.rebar_coor))
         self.y_row = set(map(lambda r:(r[0][1],r[1]),self.rebar_coor))
+        for total_rebar in self.total_rebar:
+            self.x_dict.update({total_rebar[0].size:len([x for x in self.x_row if x[1] == total_rebar[1]])})
+            self.y_dict.update({total_rebar[0].size:len([y for y in self.y_row if y[1] == total_rebar[1]])})
+            if len(self.total_rebar) > 1:
+                min_y = min([r for r in self.rebar_coor if r[1] == total_rebar[1]],key=lambda x:x[1])[0][1]
+                min_x = min([r for r in self.rebar_coor if r[1] == total_rebar[1]],key=lambda x:x[0])[0][0]
+                self.x_dict[total_rebar[0].size] = len([r for r in self.rebar_coor if r[1] == total_rebar[1] and r[0][1] == min_y])
+                self.y_dict[total_rebar[0].size] = len([r for r in self.rebar_coor if r[1] == total_rebar[1] and r[0][0] == min_x])
     def cal_length(self,coor1:Point,coor2:Point):
         return sqrt(pow((coor1.x - coor2.x),2) + pow((coor1.y - coor2.y),2))
     def sort_tie(self):
@@ -131,8 +150,8 @@ class Column:
         outer_tie = max(self.tie_list,key=lambda tie:self.cal_length(tie[0],tie[1]))
         self.tie_list.remove(outer_tie)
         for tie in self.tie_list:
-            x_diff = tie[0].x - tie[1].x
-            y_diff = tie[0].y - tie[1].y
+            x_diff = abs(tie[0].x - tie[1].x)
+            y_diff = abs(tie[0].y - tie[1].y)
             if x_diff >= y_diff:
                 self.x_tie += 1
             else:
@@ -158,20 +177,38 @@ class Column:
             self.rebar.append(rebar)
         for rebar,text in copy_bot_rebar:
             rebar.length = self.height/2
-            self.rebar.append(rebar)  
+            self.rebar.append(rebar)
+        self.cal_coupler(copy_up_rebar,copy_bot_rebar)  
         # copy_up_rebar.length = self.height/2
         # copy_bot_rebar.length = self.height/2
         # self.rebar.append(copy_up_rebar)
         # self.rebar.append(copy_bot_rebar)
         # self.coupler.update({(copy_up_rebar.size,copy_bot_rebar.size):min(copy_up_rebar.number,copy_bot_rebar.number)})
     def cal_coupler(self,up_rebar:list[Tuple[Rebar,str]],bot_rebar:list[Tuple[Rebar,str]]):
+        #狀況1:上32-#8/8-#10 下24-#8/16-#10
+        #狀況2:上32-#8/8-#10 下32-#8/16-#10
+        #狀況3:上32-#8/8-#10 下36-#8/16-#10
+        #狀況4:上32-#8/16-#10 下40-#8/8-#10
+        temp_dict = {'up':{},'bot':{}}
         for rebar,text in bot_rebar:
             same_size_rebar = [r[0] for r in up_rebar if r[0].size == rebar.size]
             if same_size_rebar:
-                if rebar.number > same_size_rebar[0].number:
+                if rebar.number >= same_size_rebar[0].number:
                     self.coupler.update({(same_size_rebar[0].size,rebar.size):same_size_rebar[0].number})
-                    
-        pass
+                    temp_dict['bot'].update({rebar.size:rebar.number - same_size_rebar[0].number})
+                else:
+                    self.coupler.update({(same_size_rebar[0].size,rebar.size):rebar.number})
+                    temp_dict['up'].update({rebar.size:same_size_rebar[0].number - rebar.number})
+            else:
+                temp_dict['bot'].update({rebar.size:rebar.number})
+        for size,number in temp_dict['up'].items():
+            for bot_size,bot_number in temp_dict['bot'].items():
+                if number > 0 and bot_number > 0:
+                    self.coupler.update({(size,bot_size):min(number,bot_number)})
+                    number -= number - min(number,bot_number)
+                    bot_number -= min(number,bot_number)
+                    temp_dict['bot'][bot_size] -= min(number,bot_number)
+
     def cal_tie(self):
         if '端部' in self.tie_dict:
             self.tie.append(Tie(self.tie_dict['端部'][1],(1/6)*self.height*2))

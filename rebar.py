@@ -48,8 +48,17 @@ if __name__ == '__main__':
     #     return chr(ord(c)+65248)
     
     # print('(45X90)'.replace(' ', '').replace('X','x'))
-    test_list = [testclass(1),testclass(5),testclass(10)]
-    list(map(lambda i:i.add_value(5),test_list))
-    for t in test_list:
-        print(t.val)
-    pass
+    # test_list = [testclass(1),testclass(5),testclass(10)]
+    # list(map(lambda i:i.add_value(5),test_list))
+    # for t in test_list:
+    #     print(t.val)
+    # pass
+    # temp = {'1':{'10':10,'11':11,'12':12},'2':{'100':100,'110':110,'120':120}}
+    # for i,j in temp['1'].items():
+    #     # j += 1
+    #     temp['1'][i] += 1
+    #     print(j)
+    #     print(temp['1'][i]) 
+    #     pass
+    # print(temp)
+    print(list(['1','2']))
