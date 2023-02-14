@@ -18,9 +18,12 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment,Font,PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
+from multiprocessing.pool import ThreadPool as Pool
+import multiprocessing as mp
 
-slash_pattern = r'(.+)[~](.+)' #~
+slash_pattern = r'(.+)[~|-](.+)' #~
 commom_pattern = r'(,)|(、)'
+multi = True
 def read_column_cad(column_filename,layer_config:dict[list]):
     layer_list = [layer for key,layer in layer_config.items()]
     # line_layer = layer_config['line_layer']
@@ -120,13 +123,13 @@ def read_column_cad(column_filename,layer_config:dict[list]):
     return msp_column,doc_column
 
 def sort_col_cad(msp_column,layer_config,temp_file):
-    text_layer = layer_config['text_layer']
-    line_layer = layer_config['line_layer']
-    rebar_text_layer = layer_config['rebar_text_layer']
-    rebar_layer = layer_config['rebar_layer']
-    tie_layer = layer_config['tie_layer']
-    tie_text_layer = layer_config['tie_text_layer']
-    column_rc_layer = layer_config['column_rc_layer']
+    text_layer = list(layer_config['text_layer'])
+    line_layer = list(layer_config['line_layer'])
+    rebar_text_layer = list(layer_config['rebar_text_layer'])
+    rebar_layer = list(layer_config['rebar_layer'])
+    tie_layer = list(layer_config['tie_layer'])
+    tie_text_layer = list(layer_config['tie_text_layer'])
+    column_rc_layer = list(layer_config['column_rc_layer'])
     coor_to_floor_set = set() # set(coor, floor)
     coor_to_col_set = set() # set(coor, col)
     coor_to_size_set = set() # set(coor, size)
@@ -148,8 +151,9 @@ def sort_col_cad(msp_column,layer_config,temp_file):
             count += 1
             # if count % 1000 == 0:
             #     progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
+            print(f'{object.Layer}:{object.ObjectName}')
             if object.Layer in tie_layer:
-                print(f'{object.Layer}:{object.ObjectName}')
+                # print(f'{object.Layer}:{object.ObjectName}')
                 if object.ObjectName == "AcDbPolyline":
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
@@ -242,6 +246,18 @@ def sort_col_cad(msp_column,layer_config,temp_file):
         #     error_count += 1
         #     time.sleep(5)
         #     error(f'read_col error in step 7: {e}, error_count = {error_count}.')
+    if multi:
+        return{'coor_to_col_set':coor_to_col_set,
+                'coor_to_size_set':coor_to_size_set,
+                'coor_to_floor_set': coor_to_floor_set,
+                'coor_to_col_line_list':coor_to_col_line_list,
+                'coor_to_floor_line_list':coor_to_floor_line_list,
+                'coor_to_rebar_text_list':coor_to_rebar_text_list,
+                'coor_to_rebar_list':coor_to_rebar_list,
+                'coor_to_tie_text_list':coor_to_tie_text_list,
+                'coor_to_tie_list':coor_to_tie_list,
+                'coor_to_section_list':coor_to_section_list
+            }
     save_temp_file.save_pkl({'coor_to_col_set':coor_to_col_set,
                     'coor_to_size_set':coor_to_size_set,
                     'coor_to_floor_set': coor_to_floor_set,
@@ -254,7 +270,7 @@ def sort_col_cad(msp_column,layer_config,temp_file):
                     'coor_to_section_list':coor_to_section_list
                     },temp_file)
 
-def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = None ,doc_column = None):
+def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = None ,doc_column = None,floor_parameter_xlsx=''):
     output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
     output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
     excel_filename = (
@@ -283,7 +299,7 @@ def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = N
                                                ,coor_to_section_list=coor_to_section_list,coor_to_size_set=coor_to_size_set)
     combine_col_rebar(column_list=output_column_list,coor_to_rebar_list=coor_to_rebar_list,coor_to_rebar_text_list=coor_to_rebar_text_list)
     combine_col_tie(column_list=output_column_list,coor_to_tie_list=coor_to_tie_list,coor_to_tie_text_list=coor_to_tie_text_list)
-    floor_list = floor_parameter(column_list=output_column_list)
+    floor_list = floor_parameter(column_list=output_column_list,floor_parameter_xlsx=floor_parameter_xlsx)
     sort_floor_column(floor_list=floor_list,column_list=output_column_list)
     cs_list = create_column_scan()
     scan_df = column_check(column_list=output_column_list,column_scan_list=cs_list)
@@ -431,12 +447,18 @@ def get_size_from_section(new_coor_to_col_line_list:list,new_coor_to_floor_line_
         if len(floor) > 1:
             print(f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c:c[0],floor[1:])))
-        if new_column.serial != '':output_column_list.append(new_column)
+        if len([c for c in output_column_list if c.floor == new_column.floor and c.serial == new_column.serial]) > 0:
+            print(f'{new_column.floor}{new_column.serial} is exists')
+            continue
+        if new_column.serial != '' :output_column_list.append(new_column)
     return output_column_list
 def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_rebar_text_list:list):
     for coor,rebar_text in coor_to_rebar_text_list:
         column = [c for c in column_list if c.in_grid(coor=coor[0])]
         if len(column) > 0:
+            if (coor[0],rebar_text) in column[0].multi_rebar_text:
+                print(f'{coor[0]}:{rebar_text} is exists')
+                continue
             column[0].multi_rebar_text.append((coor[0],rebar_text))
             # if column[0].rebar_text == '':
             #     column[0].rebar_text = rebar_text
@@ -458,7 +480,7 @@ def combine_col_tie(column_list:list[Column],coor_to_tie_text_list:list,coor_to_
         if len(column) > 0:
             column[0].add_tie(tie)
     for coor,tie_text in coor_to_tie_text_list:
-        column = [c for c in column_list if c.in_grid(coor=coor[0]) and c.in_grid(coor=coor[1])]
+        column = [c for c in column_list if c.in_grid(coor=coor[1]) and c.in_grid(coor=coor[1])]
         if len(column) > 0:
             column[0].add_tie_text(coor=coor,text=tie_text)
     for column in column_list:
@@ -498,10 +520,10 @@ def output_col_excel(column_list:list[Column],output_folder:str,project_name:str
     # output_column_list = sorted(output_column_list,key=lambda c:c.serial)
     # column_df.sort_values(by=[('柱編號', '')],ascending=True,inplace=True)
     return column_df
-def floor_parameter(column_list:list[Column]):
+def floor_parameter(column_list:list[Column],floor_parameter_xlsx:str):
     floor_list:list[Floor]
     floor_list = []
-    parameter_df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱樓層參數.xlsx')
+    parameter_df = read_parameter_df(floor_parameter_xlsx)
     parameter_df.set_index(['樓層'],inplace=True)
     for c in column_list:
         for floor in c.multi_floor:
@@ -515,7 +537,7 @@ def floor_parameter(column_list:list[Column]):
         temp_floor = Floor(floor_name)
         floor_list.append(temp_floor)
         temp_floor.set_prop(parameter_df.loc[floor_name])
-        temp_floor.add_column([c for c in column_list if c.floor == floor_name])
+        temp_floor.add_column([c for c in column_list if c.floor == temp_floor.floor_name])
     
     return floor_list
 def sort_floor_column(floor_list:list[Floor],column_list:list[Column]):
@@ -595,30 +617,49 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
         for j in auto_fit_columns:
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
+def count_column_multiprocessing(column_filenames:list[str]):
+    coor_to_col_set = ()
+    coor_to_size_set = ()
+    coor_to_floor_set = ()
+    coor_to_col_line_list = []
+    coor_to_floor_line_list = []
+    coor_to_rebar_text_list = []
+    coor_to_rebar_list = []
+    coor_to_tie_text_list = []
+    coor_to_tie_list = []
+    coor_to_section_list = []
+    with Pool(processes=10) as p:
+        start = time.time() # 開始測量執行時間
+        jobs = []
+        for filename in column_filenames:
+            jobs.append(p.apply_async(read_column_cad, (filename,)))
+        for job in jobs:
 
-def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name=''):
+def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     progress_file = './result/tmp'
     start = time.time()
     msp_column,doc_column = read_column_cad(beam_filename=column_filename,progress_file=progress_file)
     sort_col_cad(msp_beam=msp_column,layer_config=layer_config,temp_file=temp_file)
-    output_excel = cal_column_rebar(data=save_temp_file.read_temp(temp_file),output_folder=output_folder,project_name=project_name,progress_file=progress_file)
+    output_excel = cal_column_rebar(data=save_temp_file.read_temp(temp_file),output_folder=output_folder,
+                                    project_name=project_name,progress_file=progress_file,floor_parameter_xlsx = floor_parameter_xlsx)
     # output_dwg = draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_column,doc_beam=doc_column,output_folder=output_folder,project_name=project_name)
     print(f'Total Time:{time.time() - start}')
     return os.path.basename(output_excel)
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\築遠-RC柱.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\圓方烏日-XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0203\'
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     project_name = 'test_column'
-    layer_config = {
-        'text_layer':['TABLE','SIZE'],
-        'line_layer':['TABLE'],
-        'rebar_text_layer':['NBAR'], # 箭頭和鋼筋文字的塗層
-        'rebar_layer':['RBAR'], # 鋼筋和箍筋的線的塗層
-        'tie_text_layer':['NBAR'], # 箍筋文字圖層
-        'tie_layer':['RBAR'], # 箍筋文字圖層
-        'block_layer':['DwFm'], # 框框的圖層
-        'column_rc_layer':['OLINE'] #斷面圖層
-    }
+    # layer_config = {
+    #     'text_layer':['TABLE','SIZE'],
+    #     'line_layer':['TABLE'],
+    #     'rebar_text_layer':['NBAR'], # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer':['RBAR'], # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer':['NBAR'], # 箍筋文字圖層
+    #     'tie_layer':['RBAR'], # 箍筋文字圖層
+    #     'block_layer':['DwFm'], # 框框的圖層
+    #     'column_rc_layer':['OLINE'] #斷面圖層
+    # }
     #DrawRC
     entity_type ={
         'rebar_layer':['AcDbPolyline'],
@@ -637,11 +678,22 @@ if __name__ == '__main__':
     #     'block_layer':['DEFPOINTS'], # 框框的圖層
     #     'column_rc_layer':['柱斷面線'] #斷面圖層
     # }
+    #Elements
+    layer_config = {
+        'text_layer':['S-TEXT'],
+        'line_layer':['S-STUD'],
+        'rebar_text_layer':['S-TEXT'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':['S-REINFD'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
+        'tie_layer':['S-REINF'], # 箍筋文字圖層
+        'block_layer':['Page'], # 框框的圖層
+        'column_rc_layer':['S-RC'] #斷面圖層
+    }
     msp_column = None
     doc_column = None
     # msp_column,doc_column = read_column_cad(col_filename,layer_config)
-    # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_DrawRc_0213.pkl')
-    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_DrawRc_0213.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
+    # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_Elements_ALL_0213.pkl')
+    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_Elements_ALL_0213.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
     # floor_list = floor_parameter(column_list)
     # coor_to_col_set = set()
     # coor_to_col_set.add((((0,0),(10,10)),"C1"))
@@ -651,3 +703,5 @@ if __name__ == '__main__':
     # print(f'{list(map(lambda t:t[0],temp))}')
     # print(pd.DataFrame({'#1':0,"#2":10},index=[]))
     # print(re.search(r'(\D+)\d+(\D+)','C15CC').group(2))
+    # temp = save_temp_file.read_temp(r'temp_col_Elements_0213.pkl')
+    # print(temp)

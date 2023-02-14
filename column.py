@@ -137,11 +137,11 @@ class Column:
             if '接頭' in tie_text:
                 joint_text = min(temp_list,key = lambda r:self.cal_length(coor,r[0]))
                 self.tie_dict.update({'接頭':joint_text})
-            if '端部' in tie_text or '圍束' in tie_text:
+            if '端部' in tie_text or '圍束' in tie_text or 'COF' in tie_text:
                 confine_text = min(temp_list,key = lambda r:self.cal_length(coor,r[0]))
                 self.tie_dict.update({'端部':confine_text})
                 self.confine_tie = Tie(self.tie_dict['端部'][1],0)
-            if '中央' in tie_text:
+            if '中央' in tie_text or 'TIE' in tie_text:
                 middle_text = min(temp_list,key = lambda r:self.cal_length(coor,r[0]))
                 self.tie_dict.update({'中央':middle_text})
                 self.middle_tie = Tie(self.tie_dict['中央'][1],0)
@@ -249,6 +249,8 @@ class Floor:
     coupler:dict[str,float]
     floor_name:str
     def __init__(self,floor_name):
+        if floor_name[-1] != 'F':
+            floor_name += 'F'
         self.floor_name = floor_name
         self.rebar_count ={}
         self.column_list = []
@@ -317,3 +319,7 @@ class Tie:
     def change_spacing(self,new_spacing:float):
         self.spacing = new_spacing
         self.number = self.length//self.spacing
+if __name__ == '__main__':
+    c = Column()
+    c.grid_coor={'left_bot':Point(12685.43,4833.29),'left_top':(12685.43,5146.29),'right_top':Point(12835.43,5146.29),'right_bot':Point(12835.43,4833.29)}
+    print(c.in_grid((12717.91,4832.76)))

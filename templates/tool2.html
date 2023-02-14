@@ -92,6 +92,7 @@
                 <option value="" selected disabled hidden>選擇公司</option>
                 <option value="公司1">DrawRC</option>
                 <option value="公司2">RCAD</option>
+                <option value="公司3">Elements</option>
             </select>
         </div>
         <h3>請輸入以下資訊：</h3>
@@ -100,7 +101,10 @@
                 <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
                 <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
                 <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
-                <label>選擇檔案(.dwg)</label>
+                <p><strong>選擇樓層參數檔案(.xlsx)</strong>
+                <a href="{{url_for('result_file', filename='column_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
+                <p><strong>選擇柱配筋圖檔案(.dwg)</strong>
                 <input type=file id="file_column" name="file_column" value="dwg" multiple>
                 <p><strong>鋼筋圖層</strong><textarea type="text" id="column_rebar_layer" name="column_rebar_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-LEADER" required ></textarea></p>
                 <p><strong>鋼筋文字圖層</strong><textarea type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
@@ -219,6 +223,25 @@
                 $('#column_block_layer').val('DEFPOINTS');
                 $('#column_rc_layer').val('柱斷面線');
             }
+            if($('#companyColumn').val() == '公司3'){
+                $('#column_text_layer').val('S-TEXT');
+                $('#column_line_layer').val('S-STUD');
+                $('#column_rebar_text_layer').val('S-TEXT');
+                $('#column_rebar_layer').val('S-REINFD');
+                $('#column_tie_text_layer').val('S-TEXT');
+                $('#column_tie_layer').val('S-REINF');
+                $('#column_block_layer').val('Page');
+                $('#column_rc_layer').val('S-RC');
+            }
+        });
+        $('a#downloadXlsx').on('click', function(e) {
+            e.preventDefault();
+            fetch('/results/column_floor.xlsx/',{method:'get',cache: 'no-cache',credentials: 'same-origin'})
+            .then(response =>{
+                console.log(response);
+            }).catch(error =>{
+                console.log(error)
+            })
         });
         // $('#download_sample').click(function(){
         //     fetch("/results/sample.zip",{method:'post',contentType : false,cache: 'no-cache',credentials: 'same-origin'}).then(

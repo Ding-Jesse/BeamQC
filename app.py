@@ -13,6 +13,7 @@ import time
 from datetime import timedelta
 from auth import createPhoneCode,sendPhoneMessage
 from beam_count import count_beam_main
+from column_count import count_column_main
 app = Flask(__name__)
 app.config.from_object('config.config.Config')
 Session(app)
@@ -210,7 +211,7 @@ def result_page():
 
 @app.route('/results/<filename>/',methods=['GET','POST'])
 def result_file(filename):
-    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[]) and filename != "sample.zip"):return redirect('/tool1')
+    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[]) and filename != "sample.zip" and filename != "column_floor.xlsx"):return redirect('/')
     response = send_from_directory(app.config['OUTPUT_FOLDER'],
                                filename, as_attachment = True)
     response.cache_control.max_age = 0
@@ -358,16 +359,25 @@ def count_column():
         uploaded_columns = request.files.getlist("file_column")
         project_name = request.form['project_name']
         email_address = request.form['email_address']
-        beam_filename = ''
+        template_name = request.form['column_company']
+        uploaded_xlsx = request.form['file_floor_xlsx']
+        column_filename = ''
         column_excel = ''
+        column_ok = False
         if len(uploaded_columns) == 0:
             response.status_code = 404
             response.data = json.dumps({'validate':f'未上傳檔案'})
             response.content_type = 'application/json'
             return response
-        for uploaded_beam in uploaded_columns:
-            pass
-        # temp = request.form['column_rebar_layer']
+        for uploaded_column in uploaded_columns:
+            column_ok, column_new_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
+            temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
+            print(f'column_filename:{column_filename},temp_file:{temp_file}')
+        if uploaded_xlsx:
+            xlsx_ok, xlsx_new_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
             'text_layer':request.form['column_text_layer'].split('\r\n'),
             'line_layer':request.form['column_line_layer'].split('\r\n'),
@@ -379,7 +389,19 @@ def count_column():
             'column_rc_layer':request.form['column_rc_layer'] #斷面圖層
         }
         print(layer_config)
-        # count_column_main
+        if column_filename != '' and temp_file != '' and column_ok:
+            column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
+                                             output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
+            if 'count_filenames' in session:
+                session['count_filenames'].extend([column_excel])
+            else:
+                session['count_filenames'] = [column_excel]
+        if(email_address):
+            try:
+                sendResult(email_address,[column_excel],"梁配筋圖數量計算結果")
+                print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
+            except:
+                pass
         response = Response()
         response.status_code = 200
         response.data = json.dumps({'validate':f'{layer_config}'})

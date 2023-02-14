@@ -11,6 +11,9 @@ class Point:
         elif isinstance(pt[0],tuple):
             self.x = pt[0][0]
             self.y = pt[0][1]
+        elif isinstance(pt,tuple):
+            self.x = pt[0]
+            self.y = pt[1]
 class Rebar:
     start_pt = Point
     end_pt = Point
