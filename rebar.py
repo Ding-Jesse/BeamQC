@@ -61,4 +61,9 @@ if __name__ == '__main__':
     #     print(temp['1'][i]) 
     #     pass
     # print(temp)
-    print(list(['1','2']))
+    set1=set()
+    set2=set()
+    set1.add((1,2))
+    set2.add((1,2,1))
+    set1.update(set2)
+    print(set2)

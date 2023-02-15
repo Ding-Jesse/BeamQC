@@ -13,7 +13,7 @@ import time
 from datetime import timedelta
 from auth import createPhoneCode,sendPhoneMessage
 from beam_count import count_beam_main
-from column_count import count_column_main
+from column_count import count_column_main,count_column_multiprocessing
 app = Flask(__name__)
 app.config.from_object('config.config.Config')
 Session(app)
@@ -356,12 +356,19 @@ def count_beam():
 @app.route('/count_column',methods=['POST'])
 def count_column():
     try:
+        print('1')
         uploaded_columns = request.files.getlist("file_column")
+        print('2')
         project_name = request.form['project_name']
+        print('2')
         email_address = request.form['email_address']
-        template_name = request.form['column_company']
-        uploaded_xlsx = request.form['file_floor_xlsx']
+        print('2')
+        template_name = request.form['companyColumn']
+        print('2')
+        uploaded_xlsx = request.files['file_floor_xlsx']
+        print('2')
         column_filename = ''
+        column_filenames = []
         column_excel = ''
         column_ok = False
         if len(uploaded_columns) == 0:
@@ -372,6 +379,7 @@ def count_column():
         for uploaded_column in uploaded_columns:
             column_ok, column_new_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
+            column_filenames.append(column_filename)
             temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
             print(f'column_filename:{column_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
@@ -389,9 +397,12 @@ def count_column():
             'column_rc_layer':request.form['column_rc_layer'] #斷面圖層
         }
         print(layer_config)
-        if column_filename != '' and temp_file != '' and column_ok:
-            column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
-                                             output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
+        if len(column_filenames) != 0 and temp_file != '' and column_ok:
+            # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
+            #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
+            column_excel =count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file=temp_file,
+                                                        output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,
+                                                        template_name=template_name,floor_parameter_xlsx=xlsx_filename)
             if 'count_filenames' in session:
                 session['count_filenames'].extend([column_excel])
             else:
@@ -407,8 +418,13 @@ def count_column():
         response.data = json.dumps({'validate':f'{layer_config}'})
         response.content_type = 'application/json'
         return response
-    except:
-        print('error')
+    except Exception as ex:
+        print(ex)
+        response = Response()
+        response.status_code = 200
+        response.data = json.dumps({'validate':f'發生錯誤'})
+        response.content_type = 'application/json'
+    return response
     
 # @app.route('/send_email',methods=['POST'])
 def sendResult(recipients:str,filenames:list,mail_title:str):

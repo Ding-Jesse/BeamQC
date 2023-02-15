@@ -234,15 +234,6 @@
                 $('#column_rc_layer').val('S-RC');
             }
         });
-        $('a#downloadXlsx').on('click', function(e) {
-            e.preventDefault();
-            fetch('/results/column_floor.xlsx/',{method:'get',cache: 'no-cache',credentials: 'same-origin'})
-            .then(response =>{
-                console.log(response);
-            }).catch(error =>{
-                console.log(error)
-            })
-        });
         // $('#download_sample').click(function(){
         //     fetch("/results/sample.zip",{method:'post',contentType : false,cache: 'no-cache',credentials: 'same-origin'}).then(
         //         response=>response.text()
@@ -299,6 +290,7 @@
             .then(response=>response.text())
             .then(data=>{
                 console.log(data);
+                alert(JSON.parse(data)['validate']);
             }).catch(()=>{
                 console.log('error');
             })

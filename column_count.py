@@ -24,8 +24,8 @@ import multiprocessing as mp
 slash_pattern = r'(.+)[~|-](.+)' #~
 commom_pattern = r'(,)|(、)'
 multi = True
-def read_column_cad(column_filename,layer_config:dict[list]):
-    layer_list = [layer for key,layer in layer_config.items()]
+def read_column_cad(column_filename):
+    # layer_list = [layer for key,layer in layer_config.items()]
     # line_layer = layer_config['line_layer']
     error_count = 0
     pythoncom.CoInitialize()
@@ -140,124 +140,126 @@ def sort_col_cad(msp_column,layer_config,temp_file):
     coor_to_tie_text_list = []
     coor_to_tie_list = []
     coor_to_section_list = []
-    flag = 0
-    error_count = 0
-    while not flag and error_count <= 10:
         # try:
-        count = 0
-        total = msp_column.Count
         # progress(f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-        for object in msp_column:
-            count += 1
-            # if count % 1000 == 0:
-            #     progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
-            print(f'{object.Layer}:{object.ObjectName}')
-            if object.Layer in tie_layer:
-                # print(f'{object.Layer}:{object.ObjectName}')
-                if object.ObjectName == "AcDbPolyline":
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    coor_to_tie_list.append((coor1,coor2))
-            if object.Layer in tie_text_layer:
-                if object.ObjectName == "AcDbText":
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    coor_to_tie_text_list.append(((coor1,coor2),object.TextString))
-            if object.Layer in rebar_text_layer and object.ObjectName == "AcDbText":
-                if re.match(r'\d+.#\d+',object.TextString):
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    coor_to_rebar_text_list.append(((coor1,coor2),object.TextString))
-            if object.Layer in rebar_layer:
-                if object.ObjectName == "AcDbCircle":
-                    coor1 = (round(object.Center[0],2),round(object.Center[1],2))
-                    coor_to_rebar_list.append((coor1,'circle'))
-                # if object.ObjectName == "AcDbPolyline":
-                #     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                #     coor_to_rebar_list.append(coor1)
-                if object.ObjectName == "AcDbBlockReference":
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor_to_rebar_list.append((coor1,object.Name))
+    for object in msp_column:
+            #check object is successfully loaded
+        error_count = 0
+        while error_count < 10:
+            try:
+                # print(f'{object.Layer}:{object.ObjectName}')       
+                if object.Layer in tie_layer:
+                    if object.ObjectName == "AcDbPolyline":
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        coor_to_tie_list.append((coor1,coor2))
+                if object.Layer in tie_text_layer:
+                    if object.ObjectName == "AcDbText":
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        coor_to_tie_text_list.append(((coor1,coor2),object.TextString))
+                if object.Layer in rebar_text_layer and object.ObjectName == "AcDbText":
+                    if re.match(r'\d+.#\d+',object.TextString):
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        coor_to_rebar_text_list.append(((coor1,coor2),object.TextString))
+                if object.Layer in rebar_layer:
+                    if object.ObjectName == "AcDbCircle":
+                        coor1 = (round(object.Center[0],2),round(object.Center[1],2))
+                        coor_to_rebar_list.append((coor1,'circle'))
+                    # if object.ObjectName == "AcDbPolyline":
+                    #     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                    #     coor_to_rebar_list.append(coor1)
+                    if object.ObjectName == "AcDbBlockReference":
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor_to_rebar_list.append((coor1,object.Name))
 
-            if object.Layer in text_layer and object.ObjectName == "AcDbText": 
-                if object.TextString[0] == 'C' and len(object.TextString) <= 7:
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    match_obj = re.search(slash_pattern,object.TextString)
-                    if match_obj:
-                        suffix_index = re.search(r'(\D+)\d+(\D+)',match_obj.group(1))
-                        first_column = re.search(r'\d+',match_obj.group(1))
-                        last_column = re.search(r'\d+',match_obj.group(2))
-                        for column_number in range(first_column,last_column):
-                            temp_string = f'{suffix_index.group(1)}{column_number}{suffix_index.group(2)}'
-                            coor_to_col_set.add(((coor1, coor2), temp_string))
-                    elif re.search(commom_pattern,object.TextString):
-                        sep = re.search(commom_pattern,object.TextString).group(1)
-                        for column_text in object.TextString.split(sep):
-                            coor_to_col_set.add(((coor1, coor2), column_text))
-                    else:
-                        coor_to_col_set.add(((coor1, coor2), object.TextString))
+                if object.Layer in text_layer and object.ObjectName == "AcDbText": 
+                    if object.TextString[0] == 'C' and len(object.TextString) <= 7:
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        match_obj = re.search(slash_pattern,object.TextString)
+                        if match_obj:
+                            suffix_index = re.search(r'(\D*)\d+(\D*)',match_obj.group(1))
+                            first_column = re.findall(r'\d+',match_obj.group(1))
+                            last_column = re.findall(r'\d+',match_obj.group(2))
+                            if first_column and last_column:
+                                for column_number in range(int(first_column[0]),int(last_column[0]) + 1):
+                                    temp_string = f'{suffix_index.group(1)}{column_number}{suffix_index.group(2)}'
+                                    coor_to_col_set.add(((coor1, coor2), temp_string))
+                            else:
+                                coor_to_col_set.add(((coor1, coor2), object.TextString))
+                        elif re.search(commom_pattern,object.TextString):
+                            sep = re.search(commom_pattern,object.TextString).group(1)
+                            for column_text in object.TextString.split(sep):
+                                coor_to_col_set.add(((coor1, coor2), column_text))
+                        else:
+                            coor_to_col_set.add(((coor1, coor2), object.TextString))
 
-                elif 'x' in object.TextString or 'X' in object.TextString:
-                    size = object.TextString.replace('X', 'x')
+                    elif 'x' in object.TextString or 'X' in object.TextString:
+                        size = object.TextString.replace('X', 'x')
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        coor_to_size_set.add(((coor1, coor2), size))
+                    elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString: # 可能有樓層
+                        floor = object.TextString
+                        if '_' in floor: # 可能有B_6F表示B棟的6F
+                            floor = floor.split('_')[1]
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        if '~' in floor:
+                            match_obj = re.search(r'(.+)[~](.+)',floor)
+                            first_floor = int(turn_floor_to_float(match_obj.group(1)))
+                            last_floor = int(turn_floor_to_float(match_obj.group(2)))
+                            for floor_float in range(first_floor,last_floor + 1):
+                                coor_to_floor_set.add(((coor1, coor2), turn_floor_to_string(floor_float)))
+                        elif re.search(commom_pattern,floor):
+                            sep = re.search(commom_pattern,object.TextString).group(1)
+                            for floor_float in floor.split(sep):
+                                coor_to_floor_set.add(((coor1, coor2), turn_floor_to_string(floor_float)))
+                        else:   
+                            if turn_floor_to_float(floor):
+                                coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                                coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                                floor = turn_floor_to_float(floor)
+                                floor = turn_floor_to_string(floor)
+                                coor_to_floor_set.add(((coor1, coor2), floor))
+                
+                elif object.Layer in line_layer:
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    coor_to_size_set.add(((coor1, coor2), size))
-                elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString: # 可能有樓層
-                    floor = object.TextString
-                    if '_' in floor: # 可能有B_6F表示B棟的6F
-                        floor = floor.split('_')[1]
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    if '~' in floor:
-                        match_obj = re.search(r'(.+)[~](.+)',floor)
-                        first_floor = int(turn_floor_to_float(match_obj.group(1)))
-                        last_floor = int(turn_floor_to_float(match_obj.group(2)))
-                        for floor_float in range(first_floor,last_floor + 1):
-                            coor_to_floor_set.add(((coor1, coor2), turn_floor_to_string(floor_float)))
-                    elif re.search(commom_pattern,floor):
-                        sep = re.search(commom_pattern,object.TextString).group(1)
-                        for floor_float in floor.split(sep):
-                            coor_to_floor_set.add(((coor1, coor2), turn_floor_to_string(floor_float)))
-                    else:   
-                        if turn_floor_to_float(floor):
-                            coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                            coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                            floor = turn_floor_to_float(floor)
-                            floor = turn_floor_to_string(floor)
-                            coor_to_floor_set.add(((coor1, coor2), floor))
-            
-            elif object.Layer in line_layer:
-                coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                if coor1[0] == coor2[0]:
-                    coor_to_col_line_list.append((coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
-                elif coor1[1] == coor2[1]:
-                    coor_to_floor_line_list.append((coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
-            if object.Layer in column_rc_layer:
-                if object.ObjectName == "AcDbPolyline":
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    coor_to_section_list.append((coor1,coor2))
-        flag = 1
+                    if coor1[0] == coor2[0]:
+                        coor_to_col_line_list.append((coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
+                    elif coor1[1] == coor2[1]:
+                        coor_to_floor_line_list.append((coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
+                if object.Layer in column_rc_layer:
+                    if object.ObjectName == "AcDbPolyline":
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
+                        coor_to_section_list.append((coor1,coor2))
+                break
+            except:
+                print('1')
+                error_count += 1
+                time.sleep(5)
         coor_to_col_line_list.sort(key = lambda x: x[0])
         coor_to_floor_line_list.sort(key = lambda x: x[0])
         # except Exception as e:
         #     error_count += 1
         #     time.sleep(5)
         #     error(f'read_col error in step 7: {e}, error_count = {error_count}.')
-    if multi:
-        return{'coor_to_col_set':coor_to_col_set,
-                'coor_to_size_set':coor_to_size_set,
-                'coor_to_floor_set': coor_to_floor_set,
-                'coor_to_col_line_list':coor_to_col_line_list,
-                'coor_to_floor_line_list':coor_to_floor_line_list,
-                'coor_to_rebar_text_list':coor_to_rebar_text_list,
-                'coor_to_rebar_list':coor_to_rebar_list,
-                'coor_to_tie_text_list':coor_to_tie_text_list,
-                'coor_to_tie_list':coor_to_tie_list,
-                'coor_to_section_list':coor_to_section_list
-            }
+    # if multi:
+    #     return{'coor_to_col_set':coor_to_col_set,
+    #             'coor_to_size_set':coor_to_size_set,
+    #             'coor_to_floor_set': coor_to_floor_set,
+    #             'coor_to_col_line_list':coor_to_col_line_list,
+    #             'coor_to_floor_line_list':coor_to_floor_line_list,
+    #             'coor_to_rebar_text_list':coor_to_rebar_text_list,
+    #             'coor_to_rebar_list':coor_to_rebar_list,
+    #             'coor_to_tie_text_list':coor_to_tie_text_list,
+    #             'coor_to_tie_list':coor_to_tie_list,
+    #             'coor_to_section_list':coor_to_section_list
+    #         }
     save_temp_file.save_pkl({'coor_to_col_set':coor_to_col_set,
                     'coor_to_size_set':coor_to_size_set,
                     'coor_to_floor_set': coor_to_floor_set,
@@ -270,15 +272,15 @@ def sort_col_cad(msp_column,layer_config,temp_file):
                     'coor_to_section_list':coor_to_section_list
                     },temp_file)
 
-def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = None ,doc_column = None,floor_parameter_xlsx=''):
-    output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
-    output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
-    excel_filename = (
-        f'{output_folder}/'
-        f'{project_name}_'
-        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
-        f'Count.xlsx'
-    )
+def cal_column_rebar(data={},msp_column = None ,doc_column = None):
+    # output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
+    # output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
+    # excel_filename = (
+    #     f'{output_folder}/'
+    #     f'{project_name}_'
+    #     f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+    #     f'Count.xlsx'
+    # )
     if not data:
         return
     coor_to_col_set = data['coor_to_col_set']
@@ -299,14 +301,25 @@ def cal_column_rebar(data={},output_folder = '',project_name = '',msp_column = N
                                                ,coor_to_section_list=coor_to_section_list,coor_to_size_set=coor_to_size_set)
     combine_col_rebar(column_list=output_column_list,coor_to_rebar_list=coor_to_rebar_list,coor_to_rebar_text_list=coor_to_rebar_text_list)
     combine_col_tie(column_list=output_column_list,coor_to_tie_list=coor_to_tie_list,coor_to_tie_text_list=coor_to_tie_text_list)
+    return output_column_list
+
+def create_report(output_column_list:list[Column],floor_parameter_xlsx='',output_folder = '',project_name = ''):
+    excel_filename = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'Count.xlsx'
+    )
     floor_list = floor_parameter(column_list=output_column_list,floor_parameter_xlsx=floor_parameter_xlsx)
     sort_floor_column(floor_list=floor_list,column_list=output_column_list)
     cs_list = create_column_scan()
     scan_df = column_check(column_list=output_column_list,column_scan_list=cs_list)
-    OutputExcel(df=scan_df,file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-                columns_list=range(2,len(scan_df.columns)+2),rows_list=range(2,len(scan_df.index)+2))
+
     rebar_df,concrete_df,coupler_df = summary_floor_rebar(floor_list=floor_list)
     column_df = output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
+
+    OutputExcel(df=scan_df,file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+            columns_list=range(2,len(scan_df.columns)+2),rows_list=range(2,len(scan_df.index)+2))
     OutputExcel(df=rebar_df,file_path=excel_filename,sheet_name='鋼筋統計表')
     OutputExcel(df=concrete_df,file_path=excel_filename,sheet_name='混凝土統計表')
     OutputExcel(df=coupler_df,file_path=excel_filename,sheet_name='續接器統計表')
@@ -617,37 +630,45 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
         for j in auto_fit_columns:
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
-def count_column_multiprocessing(column_filenames:list[str]):
-    coor_to_col_set = ()
-    coor_to_size_set = ()
-    coor_to_floor_set = ()
-    coor_to_col_line_list = []
-    coor_to_floor_line_list = []
-    coor_to_rebar_text_list = []
-    coor_to_rebar_list = []
-    coor_to_tie_text_list = []
-    coor_to_tie_list = []
-    coor_to_section_list = []
+def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,temp_file:list[str],output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
+    def read_col_multi(column_filename,temp_file):
+        msp_column,doc_column = read_column_cad(column_filename=column_filename)
+        sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file=temp_file)
+        output_column_list = cal_column_rebar(data=save_temp_file.read_temp(temp_file))
+        return output_column_list
+    start = time.time()# 開始測量執行時間
     with Pool(processes=10) as p:
-        start = time.time() # 開始測量執行時間
         jobs = []
-        for filename in column_filenames:
-            jobs.append(p.apply_async(read_column_cad, (filename,)))
+        column_list = []
+        for i,filename in enumerate(column_filenames):
+            temp_new = os.path.splitext(temp_file)[0]
+            column_temp = f'{temp_new}-{i}.pkl'
+            jobs.append(p.apply_async(read_col_multi, (filename,column_temp)))
         for job in jobs:
-
+            output_column_list = job.get()
+            column_list.extend(output_column_list)  
+    excel_filename = create_report(output_column_list=column_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name)
+    end = time.time()
+    print("執行時間：%f 秒" % (end - start))
+    return excel_filename
 def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
-    progress_file = './result/tmp'
     start = time.time()
-    msp_column,doc_column = read_column_cad(beam_filename=column_filename,progress_file=progress_file)
+    msp_column,doc_column = read_column_cad(column_filename=column_filename)
     sort_col_cad(msp_beam=msp_column,layer_config=layer_config,temp_file=temp_file)
-    output_excel = cal_column_rebar(data=save_temp_file.read_temp(temp_file),output_folder=output_folder,
-                                    project_name=project_name,progress_file=progress_file,floor_parameter_xlsx = floor_parameter_xlsx)
+    output_column_list = cal_column_rebar(data=save_temp_file.read_temp(temp_file))
+    output_excel = create_report(output_column_list=output_column_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
     # output_dwg = draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_column,doc_beam=doc_column,output_folder=output_folder,project_name=project_name)
     print(f'Total Time:{time.time() - start}')
     return os.path.basename(output_excel)
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0203\圓方烏日-XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0203\'
+    col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-1.dwg'#sys.argv[1] # XS-COL的路徑
+    column_filenames = [
+        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-1.dwg',#sys.argv[1] # XS-COL的路徑
+        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-2.dwg',#sys.argv[1] # XS-COL的路徑
+        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
+        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
+    ]
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--test.xlsx'
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     project_name = 'test_column'
     # layer_config = {
@@ -687,21 +708,16 @@ if __name__ == '__main__':
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
         'tie_layer':['S-REINF'], # 箍筋文字圖層
         'block_layer':['Page'], # 框框的圖層
-        'column_rc_layer':['S-RC'] #斷面圖層
+        'column_rc_layer':'S-RC' #斷面圖層
     }
     msp_column = None
     doc_column = None
-    # msp_column,doc_column = read_column_cad(col_filename,layer_config)
-    # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='temp_col_Elements_ALL_0213.pkl')
-    cal_column_rebar(data=save_temp_file.read_temp(r'temp_col_Elements_ALL_0213.pkl'),output_folder=output_folder,project_name=project_name,msp_column= msp_column,doc_column= doc_column)
-    # floor_list = floor_parameter(column_list)
-    # coor_to_col_set = set()
-    # coor_to_col_set.add((((0,0),(10,10)),"C1"))
-    # coor_to_col_line_list = [(-5,0,10),(-5,0,10),(-5,5,15),(-5,15,20),(-5,18,25),(-5,-5,30),(-5,-5,30),(10,0,10)]
-    # print(temp(coor_to_col_set,coor_to_col_line_list))
-    # temp = [[1,2],[3,4]]
-    # print(f'{list(map(lambda t:t[0],temp))}')
-    # print(pd.DataFrame({'#1':0,"#2":10},index=[]))
-    # print(re.search(r'(\D+)\d+(\D+)','C15CC').group(2))
-    # temp = save_temp_file.read_temp(r'temp_col_Elements_0213.pkl')
-    # print(temp)
+    msp_column,doc_column = read_column_cad(col_filename)
+    sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl')
+    # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
+    create_report(output_column_list=column_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
+    # count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl',
+    #                              output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
+
+        
