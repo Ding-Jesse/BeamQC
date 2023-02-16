@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import Tuple
 import re
-import pandas as pd
-from rebar import RebarInfo,RebarArea
-from beam import Point,Rebar
-from math import pow,sqrt
 import copy
+from item.rebar import RebarInfo,RebarArea
+from item.beam import Point,Rebar
+from item.floor import Floor
+from math import pow,sqrt
 class Column:
     height = 0
     size = ''
@@ -27,7 +27,7 @@ class Column:
     rebar_count:dict[str,float] #以樓層作為區分
     multi_floor:list[str]
     coupler:dict[Tuple[str,str],int]
-    floor_object:Floor
+    floor_object:floor.Floor
     total_rebar:list[Tuple[Rebar,str]]
     total_mass:float
     total_As:float
@@ -238,52 +238,7 @@ class Column:
         self.cal_material()
         self.summary_count()
         pass        
-class Floor:
-    height:float
-    material_list:dict[str,float]
-    column_list:list[Column]
-    overlap_option:dict[str,str]
-    rebar_count:dict[str,float]
-    concrete_count:dict[str,float]
-    formwork_count:float
-    coupler:dict[str,float]
-    floor_name:str
-    def __init__(self,floor_name):
-        if floor_name[-1] != 'F':
-            floor_name += 'F'
-        self.floor_name = floor_name
-        self.rebar_count ={}
-        self.column_list = []
-        self.material_list = {}
-        self.overlap_option ={}
-        self.concrete_count ={}
-        self.coupler = {}
-        self.formwork_count = 0
-        pass
-    def set_prop(self,kwargs):
-        self.material_list.update({'fc':kwargs["混凝土強度fc'(kgf/cm2)"]})
-        self.material_list.update({'fy':kwargs["鋼筋強度fy(kgf/cm2)"]})
-        self.overlap_option.update({"tight_tie":kwargs["全段緊密"],"coupler":kwargs["續接器"],"overlap":kwargs["續接方式"]})
-        self.height = float(kwargs["樓高"])
-    def add_column(self,c_list:list[Column]):
-        if not c_list:return
-        for c in c_list:
-            c.set_prop(self)
-            c.floor_object = self
-        self.column_list.extend(c_list)
-    def summary_rebar(self):
-        for c in self.column_list:
-            for size,count in c.rebar_count.items():
-                if not size in self.rebar_count : self.rebar_count[size] = 0
-                self.rebar_count[size] += round(count/1000/1000,2)
-            for size,coupler in c.coupler.items():
-                if size == ('',''):continue
-                if not size in self.coupler : self.coupler[size] = 0
-                self.coupler[size] += coupler
-            if not c.fc in self.concrete_count:self.concrete_count[c.fc] = 0
-            self.concrete_count[c.fc] += c.concrete
-            self.formwork_count += c.formwork
-        self.rebar_count['total'] = sum(self.rebar_count.values())
+
         
 class Rebar:
     length = 0
@@ -319,7 +274,3 @@ class Tie:
     def change_spacing(self,new_spacing:float):
         self.spacing = new_spacing
         self.number = self.length//self.spacing
-if __name__ == '__main__':
-    c = Column()
-    c.grid_coor={'left_bot':Point(12685.43,4833.29),'left_top':(12685.43,5146.29),'right_top':Point(12835.43,5146.29),'right_bot':Point(12835.43,4833.29)}
-    print(c.in_grid((12717.91,4832.76)))

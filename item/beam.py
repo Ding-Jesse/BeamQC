@@ -1,7 +1,10 @@
 from __future__ import annotations
 import re
 import pandas as pd
-from rebar import RebarInfo
+from typing import Tuple
+from item.rebar import RebarInfo,RebarArea
+from item.floor import Floor
+from enum import Enum
 class Point:
     x = 0
     y = 0
@@ -21,6 +24,7 @@ class Rebar:
     text = 0
     number=0
     size = ''
+    As = 0
     def __init__(self,start_pt,end_pt,length,number,size,text,add_up=''):
         self.start_pt = Point(start_pt)
         self.end_pt = Point(end_pt)
@@ -30,13 +34,20 @@ class Rebar:
         self.text = text
         self.start_pt.x -= self.length/2
         self.end_pt.x += self.length/2
-
+        self.As = RebarArea(self.size) * self.number
+class RebarType(Enum):
+    Top = 'top'
+    Bottom = 'bottom'
+    Left = 'left'
+    Middle = 'middle'
+    Right = 'right'
 class Tie:
     # start_pt=Point
     count = 0
     tie_num = 0
     size = ''
     text = 0
+    spacing = 0
     def __init__(self,tie,coor,tie_num,count,size):
         self.start_pt = Point(coor)
         self.count = count
@@ -50,9 +61,11 @@ class Beam:
     rebar_bend_list:list[Rebar]
     tie_list:list[Tie]
     rebar:dict[str,list[Rebar]]
+    rebar_table:dict[str,dict[str,list[Rebar]]]
     tie:dict[str,Tie]
     rebar_count:dict[str,float]
     tie_count:dict[str,float]
+    floor_object:Floor
     serial = ''
     floor = ''
     depth = 0
@@ -89,8 +102,18 @@ class Beam:
             'middle':None,
             'right':None
         }
-        # print(f'{serial}-{hex(id(self.coor))}')
-        # print(f'{serial}-{hex(id(self.bounding_box[0]))}')
+        self.rebar_table={
+            'top':{
+                'left':None,
+                'middle':None,
+                'right':None
+            },
+            'bottom':{
+                'left':None,
+                'middle':None,
+                'right':None
+            }
+        }
         self.serial = serial
         self.coor.x = x
         self.coor.y = y
@@ -226,3 +249,13 @@ class Beam:
         return self.formwork
     def write_beam(self,df:pd.DataFrame):
         pass
+    def set_prop(self,floor:Floor):
+        self.height = floor.height
+        self.fc = floor.material_list['fc']
+        self.fy = floor.material_list['fy']
+        self.floor_object = floor
+    def get_rebar_table(self,rebar_type1:RebarType,rebar_type2:RebarType) -> float:
+        As = 0
+        for rebar in self.rebar_table[rebar_type1.value][rebar_type2.value]:
+            As += rebar
+        return As

@@ -5,25 +5,21 @@ import win32com.client
 import re
 import os
 import save_temp_file
-from math import sqrt,pow
-from rebar import RebarInfo
-from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error
-from column import Column,Floor
-from beam_count import vtPnt
-from column_scan import column_check,create_column_scan
 import pandas as pd
 import numpy as np
 import copy
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import Alignment,Font,PatternFill
-from openpyxl.worksheet.worksheet import Worksheet
+from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error
+from item.column import Column
+from beam_count import vtPnt
+from column_scan import column_check,create_column_scan
+from main import OutputExcel
 from multiprocessing.pool import ThreadPool as Pool
-import multiprocessing as mp
+from item.floor import Floor,read_parameter_df,summary_floor_rebar
 
 slash_pattern = r'(.+)[~|-](.+)' #~
 commom_pattern = r'(,)|(、)'
 multi = True
+
 def read_column_cad(column_filename):
     # layer_list = [layer for key,layer in layer_config.items()]
     # line_layer = layer_config['line_layer']
@@ -122,7 +118,8 @@ def read_column_cad(column_filename):
     #         error(f'read_col error in step 6: {e}, error_count = {error_count}.')
     return msp_column,doc_column
 
-def sort_col_cad(msp_column,layer_config,temp_file):
+def sort_col_cad(msp_column,doc_column,layer_config,temp_file):
+    layer_config = {key:value for key,value in layer_config}
     text_layer = list(layer_config['text_layer'])
     line_layer = list(layer_config['line_layer'])
     rebar_text_layer = list(layer_config['rebar_text_layer'])
@@ -271,6 +268,10 @@ def sort_col_cad(msp_column,layer_config,temp_file):
                     'coor_to_tie_list':coor_to_tie_list,
                     'coor_to_section_list':coor_to_section_list
                     },temp_file)
+    try:
+        doc_column.Close(SaveChanges=False)
+    except:
+        pass
 
 def cal_column_rebar(data={},msp_column = None ,doc_column = None):
     # output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
@@ -315,7 +316,7 @@ def create_report(output_column_list:list[Column],floor_parameter_xlsx='',output
     cs_list = create_column_scan()
     scan_df = column_check(column_list=output_column_list,column_scan_list=cs_list)
 
-    rebar_df,concrete_df,coupler_df = summary_floor_rebar(floor_list=floor_list)
+    rebar_df,concrete_df,coupler_df = summary_floor_rebar(floor_list=floor_list,item_type='column')
     column_df = output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
 
     OutputExcel(df=scan_df,file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
@@ -536,7 +537,7 @@ def output_col_excel(column_list:list[Column],output_folder:str,project_name:str
 def floor_parameter(column_list:list[Column],floor_parameter_xlsx:str):
     floor_list:list[Floor]
     floor_list = []
-    parameter_df = read_parameter_df(floor_parameter_xlsx)
+    parameter_df = read_parameter_df(floor_parameter_xlsx,'參數表')
     parameter_df.set_index(['樓層'],inplace=True)
     for c in column_list:
         for floor in c.multi_floor:
@@ -571,64 +572,12 @@ def sort_floor_column(floor_list:list[Floor],column_list:list[Column]):
         up_list = floor_list[i - 1].column_list
         list(map(lambda c:match_column(c,up_list,'up'),temp_list))
     column_list.sort(key=lambda c:(c.serial,-1*c.seq))
-def summary_floor_rebar(floor_list:list[Floor]):
-    df = pd.DataFrame(columns=['#3','#4','#5','#6','#7','#8','#10','#11'],index=[])
-    concrete_df = pd.DataFrame(columns=[],index=[])
-    coupler_df = pd.DataFrame(columns=[],index=[])
-    for floor in floor_list:
-        list(map(lambda c:c.calculate_rebar() ,floor.column_list))
-        floor.summary_rebar()
-        new_row = pd.DataFrame(floor.rebar_count,index=[floor.floor_name])
-        new_row_concrete = pd.DataFrame(floor.concrete_count,index=[floor.floor_name])
-        new_row_coupler = pd.DataFrame(floor.coupler,index=[floor.floor_name])
-        df = pd.concat([df, new_row], verify_integrity=True)
-        concrete_df = pd.concat([concrete_df,new_row_concrete],verify_integrity=True)
-        coupler_df = pd.concat([coupler_df,new_row_coupler],verify_integrity=True)
-    df.fillna(value=0,inplace=True)
-    df.loc['Sum'] = df.sum()
-    concrete_df.loc['Sum'] = concrete_df.sum()
-    return df,concrete_df,coupler_df    
-def read_parameter_df(read_file):
-    return pd.read_excel(
-        read_file, sheet_name='參數表',header=[0])
+   
 
-def OutputExcel(df:pd.DataFrame,file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[]):
-    if os.path.exists(file_path):
-        book = load_workbook(file_path)
-        writer = pd.ExcelWriter(file_path, engine='openpyxl') 
-        writer.book = book
-        # sheet = book[sheet_name]
-        # sheet.column_dimensions['A'] =ColumnDimension(sheet,'L',bestFit=True)
-    else:
-        writer = pd.ExcelWriter(file_path, engine='xlsxwriter') 
-    df.to_excel(writer,sheet_name=sheet_name)
-    writer.save()
 
-    book = load_workbook(file_path)
-    writer = pd.ExcelWriter(file_path, engine='openpyxl') 
-    writer.book = book
-    if os.path.exists(file_path) and len(auto_fit_columns) >0:
-        AutoFit_Columns(book[sheet_name],auto_fit_columns,auto_fit_rows)
-    if os.path.exists(file_path) and len(columns_list) >0:
-        Decorate_Worksheet(book[sheet_name],columns_list,rows_list)
-    writer.save()
-    return file_path
 
-def Decorate_Worksheet(sheet:Worksheet,columns_list:list,rows_list:list):
-    for i in columns_list:
-        for j in rows_list:
-            sheet.cell(j,i).alignment = Alignment(vertical='center',wrap_text=True,horizontal='center')
-            sheet.cell(j,i).font = Font(name='Calibri')
-            if sheet.cell(j,i).value == 'NG.':sheet.cell(j,i).fill = PatternFill("solid",start_color='00FF0000')
 
-def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
-    for i in auto_fit_columns:
-        sheet.column_dimensions[get_column_letter(i)].width = 80
-    for i in auto_fit_rows:
-        sheet.row_dimensions[i].height = 20
-    for i in auto_fit_rows:
-        for j in auto_fit_columns:
-            sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
+
 
 def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,temp_file:list[str],output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     def read_col_multi(column_filename,temp_file):
@@ -654,7 +603,7 @@ def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,te
 def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     start = time.time()
     msp_column,doc_column = read_column_cad(column_filename=column_filename)
-    sort_col_cad(msp_beam=msp_column,layer_config=layer_config,temp_file=temp_file)
+    sort_col_cad(msp_beam=msp_column,doc_column=doc_column,layer_config=layer_config,temp_file=temp_file)
     output_column_list = cal_column_rebar(data=save_temp_file.read_temp(temp_file))
     output_excel = create_report(output_column_list=output_column_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
     # output_dwg = draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_column,doc_beam=doc_column,output_folder=output_folder,project_name=project_name)
@@ -712,11 +661,11 @@ if __name__ == '__main__':
     }
     msp_column = None
     doc_column = None
-    msp_column,doc_column = read_column_cad(col_filename)
-    sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl')
+    # msp_column,doc_column = read_column_cad(col_filename)
+    # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl')
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    create_report(output_column_list=column_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\test_col_Elements_1_0215-0.pkl'))
+    # create_report(output_column_list=column_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
     # count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl',
     #                              output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
 

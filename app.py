@@ -392,9 +392,9 @@ def count_column():
             'rebar_text_layer':request.form['column_rebar_text_layer'].split('\r\n'), # 箭頭和鋼筋文字的塗層
             'rebar_layer':request.form['column_rebar_layer'].split('\r\n'), # 鋼筋和箍筋的線的塗層
             'tie_text_layer':request.form['column_tie_text_layer'].split('\r\n'), # 箍筋文字圖層
-            'tie_layer':request.form['column_tie_layer'], # 箍筋文字圖層
-            'block_layer':request.form['column_block_layer'], # 框框的圖層
-            'column_rc_layer':request.form['column_rc_layer'] #斷面圖層
+            'tie_layer':request.form['column_tie_layer'].split('\r\n'), # 箍筋文字圖層
+            'block_layer':request.form['column_block_layer'].split('\r\n'), # 框框的圖層
+            'column_rc_layer':request.form['column_rc_layer'].split('\r\n') #斷面圖層
         }
         print(layer_config)
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
