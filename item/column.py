@@ -3,10 +3,11 @@ from typing import Tuple
 import re
 import copy
 from item.rebar import RebarInfo,RebarArea
-from item.beam import Point,Rebar
-from item.floor import Floor
+from item.point import Point
+from item import floor
 from math import pow,sqrt
 class Column:
+
     height = 0
     size = ''
     serial = ''
@@ -89,7 +90,7 @@ class Column:
         if match_obj:
             self.x_size = float(match_obj.group(1))
             self.y_size = float(match_obj.group(2))
-    def set_prop(self,floor:Floor):
+    def set_prop(self,floor:floor.Floor):
         self.height = floor.height
         self.fc = floor.material_list['fc']
         self.fy = floor.material_list['fy']
@@ -238,7 +239,8 @@ class Column:
         self.cal_material()
         self.summary_count()
         pass        
-
+    def create_rebar_table():
+        pass
         
 class Rebar:
     length = 0

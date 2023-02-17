@@ -20,9 +20,10 @@ class Floor:
         self.floor_name = floor_name
         self.rebar_count ={}
         self.column_list = []
+        self.beam_list = []
         self.material_list = {}
         self.overlap_option ={}
-        self.concrete_count ={}
+        self.concrete_count =defaultdict(lambda:0)
         self.beam_rebar_count = defaultdict(lambda:0)
         self.coupler = {}
         self.formwork_count = 0
@@ -42,7 +43,7 @@ class Floor:
         if not beam_list:return
         for b in beam_list:
             b.set_prop(self)
-        self.column_list.extend(beam_list)
+        self.beam_list.extend(beam_list)
     def summary_rebar(self):
         for c in self.column_list:
             for size,count in c.rebar_count.items():
@@ -65,9 +66,9 @@ class Floor:
             self.concrete_count[b.fc] +=   b.concrete
             self.formwork_count += b.formwork
         self.beam_rebar_count['total'] = sum(self.rebar_count.values())
-def read_parameter_df(read_file,sheet_name):
+def read_parameter_df(read_file,sheet_name,header_list=[0]):
     return pd.read_excel(
-        read_file, sheet_name=sheet_name,header=[0])
+        read_file, sheet_name=sheet_name,header=header_list)
 
 def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
     df = pd.DataFrame(columns=['#3','#4','#5','#6','#7','#8','#10','#11'],index=[])
@@ -93,7 +94,7 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
             floor.summary_beam()
             new_row = pd.DataFrame(floor.beam_rebar_count,index=[floor.floor_name])
             new_row_concrete = pd.DataFrame(floor.concrete_count,index=[floor.floor_name])
-            new_row_formwork = pd.DataFrame(floor.formwork_count,index=[floor.floor_name])
+            new_row_formwork = pd.DataFrame({'模板':floor.formwork_count},index=[floor.floor_name])
 
             df = pd.concat([df, new_row], verify_integrity=True)
             concrete_df = pd.concat([concrete_df,new_row_concrete],verify_integrity=True)

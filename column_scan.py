@@ -3,6 +3,7 @@ from item.column import Column
 import pandas as pd
 import pprint
 from math import ceil
+from item.floor import read_parameter_df
 # from column_count import OutputExcel
 class ColumnScan:
     scan_index:int
@@ -54,7 +55,7 @@ def rename_unnamed(df:pd.DataFrame):
 def create_column_scan():
     column_scan_list:list[ColumnScan]
     column_scan_list = []
-    df = read_scan_excel(r'D:\Desktop\BeamQC\TEST\柱SCAN.xlsx','柱')
+    df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱SCAN.xlsx','柱',[0,1])
     df.set_index([('#','0400')],inplace=True)
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
@@ -131,9 +132,9 @@ def set_check_scan(column_scan:ColumnScan):
     if column_scan.scan_index == 405:column_scan.set_check_function(index_0405)
     if column_scan.scan_index == 406:column_scan.set_check_function(index_0406)
     if column_scan.scan_index == 407:column_scan.set_check_function(index_0407)
-def read_scan_excel(read_file:str,sheet_name:str):
-    return pd.read_excel(
-        read_file, sheet_name=sheet_name,header=[0,1])
+# def read_scan_excel(read_file:str,sheet_name:str):
+#     return pd.read_excel(
+#         read_file, sheet_name=sheet_name,header=[0,1])
 
 if __name__ == '__main__':
     cs_list = create_column_scan()

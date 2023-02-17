@@ -18,6 +18,24 @@ _rebar = {
     "10":8.143,
     "11":10.07
 }
+_rebar_dia = {
+    "#3":0.9525,
+    "#4":1.27,
+    "#5":1.5785,
+    "#6":1.905,
+    "#7":2.222,
+    "#8":2.54,
+    "#10":3.226,
+    "#11":3.581,
+    "3":0.9525,
+    "4":1.27,
+    "5":1.5785,
+    "6":1.905,
+    "7":2.222,
+    "8":2.54,
+    "10":3.226,
+    "11":3.581
+}
 
 def RebarInfo(size="#3"):
     if "(E.F)" in size:return _rebar[size.replace("(E.F)","").replace(" ","")]*2
@@ -27,6 +45,9 @@ def RebarArea(size="#3"):
     if "(E.F)" in size:return _rebar[size.replace("(E.F)","").replace(" ","")]*2
     if "E.F" in size:return _rebar[size.replace("E.F","")]*2
     return _rebar[size]
+def RebarDiameter(size="#3"):
+    return _rebar_dia[size]
+    return
 
 if __name__ == '__main__':
 

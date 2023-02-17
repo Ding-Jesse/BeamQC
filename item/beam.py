@@ -3,21 +3,12 @@ import re
 import pandas as pd
 from typing import Tuple
 from item.rebar import RebarInfo,RebarArea
-from item.floor import Floor
+from item import floor
+from item.point import Point
 from enum import Enum
-class Point:
-    x = 0
-    y = 0
-    def __init__(self,*pt):
-        if len(pt) == 0:
-            pass
-        elif isinstance(pt[0],tuple):
-            self.x = pt[0][0]
-            self.y = pt[0][1]
-        elif isinstance(pt,tuple):
-            self.x = pt[0]
-            self.y = pt[1]
+
 class Rebar:
+    
     start_pt = Point
     end_pt = Point
     length = 0
@@ -35,6 +26,10 @@ class Rebar:
         self.start_pt.x -= self.length/2
         self.end_pt.x += self.length/2
         self.As = RebarArea(self.size) * self.number
+    def __str__(self) -> str:
+        return self.text
+    def __repr__(self) -> str:
+        return self.text
 class RebarType(Enum):
     Top = 'top'
     Bottom = 'bottom'
@@ -48,13 +43,20 @@ class Tie:
     size = ''
     text = 0
     spacing = 0
+    Ash = 0
     def __init__(self,tie,coor,tie_num,count,size):
         self.start_pt = Point(coor)
         self.count = count
         self.size = size
         self.text = tie
         self.tie_num = tie_num
+        self.Ash = RebarArea(self.size)
+        match_obj = re.search(r'([#|D]\d+)[@](\d+)',self.text)
+        if match_obj:
+            self.spacing = float(match_obj.group(2))
+        # self.spacing = float()
 class Beam:
+    
     middle_tie:list[Rebar]
     rebar_list:list[Rebar]
     rebar_add_list:list[Rebar] #line with no arrow
@@ -65,7 +67,7 @@ class Beam:
     tie:dict[str,Tie]
     rebar_count:dict[str,float]
     tie_count:dict[str,float]
-    floor_object:Floor
+    floor_object:floor.Floor
     serial = ''
     floor = ''
     depth = 0
@@ -104,14 +106,24 @@ class Beam:
         }
         self.rebar_table={
             'top':{
-                'left':None,
-                'middle':None,
-                'right':None
+                'left':[],
+                'middle':[],
+                'right':[]
             },
             'bottom':{
-                'left':None,
-                'middle':None,
-                'right':None
+                'left':[],
+                'middle':[],
+                'right':[]
+            },
+            'top_length':{
+                'left':[],
+                'middle':[],
+                'right':[]
+            },
+            'bottom_length':{
+                'left':[],
+                'middle':[],
+                'right':[]
             }
         }
         self.serial = serial
@@ -143,6 +155,8 @@ class Beam:
         return (self.coor.x,self.coor.y)
     def get_beam_info(self):
         self.floor = self.serial.split(' ')[0]
+        if self.floor[-1] != 'F':
+            self.floor += 'F'
         matches= re.findall(r"\((.*?)\)",self.serial,re.MULTILINE)
         # if len(matches) == 0 or 'X' not in matches[0]:return
         if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE))==0:return
@@ -249,7 +263,7 @@ class Beam:
         return self.formwork
     def write_beam(self,df:pd.DataFrame):
         pass
-    def set_prop(self,floor:Floor):
+    def set_prop(self,floor:floor.Floor):
         self.height = floor.height
         self.fc = floor.material_list['fc']
         self.fy = floor.material_list['fy']
@@ -257,5 +271,64 @@ class Beam:
     def get_rebar_table(self,rebar_type1:RebarType,rebar_type2:RebarType) -> float:
         As = 0
         for rebar in self.rebar_table[rebar_type1.value][rebar_type2.value]:
-            As += rebar
+            As += rebar.As
         return As
+    def sort_rebar_table(self):
+        min_diff = 1
+        for rebar in self.rebar['top_first']:
+            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
+                self.rebar_table['top']['left'].append(rebar)
+            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+                self.rebar_table['top']['right'].append(rebar)
+            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+                self.rebar_table['top']['middle'].append(rebar)
+            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
+                self.rebar_table['top_length']['left'].append(rebar.length)
+                continue
+            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+                self.rebar_table['top_length']['right'].append(rebar.length)
+                continue
+            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff):
+                self.rebar_table['top_length']['middle'].append(rebar.length)
+                continue
+        for rebar in self.rebar['top_second']:
+            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
+                self.rebar_table['top']['left'].append(rebar)
+            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+                self.rebar_table['top']['right'].append(rebar)
+            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+                self.rebar_table['top']['middle'].append(rebar) 
+
+        for rebar in self.rebar['bot_first']:
+            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
+                self.rebar_table['bottom']['left'].append(rebar)
+            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+                self.rebar_table['bottom']['right'].append(rebar)
+            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+                self.rebar_table['bottom']['middle'].append(rebar)
+            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
+                self.rebar_table['bottom_length']['left'].append(rebar.length)
+                continue
+            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+                self.rebar_table['bottom_length']['right'].append(rebar.length)
+                continue
+            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff):
+                self.rebar_table['bottom_length']['middle'].append(rebar.length)
+                continue
+        for rebar in self.rebar['bot_second']:
+            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
+                self.rebar_table['bottom']['left'].append(rebar)
+            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+                self.rebar_table['bottom']['right'].append(rebar)
+            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+                self.rebar_table['bottom']['middle'].append(rebar)
+        if len(self.rebar_table['top']['middle']) == 0:
+            if self.rebar_table['top_length']['left'] > self.rebar_table['top_length']['right']:
+                self.rebar_table['top']['middle'].append(self.rebar_table['top']['left'])
+            else:
+                self.rebar_table['top']['middle'].append(self.rebar_table['top']['right'])
+        if len(self.rebar_table['bottom']['middle']) == 0:
+            if self.rebar_table['bottom_length']['left'] > self.rebar_table['bottom_length']['right']:
+                self.rebar_table['bottom']['middle'].append(self.rebar_table['bottom']['left'])
+            else:
+                self.rebar_table['bottom']['middle'].append(self.rebar_table['bottom']['right'])                
