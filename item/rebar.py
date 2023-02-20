@@ -47,7 +47,6 @@ def RebarArea(size="#3"):
     return _rebar[size]
 def RebarDiameter(size="#3"):
     return _rebar_dia[size]
-    return
 
 if __name__ == '__main__':
 

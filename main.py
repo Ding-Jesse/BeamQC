@@ -178,9 +178,23 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
 if __name__ == '__main__':
-    from item.column import Column
-    from item.beam import Beam
-    from item.floor import Floor
-    c = Column()
-    b = Beam('1',1,1)
-    f = Floor('1')
+    from functools import wraps
+    def logger(function):
+        # @wraps(function)
+        def wrapper(*args, **kwargs):
+            """wrapper documentation"""
+            print(f"----- {function.__name__}: start -----")
+            output = function(*args, **kwargs)
+            print(f"----- {function.__name__}: end -----")
+            return output
+        return wrapper
+    # @logger
+    def f1(v):
+        print('f1')
+        # @logger
+        def f2(v):
+            print(v)
+        def f3(v):
+            return f2(v=v)
+        return f3(v)
+    print(f1(10))

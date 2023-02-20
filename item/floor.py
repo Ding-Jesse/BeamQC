@@ -14,6 +14,7 @@ class Floor:
     formwork_count:float
     coupler:dict[str,float]
     floor_name:str
+    loading:dict[str,float]
     def __init__(self,floor_name):
         if floor_name[-1] != 'F':
             floor_name += 'F'
@@ -25,6 +26,7 @@ class Floor:
         self.overlap_option ={}
         self.concrete_count =defaultdict(lambda:0)
         self.beam_rebar_count = defaultdict(lambda:0)
+        self.loading = defaultdict(lambda:0)
         self.coupler = {}
         self.formwork_count = 0
         pass
@@ -32,6 +34,8 @@ class Floor:
         self.material_list.update({'fc':kwargs["混凝土強度fc'(kgf/cm2)"]})
         self.material_list.update({'fy':kwargs["鋼筋強度fy(kgf/cm2)"]})
         self.overlap_option.update({"tight_tie":kwargs["全段緊密"],"coupler":kwargs["續接器"],"overlap":kwargs["續接方式"]})
+        self.loading.update({"SDL":kwargs["SDL(t/m2)"]})
+        self.loading.update({"LL":kwargs["LL(t/m2)"]})
         self.height = float(kwargs["樓高"])
     def add_column(self,c_list:list[column.Column]):
         if not c_list:return

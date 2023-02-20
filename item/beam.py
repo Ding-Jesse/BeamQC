@@ -36,6 +36,10 @@ class RebarType(Enum):
     Left = 'left'
     Middle = 'middle'
     Right = 'right'
+class BeamType(Enum):
+    FB = 'fbeam'
+    Grider = 'beam'
+    SB = 'sbeam'
 class Tie:
     # start_pt=Point
     count = 0
@@ -50,10 +54,12 @@ class Tie:
         self.size = size
         self.text = tie
         self.tie_num = tie_num
-        self.Ash = RebarArea(self.size)
-        match_obj = re.search(r'([#|D]\d+)[@](\d+)',self.text)
+        self.Ash = RebarArea(self.size) * 2
+        match_obj = re.search(r'(\d*)([#|D]\d+)[@](\d+)',self.text)
         if match_obj:
-            self.spacing = float(match_obj.group(2))
+            self.spacing = float(match_obj.group(3))
+            if match_obj.group(1):
+                self.Ash *= 2
         # self.spacing = float()
 class Beam:
     
@@ -79,6 +85,7 @@ class Beam:
     formwork = 0
     start_pt:Point
     end_pt:Point
+    beam_type:BeamType
     # coor = Point
     # bounding_box = (Point,Point)
     def __init__(self,serial,x,y):
@@ -167,6 +174,20 @@ class Beam:
         except:
             self.depth = 0
             self.width = 0
+        temp_serial = self.serial.split(' ')[1]
+        match_obj = re.search(r'(.+)\((.*?)\)',temp_serial)
+        if match_obj:
+            serial = match_obj.group(1).replace(" ","")
+            if re.search(r'^[B|G]',serial):
+                self.beam_type = BeamType.Grider
+            if re.search(r'^F',serial):
+                self.beam_type = BeamType.FB
+            if re.search(r'^b',serial):
+                self.beam_type = BeamType.SB 
+    def get_loading(self,band_width):
+        pass
+        return self.floor_object.loading['SDL']* 0.1 * band_width + self.floor_object.loading['LL'] * 0.1* band_width + self.width * self.depth * 2.4 /1000 # t/m
+
     def sort_beam_rebar(self):
 
         if not self.rebar_list:return
@@ -274,7 +295,7 @@ class Beam:
             As += rebar.As
         return As
     def sort_rebar_table(self):
-        min_diff = 1
+        min_diff = 10
         for rebar in self.rebar['top_first']:
             if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
                 self.rebar_table['top']['left'].append(rebar)
@@ -324,11 +345,11 @@ class Beam:
                 self.rebar_table['bottom']['middle'].append(rebar)
         if len(self.rebar_table['top']['middle']) == 0:
             if self.rebar_table['top_length']['left'] > self.rebar_table['top_length']['right']:
-                self.rebar_table['top']['middle'].append(self.rebar_table['top']['left'])
+                self.rebar_table['top']['middle'].extend(self.rebar_table['top']['left'])
             else:
-                self.rebar_table['top']['middle'].append(self.rebar_table['top']['right'])
+                self.rebar_table['top']['middle'].extend(self.rebar_table['top']['right'])
         if len(self.rebar_table['bottom']['middle']) == 0:
             if self.rebar_table['bottom_length']['left'] > self.rebar_table['bottom_length']['right']:
-                self.rebar_table['bottom']['middle'].append(self.rebar_table['bottom']['left'])
+                self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['left'])
             else:
-                self.rebar_table['bottom']['middle'].append(self.rebar_table['bottom']['right'])                
+                self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['right'])                
