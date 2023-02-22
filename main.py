@@ -178,23 +178,36 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
 if __name__ == '__main__':
-    from functools import wraps
-    def logger(function):
-        # @wraps(function)
-        def wrapper(*args, **kwargs):
-            """wrapper documentation"""
-            print(f"----- {function.__name__}: start -----")
-            output = function(*args, **kwargs)
-            print(f"----- {function.__name__}: end -----")
-            return output
-        return wrapper
-    # @logger
-    def f1(v):
-        print('f1')
-        # @logger
-        def f2(v):
-            print(v)
-        def f3(v):
-            return f2(v=v)
-        return f3(v)
-    print(f1(10))
+    from collections import Counter
+    counter = Counter()
+    counter.update({'A':1,'B':1})
+    counter.update({'A':1})
+    counter.update({'A':1})
+    counter.keys()
+    # data={
+    #     'A':1,
+    #     'B':2
+    # }
+    df = pd.DataFrame.from_dict(counter, orient='index',columns=['item'])
+    # df = pd.DataFrame(data=data,columns=['item'],index=data.keys())
+    print(df)
+    # from functools import wraps
+    # def logger(function):
+    #     # @wraps(function)
+    #     def wrapper(*args, **kwargs):
+    #         """wrapper documentation"""
+    #         print(f"----- {function.__name__}: start -----")
+    #         output = function(*args, **kwargs)
+    #         print(f"----- {function.__name__}: end -----")
+    #         return output
+    #     return wrapper
+    # # @logger
+    # def f1(v):
+    #     print('f1')
+    #     # @logger
+    #     def f2(v):
+    #         print(v)
+    #     def f3(v):
+    #         return f2(v=v)
+    #     return f3(v)
+    # print(f1(10))

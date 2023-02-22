@@ -12,6 +12,8 @@ from item.rebar import RebarInfo
 from item.floor import Floor,read_parameter_df,summary_floor_rebar
 from beam_scan import create_beam_scan,beam_check,create_sbeam_scan,create_fbeam_scan
 from main import OutputExcel
+from multiprocessing.pool import ThreadPool as Pool
+from collections import defaultdict,Counter
 error_file = './result/error_log.txt' # error_log.txt的路徑
 def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
@@ -154,27 +156,27 @@ def sort_beam_cad(msp_beam,layer_config:dict,entity_config:dict, progress_file='
     coor_to_block_list = [] # ((左下，右上), rebar_length_dic, tie_count_dic)
     coor_to_beam_list = [] # (string, midpoint, list of tie, tie_count_dic,(左下，右上),list of rebar,rebar count dict)
     coor_to_bounding_block_list = [] #((左下，右上),beam_name, list of tie, tie_count_dic, list of rebar,rebar_length_dic)
-    flag = 0
-    error_count = 0
-    while not flag and error_count <= 10:
-        try:
-            count = 0
-            total = msp_beam.Count
-            progress(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 5500)}分鐘，請耐心等候', progress_file)
-            for object in msp_beam:
+    count = 0
+    total = msp_beam.Count
+    progress(f'梁配筋圖上共有{total}個物件，大約運行{int(total / 5500)}分鐘，請耐心等候', progress_file)
+    for object in msp_beam:
+        error_count = 0
+        while error_count < 10:
+            try:
+                print(f'{object.ObjectName}:{object.Layer}')
                 count += 1
                 if count % 1000 == 0:
                     progress(f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
                 # 抓鋼筋的字的座標
-                if object.Layer == rebar_data_layer and object.ObjectName in entity_config['rebar_data_layer']:
+                if object.Layer in rebar_data_layer and object.ObjectName in entity_config['rebar_data_layer']:
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2))
                     coor_to_data_list.append((object.TextString, coor))
                 # 抓箭頭座標
-                elif object.Layer == rebar_data_layer and object.ObjectName in entity_config['rebar_data_leader_layer']:
+                elif object.Layer in rebar_data_layer and object.ObjectName in entity_config['rebar_data_leader_layer']:
                     # object.Coordinates 有九個參數 -> 箭頭尖點座標，直角的座標，文字接出去的座標，都有x, y, z
                     coor_to_arrow_dic[(round(object.Coordinates[0], 2), round(object.Coordinates[1], 2))] = (round(object.Coordinates[6], 2), round(object.Coordinates[7], 2))
                 # 抓鋼筋本人和箍筋本人
-                elif object.Layer == rebar_layer:
+                elif object.Layer in rebar_layer:
                     # object.Coordinates 橫的和直的有四個參數 -> 兩端點的座標，都只有x, y; 彎的有八個參數 -> 直的端點，直的轉角，橫的轉角，橫的端點
                     if (object.ObjectName == 'AcDbPolyline'):
                         if round(object.Length, 4) > 4: # 太短的是分隔線 -> 不要
@@ -190,32 +192,33 @@ def sort_beam_cad(msp_beam,layer_config:dict,entity_config:dict, progress_file='
                         elif round(object.startPoint[0], 2) == round(object.endPoint[0], 2): # 直的 -> x 一樣 -> 箍筋
                             coor_to_tie_list.append(((round(object.startPoint[0], 2), round(object.startPoint[1], 2)), (round(object.endPoint[0], 2), round(object.endPoint[1], 2)), round(object.Length, 4))) 
                 # 抓箍筋文字座標
-                elif object.Layer == tie_text_layer and object.ObjectName in entity_config['tie_text_layer']:
+                elif object.Layer in tie_text_layer and object.ObjectName in entity_config['tie_text_layer']:
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2))
                     coor_to_tie_text_list.append((object.TextString, coor))
-                    continue
+                    break
                 # 抓圖框
-                elif object.Layer == block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
+                elif object.Layer in block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     coor_to_block_list.append(((coor1, coor2), {}, {}))
                 # 抓圖框
-                elif object.Layer == bounding_block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
+                elif object.Layer in bounding_block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     coor_to_bounding_block_list.append(((coor1, coor2),"", [],{},[], {}))
                 # 抓梁的字的座標
-                elif object.Layer == beam_text_layer and object.ObjectName == 'AcDbText':
+                elif object.Layer in beam_text_layer and object.ObjectName == 'AcDbText':
                     midpoint = (round((object.GetBoundingBox()[0][0] + object.GetBoundingBox()[1][0]) / 2, 2), round((object.GetBoundingBox()[0][1] + object.GetBoundingBox()[1][1]) / 2, 2))
                     coor_to_beam_list.append([object.TextString, midpoint, [], {},(),[], {}])# (string, midpoint, list of tie, tie_count_dic,(左下，右上),list of rebar,rebar count dict)
-                if object.Layer == tie_text_layer and object.ObjectName in entity_config['tie_text_layer']:
+                # 抓箍筋文字
+                if object.Layer in tie_text_layer and object.ObjectName in entity_config['tie_text_layer']:
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2))
                     coor_to_tie_text_list.append((object.TextString, coor))
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(f'read_beam error in step 7: {e}, error_count = {error_count}.')
+                break
+            except:
+                print('1')
+                error_count += 1
+                time.sleep(5)
     progress('梁配筋圖讀取進度 7/15', progress_file)
     save_temp_file.save_pkl({'coor_to_data_list':coor_to_data_list,
                             'coor_to_arrow_dic':coor_to_arrow_dic,
@@ -922,6 +925,7 @@ def cal_beam_rebar(data={},progress_file=''):
     # output_txt = f'{output_folder}{project_name}'
     if not data:
         return
+    cad_data = {}
     coor_to_rebar_list = data['coor_to_rebar_list'] # (頭座標，尾座標，長度)
     coor_to_bend_rebar_list = data['coor_to_bend_rebar_list'] # (直的端點，橫的端點，長度)
     coor_to_data_list = data['coor_to_data_list'] # (字串，座標)
@@ -931,6 +935,17 @@ def cal_beam_rebar(data={},progress_file=''):
     coor_to_block_list = data['coor_to_block_list'] # ((左下，右上), rebar_length_dic, tie_count_dic)
     coor_to_beam_list = data['coor_to_beam_list'] # (string, midpoint, list of tie, tie_count_dic)
     coor_to_bounding_block_list = data['coor_to_bounding_block_list']
+    cad_data = {
+        '直線鋼筋':len(coor_to_rebar_list),
+        '彎鉤鋼筋':len(coor_to_bend_rebar_list),
+        '主筋文字':len(coor_to_data_list),
+        '鋼筋指示線':len(coor_to_arrow_dic),
+        '箍筋':len(coor_to_tie_list),
+        '箍筋文字':len(coor_to_tie_text_list),
+        '圖框':len(coor_to_block_list),
+        '梁編號':len(coor_to_beam_list),
+        '梁圖框':len(coor_to_bounding_block_list)
+    }
     class_beam_list = []
     # Step 8. 對應箭頭跟鋼筋
     coor_to_arrow_dic,no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,coor_to_rebar_list)
@@ -965,8 +980,8 @@ def cal_beam_rebar(data={},progress_file=''):
     combine_beam_rebar(coor_to_arrow_dic=coor_to_arrow_dic,coor_to_rebar_list_straight = coor_to_rebar_list_straight,
                         coor_to_bend_rebar_list=coor_to_bend_rebar_list,coor_to_beam_list=coor_to_beam_list,class_beam_list=class_beam_list)
     sort_beam(class_beam_list=class_beam_list)
-    return class_beam_list
-def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,floor_parameter_xlsx:str):
+    return class_beam_list,cad_data
+def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,floor_parameter_xlsx:str,cad_data:Counter):
     # output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
     # output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
     excel_filename = (
@@ -975,8 +990,8 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'Count.xlsx'
     )
-
-    beam_df = output_beam(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name)
+    cad_df = pd.DataFrame.from_dict(data=cad_data, orient='index',columns=['數量'])
+    beam_df = output_beam(class_beam_list=class_beam_list)
     fbeam_list,sbeam_list,beam_list = seperate_beam(class_beam_list=class_beam_list)
     # count_each_beam_rebar_tie(coor_to_beam_list=coor_to_beam_list,output_txt=output_txt)
     # count_floor_total_beam_rebar_tie(class_to_beam_list=class_beam_list,output_txt=output_txt)
@@ -998,8 +1013,7 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     OutputExcel(df=rebar_df,file_path=excel_filename,sheet_name='鋼筋統計表')
     OutputExcel(df=concrete_df,file_path=excel_filename,sheet_name='混凝土統計表')
     OutputExcel(df=formwork_df,file_path=excel_filename,sheet_name='模板統計表')
-
-    progress('梁配筋圖讀取進度 14/15', progress_file)
+    OutputExcel(df=cad_df,file_path=excel_filename,sheet_name='CAD統計表')
     # Step 15. 印出每個框框的結果然後加在一起
     
     # Step 16. 把箍筋跟beam字串綁在一起
@@ -1068,7 +1082,7 @@ def sort_beam(class_beam_list:list[Beam]):
         beam.sort_beam_rebar()
         beam.sort_beam_tie()
     return
-def output_beam(class_beam_list:list[Beam],output_folder:str,project_name:str):
+def output_beam(class_beam_list:list[Beam]):
     import pandas as pd
     import numpy as np
     header_info_1 = [('樓層', ''), ('編號', ''), ('RC 梁寬', ''), ('RC 梁深', '')]
@@ -1159,7 +1173,33 @@ def count_beam_main(beam_filename,layer_config,temp_file='temp_1221_1F.pkl',outp
     print(f'Total Time:{time.time() - start}')
     return os.path.basename(output_txt),os.path.basename(output_txt_2),os.path.basename(output_excel),os.path.basename(output_dwg)
 
-
+def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
+    progress_file = './result/tmp'
+    cad_counter = Counter()
+    output_dwg_list = []
+    def read_beam_multi(beam_filename,temp_file):
+        msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+        sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=get_template(template_name),temp_file=temp_file,progress_file=progress_file)
+        output_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(temp_file),progress_file=progress_file)
+        output_dwg = draw_rebar_line(class_beam_list=output_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
+        return output_beam_list,cad_data,os.path.basename(output_dwg)
+    start = time.time()# 開始測量執行時間
+    with Pool(processes=10) as p:
+        jobs = []
+        beam_list = []
+        for i,filename in enumerate(beam_filenames):
+            temp_new = os.path.splitext(temp_file)[0]
+            beam_temp = f'{temp_new}-{i}.pkl'
+            jobs.append(p.apply_async(read_beam_multi, (filename,beam_temp)))
+        for job in jobs:
+            output_beam_list,cad_data,output_dwg = job.get()
+            cad_counter.update(cad_data)
+            output_dwg_list.append(output_dwg)
+            beam_list.extend(output_beam_list)
+    excel_filename = create_report(class_beam_list=beam_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name,cad_data=cad_counter)
+    end = time.time()
+    print("執行時間：%f 秒" % (end - start))
+    return os.path.basename(excel_filename),output_dwg_list
 def get_template(name:str):
 
     if name == '公司1':
@@ -1195,6 +1235,7 @@ if __name__=='__main__':
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
     beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0220\大樑+地梁+小梁.dwg"
+    beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑+地梁+小梁.dwg"]
     # beam_filename = r"D:\Desktop\BeamQC\TEST\DEMO\數量計算\Other-大梁\2F-大梁 - Rec.dwg"
     progress_file = './result/tmp'#sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
@@ -1205,11 +1246,11 @@ if __name__=='__main__':
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
-        'rebar_layer':'S-REINF', # 鋼筋和箍筋的線的塗層
-        'tie_text_layer':'S-TEXT', # 箍筋文字圖層
-        'block_layer':'S-GRID', # 框框的圖層
-        'beam_text_layer' :'S-RC', # 梁的字串圖層
-        'bounding_block_layer':'S-ARCH'
+        'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
+        'block_layer':['S-GRID'], # 框框的圖層
+        'beam_text_layer' :['S-RC'], # 梁的字串圖層
+        'bounding_block_layer':['S-ARCH']
     }
     # layer_config = {
     #     'rebar_data_layer':'NBAR', # 箭頭和鋼筋文字的塗層
@@ -1244,15 +1285,18 @@ if __name__=='__main__':
     # l = list(range(1,10))
     # test(l)
     # print(l)
-    start = time.time()
+    # start = time.time()
     # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0220_sb_fb_b.pkl')
-    
-    class_beam_list = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0220_sb_fb_b.pkl'),progress_file=progress_file)
-    create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0220_sb_fb_b-0.pkl')
+    count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0222_sb_fb_b.pkl',
+                               project_name=project_name,output_folder=output_folder,template_name='公司1',floor_parameter_xlsx=floor_parameter_xlsx)
+    # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0222_sb_fb_b-0.pkl'),progress_file=progress_file)
+    # create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
     # draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
-    print(f'Total Time:{time.time() - start}')
+    # print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])
-    # data=save_temp_file.read_temp('temp_1216.pkl')
+    # data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0220_sb_fb_b-0.pkl')
+    # data2=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0222_sb_fb_b-0.pkl')
+    print('')
     # import pprint
     # pprint.pprint(data['coor_to_bounding_block_list'])

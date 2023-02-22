@@ -599,7 +599,7 @@ def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,te
     excel_filename = create_report(output_column_list=column_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name)
     end = time.time()
     print("執行時間：%f 秒" % (end - start))
-    return excel_filename
+    return os.path.basename(excel_filename)
 def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     start = time.time()
     msp_column,doc_column = read_column_cad(column_filename=column_filename)

@@ -64,9 +64,9 @@ class Floor:
     def summary_beam(self):
         for b in self.beam_list:
             for size,count in b.rebar_count.items():
-                self.beam_rebar_count[size] = count
+                self.beam_rebar_count[size] = round(count/1000/1000,2)
             for size,count in b.tie_count.items():
-                self.beam_rebar_count[size] = count
+                self.beam_rebar_count[size] = round(count/1000/1000,2)
             self.concrete_count[b.fc] +=   b.concrete
             self.formwork_count += b.formwork
         self.beam_rebar_count['total'] = sum(self.rebar_count.values())

@@ -46,13 +46,14 @@
         <div style="padding-bottom: 10px;padding-top: 10px;">
         <span>選擇公司樣板:</span>
         <select id = 'company' name="company" size="1">
-            <option value="公司1">公司1</option>
-            <option value="公司2">公司2</option>
+            <option value="" selected disabled hidden>選擇公司</option>
+            <option value="公司1">DrawRC</option>
+            <option value="公司2">Elements</option>
         </select>
         </div>
         <!-- <p id = "download_sample">輸入/輸出範例檔下載</p> -->
         <div> 
-        <a href="{{url_for('result_file', filename='sample.zip')}}" style='color: #279c96'>輸入/輸出範例檔下載</a>
+        <a href="{{url_for('demo_file', filename='sample.zip')}}" style='color: #279c96'>輸入/輸出範例檔下載</a>
         </div>
         <h3>請輸入以下資訊：</h3>
         <div class="item">
@@ -62,18 +63,27 @@
             <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
             <label>選擇檔案(.dwg)</label>
             <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
-            <label>鋼筋指示箭頭及文字圖層</label>
-            <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required >
-            <label>鋼筋線圖層</label>
-            <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required >
-            <label>箍筋文字圖層</label>
-            <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
-            <label>圖框圖層</label>
-            <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
-            <label>梁編號圖層</label>
-            <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required >
-            <label>梁邊框圖層(選填)</label>
-            <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
+            <p><strong>選擇樓層參數檔案(.xlsx)</strong>
+            <a href="{{url_for('demo_file', filename='樓層參數.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+            <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
+            <!-- <label>鋼筋指示箭頭及文字圖層</label> -->
+            <!-- <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required > -->
+            <p><strong>鋼筋指示箭頭及文字圖層</strong><textarea type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-LEADER" required ></textarea></p>
+            <!-- <label>鋼筋線圖層</label>
+            <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required > -->
+            <p><strong>鋼筋線圖層</strong><textarea type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-REINF" required ></textarea></p>
+            <!-- <label>箍筋文字圖層</label>
+            <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required > -->
+            <p><strong>箍筋文字圖層</strong><textarea type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-TEXT" required ></textarea></p>
+            <!-- <label>圖框圖層</label>
+            <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required > -->
+            <p><strong>圖框圖層</strong><textarea type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-GRID" required ></textarea></p>
+            <!-- <label>梁編號圖層</label>
+            <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required > -->
+            <p><strong>梁編號圖層</strong><textarea type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-RC" required ></textarea></p>
+            <!-- <label>梁邊框圖層(選填)</label>
+            <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH"> -->
+            <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-ARCH" required ></textarea></p>
             <div class="btn-block">
             <button id="count_beam">完成</button>
             </div>
@@ -102,7 +112,7 @@
                 <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
                 <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
                 <p><strong>選擇樓層參數檔案(.xlsx)</strong>
-                <a href="{{url_for('result_file', filename='column_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                <a href="{{url_for('demo_file', filename='樓層參數.xlsx')}}" style='color: #279c96'>範例檔下載</a>
                 <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
                 <p><strong>選擇柱配筋圖檔案(.dwg)</strong>
                 <input type=file id="file_column" name="file_column" value="dwg" multiple>

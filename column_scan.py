@@ -55,7 +55,7 @@ def rename_unnamed(df:pd.DataFrame):
 def create_column_scan():
     column_scan_list:list[ColumnScan]
     column_scan_list = []
-    df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱SCAN.xlsx','柱',[0,1])
+    df = read_parameter_df(r'file\柱SCAN.xlsx','柱',[0,1])
     df.set_index([('#','0400')],inplace=True)
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
@@ -137,6 +137,4 @@ def set_check_scan(column_scan:ColumnScan):
 #         read_file, sheet_name=sheet_name,header=[0,1])
 
 if __name__ == '__main__':
-    cs_list = create_column_scan()
-    c_list = [Column()]
-    column_scan([])
+    pass

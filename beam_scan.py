@@ -19,7 +19,7 @@ def beam_check(beam_list:list[Beam],beam_scan_list:list[BeamScan]):
 def create_beam_scan():
     beam_scan_list:list[BeamScan]
     beam_scan_list = []
-    df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱SCAN.xlsx','梁',[0,1])
+    df = read_parameter_df(r'file\柱SCAN.xlsx','梁',[0,1])
     df.set_index([('#','0200')],inplace=True)
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
@@ -32,7 +32,7 @@ def create_beam_scan():
 def create_sbeam_scan():
     beam_scan_list:list[BeamScan]
     beam_scan_list = []
-    df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱SCAN.xlsx','小梁',[0,1])
+    df = read_parameter_df(r'file\柱SCAN.xlsx','小梁',[0,1])
     df.set_index([('#','0300')],inplace=True)
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
@@ -46,7 +46,7 @@ def create_sbeam_scan():
 def create_fbeam_scan():
     beam_scan_list:list[BeamScan]
     beam_scan_list = []
-    df = read_parameter_df(r'D:\Desktop\BeamQC\TEST\柱SCAN.xlsx','地梁',[0,1])
+    df = read_parameter_df(r'file\柱SCAN.xlsx','地梁',[0,1])
     df.set_index([('#','0100')],inplace=True)
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
@@ -67,16 +67,17 @@ def set_check_scan(beam_scan:BeamScan):
     def index_0101(b:Beam):
         for pos,tie in b.tie.items():
             if 0.0025 * b.width > tie.Ash/tie.spacing:
+                
                 return fail_syntax
         return pass_syntax
     def index_0102(b:Beam):
         if b.length < b.depth * 4 and b.middle_tie:
-            if 0.0015 * b.width * 1.5 < b.middle_tie[0].As:
+            if 0.0015 * b.width * b.depth > b.middle_tie[0].As:
                 return fail_syntax
         return pass_syntax
     def index_0103(b:Beam):
         if b.length < b.depth * 4 and b.middle_tie:
-            if 0.0015 * b.width * 1.5 < b.middle_tie[0].As:
+            if 0.0015 * b.width * b.depth * 1.5 < b.middle_tie[0].As:
                 return fail_syntax
         return pass_syntax
     def index_0104(b:Beam):
@@ -95,7 +96,7 @@ def set_check_scan(beam_scan:BeamScan):
         for pos,rebar_list in b.rebar.items():
             for rebar in rebar_list:
                 spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
-                if spacing < 25 :
+                if spacing > 25 :
                     return fail_syntax
         return pass_syntax
     def index_0107(b:Beam):
@@ -206,6 +207,7 @@ def set_check_scan(beam_scan:BeamScan):
         for pos,tie in b.tie.items():
             Vs = tie.Ash*2*b.fy*(b.depth - protect_layer)/tie.spacing
             if Vs > 2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer):
+                print(f'Vs:{Vs}  4Vc:{2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer)}')
                 return fail_syntax
         return pass_syntax
     def index_0210(b:Beam):
