@@ -56,7 +56,10 @@ class Floor:
             for size,coupler in c.coupler.items():
                 if size == ('',''):continue
                 if not size in self.coupler : self.coupler[size] = 0
-                self.coupler[size] += coupler
+                if self.overlap_option['overlap'] == "隔根隔層續接":
+                    self.coupler[size] += coupler//2
+                else:
+                    self.coupler[size] += coupler
             # if not c.fc in self.concrete_count:self.concrete_count[c.fc] = 0
             self.concrete_count[c.fc] += c.concrete
             self.formwork_count += c.formwork

@@ -112,7 +112,7 @@
                 <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
                 <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
                 <p><strong>選擇樓層參數檔案(.xlsx)</strong>
-                <a href="{{url_for('demo_file', filename='樓層參數.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
                 <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
                 <p><strong>選擇柱配筋圖檔案(.dwg)</strong>
                 <input type=file id="file_column" name="file_column" value="dwg" multiple>
@@ -196,14 +196,14 @@
     const container = document.getElementById('input-cont');
     $(document).ready(function(){
         $('#company').change(function(){
-            if ($('#company').val() == '公司2'){
+            if ($('#company').val() == '公司1'){
                 $('#rebar_data_layer').val('NBAR');
                 $('#rebar_layer').val('RBAR');
                 $('#tie_text_layer').val('NBAR');
                 $('#block_layer').val('DEFPOINTS');
                 $('#beam_text_layer').val('TITLE');
             }
-            if($('#company').val() == "公司1"){
+            if($('#company').val() == "公司2"){
                 $('#rebar_data_layer').val("S-LEADER" );
                 $('#rebar_layer').val("S-REINF");
                 $('#tie_text_layer').val("S-TEXT" );

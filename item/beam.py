@@ -86,6 +86,7 @@ class Beam:
     start_pt:Point
     end_pt:Point
     beam_type:BeamType
+    ng_message:list[str]
     # coor = Point
     # bounding_box = (Point,Point)
     def __init__(self,serial,x,y):
@@ -100,6 +101,7 @@ class Beam:
         self.middle_tie = []
         self.rebar_count = {}
         self.tie_count = {}
+        self.ng_message = []
         self.rebar={
             'top_first':[],
             'top_second':[],
@@ -214,7 +216,7 @@ class Beam:
             if len(rebar) == 0: continue
             left_rebar = min(rebar,key=lambda r:r.start_pt.x)
             while left_rebar.start_pt.x > self.start_pt.x:
-                connect_rebar = [r for r in self.rebar_add_list if r.end_pt.x == left_rebar.start_pt.x and r.start_pt.y == left_rebar.start_pt.y]
+                connect_rebar = [r for r in self.rebar_add_list if abs(r.end_pt.x - left_rebar.start_pt.x) < 0.1 and r.start_pt.y == left_rebar.start_pt.y]
                 if connect_rebar:
                     rebar.append(connect_rebar[0])
                     left_rebar = min(rebar,key=lambda r:r.start_pt.x)
@@ -223,7 +225,7 @@ class Beam:
                     break
             right_rebar = max(rebar,key=lambda r:r.end_pt.x)
             while right_rebar.end_pt.x < self.end_pt.x:
-                connect_rebar = [r for r in self.rebar_add_list if r.start_pt.x == right_rebar.end_pt.x and r.start_pt.y == right_rebar.end_pt.y]
+                connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - right_rebar.end_pt.x) < 0.1 and r.start_pt.y == right_rebar.end_pt.y]
                 if connect_rebar:
                     rebar.append(connect_rebar[0])
                     right_rebar = max(rebar,key=lambda r:r.end_pt.x)

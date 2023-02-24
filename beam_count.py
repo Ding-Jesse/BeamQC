@@ -1044,20 +1044,28 @@ def draw_rebar_line(class_beam_list:list[Beam],msp_beam:object,doc_beam:object,o
     for beam in class_beam_list:
         for pos,rebar_list in beam.rebar.items():
             for rebar in rebar_list:
-                x = rebar.start_pt.x
-                y = rebar.start_pt.y
-                coor_list1 = [beam.coor.x, beam.coor.y, 0, x, y, 0]
-                coor_list2 = [beam.coor.x, beam.coor.y, 0, rebar.end_pt.x, rebar.end_pt.y, 0]
-                points1 = vtFloat(coor_list1)
-                points2 = vtFloat(coor_list2)
-                line1 = msp_beam.AddPolyline(points1)
-                line2 = msp_beam.AddPolyline(points2)
-                text1 = msp_beam.AddMText(vtPnt((x + rebar.end_pt.x)/2, (y + rebar.end_pt.y)/2),10,rebar.text)
-                text1.Height = 5
-                line1.SetWidth(0, 1, 1)
-                line2.SetWidth(0, 1, 1)
-                line1.color = 101
-                line2.color = 101
+                error_count = 0
+                while error_count < 10:
+                    try:
+                        x = rebar.start_pt.x
+                        y = rebar.start_pt.y
+                        coor_list1 = [beam.coor.x, beam.coor.y, 0, x, y, 0]
+                        coor_list2 = [beam.coor.x, beam.coor.y, 0, rebar.end_pt.x, rebar.end_pt.y, 0]
+                        points1 = vtFloat(coor_list1)
+                        points2 = vtFloat(coor_list2)
+                        line1 = msp_beam.AddPolyline(points1)
+                        line2 = msp_beam.AddPolyline(points2)
+                        text1 = msp_beam.AddMText(vtPnt((x + rebar.end_pt.x)/2, (y + rebar.end_pt.y)/2),10,rebar.text)
+                        text1.Height = 5
+                        line1.SetWidth(0, 1, 1)
+                        line2.SetWidth(0, 1, 1)
+                        line1.color = 101
+                        line2.color = 101
+                        break
+                    except:
+                        print('2')
+                        error_count += 1
+                        time.sleep(5)
         for pos,tie in beam.tie.items():
             if(not tie):continue
             coor_list1 = [beam.coor.x, beam.coor.y, 0, tie.start_pt.x, tie.start_pt.y, 0]
@@ -1202,14 +1210,14 @@ def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='
     return os.path.basename(excel_filename),output_dwg_list
 def get_template(name:str):
 
-    if name == '公司1':
+    if name == '公司2':
         return  {
          'rebar_layer':['AcDbPolyline'],
          'rebar_data_layer':['AcDbMText'],
          'rebar_data_leader_layer':['AcDbLeader'],
          'tie_text_layer':['AcDbText']
         }
-    if name == '公司2':
+    if name == '公司1':
         return {
             'rebar_layer':['AcDbLine'],
             'rebar_data_layer':['AcDbText','AcDbMText'],
@@ -1234,8 +1242,13 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0220\大樑+地梁+小梁.dwg"
-    beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑+地梁+小梁.dwg"]
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0220\大樑+地梁+小梁-test.dwg"
+    # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
+    #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
+    #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
+    beam_filenames = [r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-b-test.dwg",
+                    r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-sb-test.dwg",
+                    r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-fb-test.dwg"]
     # beam_filename = r"D:\Desktop\BeamQC\TEST\DEMO\數量計算\Other-大梁\2F-大梁 - Rec.dwg"
     progress_file = './result/tmp'#sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
@@ -1287,16 +1300,16 @@ if __name__=='__main__':
     # print(l)
     # start = time.time()
     # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0220_sb_fb_b-0.pkl')
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0224_sb_fb_b-all.pkl')
     count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0222_sb_fb_b.pkl',
-                               project_name=project_name,output_folder=output_folder,template_name='公司1',floor_parameter_xlsx=floor_parameter_xlsx)
-    # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0222_sb_fb_b-0.pkl'),progress_file=progress_file)
+                               project_name=project_name,output_folder=output_folder,template_name='公司2',floor_parameter_xlsx=floor_parameter_xlsx)
+    # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0224_sb_fb_b-1.pkl'),progress_file=progress_file)
     # create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
     # draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
     # print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])
-    # data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0220_sb_fb_b-0.pkl')
-    # data2=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0222_sb_fb_b-0.pkl')
+    # data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0222_sb_fb_b-1.pkl')
+    # data2=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0224_sb_fb_b-1.pkl')
     print('')
     # import pprint
     # pprint.pprint(data['coor_to_bounding_block_list'])

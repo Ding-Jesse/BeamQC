@@ -342,9 +342,9 @@ def count_beam():
         if beam_filename != '' and temp_file != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            excel_filename,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0222_sb_fb_b.pkl',
+            excel_filename,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file=temp_file,
                                                             project_name=project_name,output_folder=app.config['OUTPUT_FOLDER'],
-                                                            template_name='公司1',floor_parameter_xlsx=xlsx_filename)
+                                                            template_name=template_name,floor_parameter_xlsx=xlsx_filename)
             if 'count_filenames' in session:
                 session['count_filenames'].extend([excel_filename])
                 session['count_filenames'].extend([output_dwg_list])

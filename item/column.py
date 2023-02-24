@@ -233,7 +233,7 @@ class Column:
             if not tie.size in self.rebar_count : self.rebar_count[tie.size] = 0 
             self.rebar_count[tie.size] += tie.number * RebarInfo(tie.size) * ((self.x_tie + 2) * (self.x_size - 8) + (self.y_tie + 2) * (self.y_size - 8))
     def calculate_rebar(self):
-        print(f'calculate map {self.floor} {self.serial}')
+        # print(f'calculate map {self.floor} {self.serial}')
         self.cal_rebar()
         self.cal_tie()
         self.cal_material()

@@ -67,17 +67,19 @@ def set_check_scan(beam_scan:BeamScan):
     def index_0101(b:Beam):
         for pos,tie in b.tie.items():
             if 0.0025 * b.width > tie.Ash/tie.spacing:
-                
+                b.ng_message.append(f'101:0.0025 * {b.width} > {tie.Ash}/{tie.spacing} => {0.0025 * b.width} > {tie.Ash/tie.spacing}')
                 return fail_syntax
         return pass_syntax
     def index_0102(b:Beam):
         if b.length < b.depth * 4 and b.middle_tie:
             if 0.0015 * b.width * b.depth > b.middle_tie[0].As:
+                b.ng_message.append(f'102:0.0015 * {b.width} * {b.depth} > {b.middle_tie[0].As} => {0.0015 * b.width * b.depth} > {b.middle_tie[0].As}')
                 return fail_syntax
         return pass_syntax
     def index_0103(b:Beam):
         if b.length < b.depth * 4 and b.middle_tie:
             if 0.0015 * b.width * b.depth * 1.5 < b.middle_tie[0].As:
+                b.ng_message.append(f'103:0.0015 *{b.width} * {b.depth} < 1.5 * {b.middle_tie[0].As} => {0.0015 * b.width * b.depth} < {1.5*b.middle_tie[0].As}')
                 return fail_syntax
         return pass_syntax
     def index_0104(b:Beam):
@@ -267,6 +269,7 @@ def set_check_scan(beam_scan:BeamScan):
         if any([r for r in rebarAs if r < 0.25*max(rebarAs)]):
             return fail_syntax
         for i in [0,2]:
+            if rebarAs[i+3] == 0:return "無鋼筋資料"
             if not 0.5 <= rebarAs[i]/rebarAs[i+3] <= 2:
                 return fail_syntax
         return pass_syntax
