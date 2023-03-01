@@ -25,5 +25,11 @@ def RebarInfo(size="#3"):
     return _rebar[size]*7.85
 
 if __name__ == '__main__':
-    l = [0]
-    print(l[0])
+    def full2half(c: str) -> str:
+        return chr(ord(c)-65248)
+
+
+    def half2full(c: str) -> str:
+        return chr(ord(c)+65248)
+    
+    print('(45X90)'.replace(' ', '').replace('X','x'))
