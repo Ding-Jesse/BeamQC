@@ -19,12 +19,14 @@ class Config:
     MAIL_ASCII_ATTACHMENTS  =True
     DEBUG = False
     TESTING = False
+    
     # GEVENT_SUPPORT =True
     
 class DevConfig(Config):
     UPLOAD_FOLDER = 'D:/Desktop/BeamQC/TEST/INPUT'
     OUTPUT_FOLDER = 'D:/Desktop/BeamQC/TEST/OUTPUT'
     PROGRESS_FILE = 'D:/Desktop/BeamQC/TEST/OUTPUT'
+    DEMO_FOLDER = 'D:/Desktop/BeamQC/file'
     # FLASK_ENV = 'development'
     SECRET_KEY = 'dev2'
     DEBUG = True
@@ -35,6 +37,7 @@ class ProdConfig(Config):
     UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
     OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
     PROGRESS_FILE = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
+    DEMO_FOLDER = 'C:/Users/User/Desktop/BeamQC/file'
     FLASK_ENV = 'production'
     SECRET_KEY = 'bbdb12eeb63aeb29a9535999e091b5f6de228d9e099575f92f29c10cc0a13c06'
     DEBUG = False

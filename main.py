@@ -6,7 +6,12 @@ from plan_to_beam import read_plan,read_beam,write_beam,write_plan,write_result_
 from werkzeug.utils import secure_filename
 import os
 import plan_to_col
+import pandas as pd
 from datetime import datetime
+from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment,Font,PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 
 def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_filename,big_file,sml_file,text_layer,block_layer,floor_layer,size_layer,big_beam_layer,big_beam_text_layer,sml_beam_layer,sml_beam_text_layer,task_name,progress_file,sizing,mline_scaling):
     start = time.time()
@@ -133,3 +138,76 @@ def storefile(file,file_directory,file_new_directory,project_name):
     file.save(save_file)
     file_ok = True
     return file_ok , file_new_name
+
+def OutputExcel(df:pd.DataFrame,file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[]):
+    if os.path.exists(file_path):
+        book = load_workbook(file_path)
+        writer = pd.ExcelWriter(file_path, engine='openpyxl') 
+        writer.book = book
+        # sheet = book[sheet_name]
+        # sheet.column_dimensions['A'] =ColumnDimension(sheet,'L',bestFit=True)
+    else:
+        writer = pd.ExcelWriter(file_path, engine='xlsxwriter') 
+    df.to_excel(writer,sheet_name=sheet_name)
+    writer.save()
+
+    book = load_workbook(file_path)
+    writer = pd.ExcelWriter(file_path, engine='openpyxl') 
+    writer.book = book
+    if os.path.exists(file_path) and len(auto_fit_columns) >0:
+        AutoFit_Columns(book[sheet_name],auto_fit_columns,auto_fit_rows)
+    if os.path.exists(file_path) and len(columns_list) >0:
+        Decorate_Worksheet(book[sheet_name],columns_list,rows_list)
+    writer.save()
+    return file_path
+
+def Decorate_Worksheet(sheet:Worksheet,columns_list:list,rows_list:list):
+    for i in columns_list:
+        for j in rows_list:
+            sheet.cell(j,i).alignment = Alignment(vertical='center',wrap_text=True,horizontal='center')
+            sheet.cell(j,i).font = Font(name='Calibri')
+            if sheet.cell(j,i).value == 'NG.':sheet.cell(j,i).fill = PatternFill("solid",start_color='00FF0000')
+
+def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
+    for i in auto_fit_columns:
+        sheet.column_dimensions[get_column_letter(i)].width = 80
+    for i in auto_fit_rows:
+        sheet.row_dimensions[i].height = 20
+    for i in auto_fit_rows:
+        for j in auto_fit_columns:
+            sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
+
+if __name__ == '__main__':
+    from collections import Counter
+    counter = Counter()
+    counter.update({'A':1,'B':1})
+    counter.update({'A':1})
+    counter.update({'A':1})
+    counter.keys()
+    # data={
+    #     'A':1,
+    #     'B':2
+    # }
+    df = pd.DataFrame.from_dict(counter, orient='index',columns=['item'])
+    # df = pd.DataFrame(data=data,columns=['item'],index=data.keys())
+    print(df)
+    # from functools import wraps
+    # def logger(function):
+    #     # @wraps(function)
+    #     def wrapper(*args, **kwargs):
+    #         """wrapper documentation"""
+    #         print(f"----- {function.__name__}: start -----")
+    #         output = function(*args, **kwargs)
+    #         print(f"----- {function.__name__}: end -----")
+    #         return output
+    #     return wrapper
+    # # @logger
+    # def f1(v):
+    #     print('f1')
+    #     # @logger
+    #     def f2(v):
+    #         print(v)
+    #     def f3(v):
+    #         return f2(v=v)
+    #     return f3(v)
+    # print(f1(10))

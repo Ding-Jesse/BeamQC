@@ -12,7 +12,8 @@ import json
 import time
 from datetime import timedelta
 from auth import createPhoneCode,sendPhoneMessage
-from beam_count import count_beam_main
+from beam_count import count_beam_multiprocessing
+from column_count import count_column_main,count_column_multiprocessing
 app = Flask(__name__)
 app.config.from_object('config.config.Config')
 Session(app)
@@ -210,12 +211,17 @@ def result_page():
 
 @app.route('/results/<filename>/',methods=['GET','POST'])
 def result_file(filename):
-    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[]) and filename != "sample.zip"):return redirect('/tool1')
+    if(not filename in session.get('filenames',[]) and not filename in session.get('count_filenames',[])):return redirect('/')
     response = send_from_directory(app.config['OUTPUT_FOLDER'],
                                filename, as_attachment = True)
     response.cache_control.max_age = 0
     return response
-
+@app.route('/demo/<filename>/',methods=['GET','POST'])
+def demo_file(filename):
+    response = send_from_directory(app.config['DEMO_FOLDER'],
+                               filename, as_attachment = True)
+    response.cache_control.max_age = 0
+    return response
 @app.route('/tutorial')
 def tutorial():
     return render_template('tutorial.html')
@@ -246,7 +252,7 @@ def sendVerifyCode():
         print(session["phoneVerifyCode"])
         return response
 
-@app.route('/tool2', methods=['GET'])
+@app.route('/tool2', methods=['GET','POST'])
 @login_required
 def tool2():
     if app.config['TESTING']:
@@ -294,7 +300,9 @@ def login():
 @app.route('/count_beam',methods=['POST'])
 def count_beam():
     try:
-        print('1')
+        beam_filename = ''
+        beam_filenames = []
+        uploaded_xlsx = request.files['file_floor_xlsx']
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
         email_address = request.form['email_address']
@@ -315,27 +323,38 @@ def count_beam():
         for uploaded_beam in uploaded_beams:
             beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_beam.filename)}')
+            beam_filenames.append(beam_filename)
             temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
             print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
+        if uploaded_xlsx:
+            xlsx_ok, xlsx_new_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
-            'rebar_data_layer':request.form['rebar_data_layer'], # 箭頭和鋼筋文字的塗層
-            'rebar_layer':request.form['rebar_layer'], # 鋼筋和箍筋的線的塗層
-            'tie_text_layer':request.form['tie_text_layer'], # 箍筋文字圖層
-            'block_layer':request.form['block_layer'], # 框框的圖層
-            'beam_text_layer' :request.form['beam_text_layer'], # 梁的字串圖層
-            'bounding_block_layer':request.form['bounding_block_layer']
+            'rebar_data_layer':request.form['rebar_data_layer'].split('\r\n'), # 箭頭和鋼筋文字的塗層
+            'rebar_layer':request.form['rebar_layer'].split('\r\n'), # 鋼筋和箍筋的線的塗層
+            'tie_text_layer':request.form['tie_text_layer'].split('\r\n'), # 箍筋文字圖層
+            'block_layer':request.form['block_layer'].split('\r\n'), # 框框的圖層
+            'beam_text_layer' :request.form['beam_text_layer'].split('\r\n'), # 梁的字串圖層
+            'bounding_block_layer':request.form['bounding_block_layer'].split('\r\n')
             }
         print(layer_config)
         if beam_filename != '' and temp_file != '' and beam_ok:
-            rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
-                                                                                output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
+            # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
+            #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
+            excel_filename,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file=temp_file,
+                                                            project_name=project_name,output_folder=app.config['OUTPUT_FOLDER'],
+                                                            template_name=template_name,floor_parameter_xlsx=xlsx_filename)
             if 'count_filenames' in session:
-                session['count_filenames'].extend([rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg])
+                session['count_filenames'].extend([excel_filename])
+                session['count_filenames'].extend([output_dwg_list])
             else:
-                session['count_filenames'] = [rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg]
+                session['count_filenames'] = [excel_filename]
+                session['count_filenames'].extend(output_dwg_list)
         if(email_address):
             try:
-                sendResult(email_address,[rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg],"梁配筋圖數量計算結果")
+                sendResult(email_address,[excel_filename],"梁配筋圖數量計算結果")
+                sendResult(email_address,output_dwg_list,"梁配筋圖數量計算結果")
                 print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
             except:
                 pass
@@ -352,7 +371,73 @@ def count_beam():
         response.data = json.dumps({'validate':f'發生錯誤'})
         response.content_type = 'application/json'
     return response
-
+@app.route('/count_column',methods=['POST'])
+def count_column():
+    try:
+        uploaded_columns = request.files.getlist("file_column")
+        project_name = request.form['project_name']
+        email_address = request.form['email_address']
+        template_name = request.form['companyColumn']
+        uploaded_xlsx = request.files['file_floor_xlsx']
+        column_filename = ''
+        column_filenames = []
+        column_excel = ''
+        column_ok = False
+        if len(uploaded_columns) == 0:
+            response.status_code = 404
+            response.data = json.dumps({'validate':f'未上傳檔案'})
+            response.content_type = 'application/json'
+            return response
+        for uploaded_column in uploaded_columns:
+            column_ok, column_new_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
+            column_filenames.append(column_filename)
+            temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
+            print(f'column_filename:{column_filename},temp_file:{temp_file}')
+        if uploaded_xlsx:
+            xlsx_ok, xlsx_new_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            print(f'xlsx_filename:{xlsx_filename}')
+        layer_config = {
+            'text_layer':request.form['column_text_layer'].split('\r\n'),
+            'line_layer':request.form['column_line_layer'].split('\r\n'),
+            'rebar_text_layer':request.form['column_rebar_text_layer'].split('\r\n'), # 箭頭和鋼筋文字的塗層
+            'rebar_layer':request.form['column_rebar_layer'].split('\r\n'), # 鋼筋和箍筋的線的塗層
+            'tie_text_layer':request.form['column_tie_text_layer'].split('\r\n'), # 箍筋文字圖層
+            'tie_layer':request.form['column_tie_layer'].split('\r\n'), # 箍筋文字圖層
+            'block_layer':request.form['column_block_layer'].split('\r\n'), # 框框的圖層
+            'column_rc_layer':request.form['column_rc_layer'].split('\r\n') #斷面圖層
+        }
+        print(layer_config)
+        if len(column_filenames) != 0 and temp_file != '' and column_ok:
+            # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
+            #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
+            column_excel =count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file=temp_file,
+                                                        output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,
+                                                        template_name=template_name,floor_parameter_xlsx=xlsx_filename)
+            if 'count_filenames' in session:
+                session['count_filenames'].extend([column_excel])
+            else:
+                session['count_filenames'] = [column_excel]
+        if(email_address):
+            try:
+                sendResult(email_address,[column_excel],"梁配筋圖數量計算結果")
+                print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
+            except:
+                pass
+        response = Response()
+        response.status_code = 200
+        response.data = json.dumps({'validate':f'{layer_config}'})
+        response.content_type = 'application/json'
+        return response
+    except Exception as ex:
+        print(ex)
+        response = Response()
+        response.status_code = 200
+        response.data = json.dumps({'validate':f'發生錯誤'})
+        response.content_type = 'application/json'
+    return response
+    
 # @app.route('/send_email',methods=['POST'])
 def sendResult(recipients:str,filenames:list,mail_title:str):
     output_folder = app.config['OUTPUT_FOLDER']
