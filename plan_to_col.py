@@ -156,11 +156,15 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     coor_to_col_set.add(((coor1, coor2), col))
-
+                    # print(f'{(coor1, coor2)},{col}')
                 # 取size
                 if object.Layer == col_layer and object.ObjectName == "AcDbText" and '(' in object.TextString:
-                    size = (object.TextString.split('(')[1]).split(')')[0] # 取括號內東西即可
-                    size = size.replace('X', 'x')
+                    if re.match(r'\((.+)[X|x](.+)\)',object.TextString):
+                        size_group = re.search(r'\((.+)[X|x](.+)\)',object.TextString)
+                        size = f'{size_group.group(1)}x{size_group.group(2)}'
+                    else:
+                        size = (object.TextString.split('(')[1]).split(')')[0] # 取括號內東西即可
+                        size = size.replace('X', 'x')
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                     if 'x' in size:
@@ -221,8 +225,12 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                 to_char = char
                 start = floor.split(to_char)[0]
                 end = floor.split(to_char)[1]
-                tmp_floor_list.append(turn_floor_to_float(start))
-                tmp_floor_list.append(turn_floor_to_float(end))
+                if not (turn_floor_to_float(start)) or not turn_floor_to_float(end):
+                    for temp in re.split(r'\W+',floor):
+                        tmp_floor_list.append(temp)
+                else:   
+                    tmp_floor_list.append(turn_floor_to_float(start))
+                    tmp_floor_list.append(turn_floor_to_float(end))
                 to_bool = True
                 break
         if not to_bool:
@@ -480,7 +488,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                         coor_to_col_set.add(((coor1, coor2), object.TextString))
-
+                        
                     elif 'x' in object.TextString or 'X' in object.TextString:
                         size = object.TextString.replace('X', 'x')
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
@@ -628,7 +636,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
     f = open(result_filename, "w", encoding = 'utf-8')
 
     f.write("in plan but not in col: \n")
-
+    f.write(f"------------------------------\n")
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
@@ -890,11 +898,14 @@ if __name__=='__main__':
     
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
-    col_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-12-13-55p2020-12D 三重五谷王-XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
-    plan_filename = r'C:\Users\User\Desktop\BeamQC\TEST\2022-10-12-13-55p2020-12D 三重五谷王-XS-PLAN.dwg'#sys.argv[2] # XS-PLAN的路徑
-    col_new_filename = r'C:\Users\User\Desktop\BeamQC\TEST\XS-COL_new.dwg'#sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = r'C:\Users\User\Desktop\BeamQC\TEST\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
-    result_file = r'C:\Users\User\Desktop\BeamQC\TEST\column.txt'#sys.argv[5] # 柱配筋結果
+    # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filenames = [r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg']
+    #print(col_filename.split(',')) 
+    # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0303\XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\INPUT\XS-PLAN_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\INPUT\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    result_file = r'D:\Desktop\BeamQC\TEST\INPUT\column.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層
     text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
@@ -918,8 +929,10 @@ if __name__=='__main__':
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
 
-    plan_file_count = plan_filename.count(',') + 1
-    col_file_count = col_filename.count(',') + 1
+    # plan_file_count = plan_filename.count(',') + 1
+    # col_file_count = col_filename.count(',') + 1
+    plan_file_count = len(plan_filenames)
+    col_file_count = len(col_filenames)
     res_plan = [None] * plan_file_count
     res_col = [None] * col_file_count
     set_plan = set()
@@ -927,11 +940,11 @@ if __name__=='__main__':
     set_col = set()
     dic_col = {}
 
-    for i in range(plan_file_count):
-        res_plan[i] = pool.apply_async(read_plan, (plan_filename.split(',')[i], floor_layer, col_layer, block_layer, plan_file, progress_file))
+    for plan_file in plan_filenames:
+        res_plan.append(pool.apply_async(read_plan, (plan_file, floor_layer, col_layer, block_layer, plan_file, progress_file)))
 
-    for i in range(col_file_count):
-        res_col[i] = pool.apply_async(read_col, (col_filename.split(',')[i], text_layer, line_layer, col_file, progress_file))
+    for col_file in col_filenames:
+        res_col.append(pool.apply_async(read_col, (col_file, text_layer, line_layer, col_file, progress_file)))
 
     for i in range(plan_file_count):
         final_plan = res_plan[i].get()
@@ -949,8 +962,9 @@ if __name__=='__main__':
     if plan_file_count == 1 and col_file_count == 1:
         drawing = 1
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, drawing, progress_file)
-    col_result = write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date, drawing, progress_file)
+    plan_result = write_plan(plan_filenames[0], plan_new_filename, set_plan, set_col, dic_plan, result_file, date, drawing, progress_file)
+    col_result = write_col(col_filenames[0], col_new_filename, set_plan, set_col, dic_col, result_file, date, drawing, progress_file)
 
     end = time.time()
+    print(end - start)
     # write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')

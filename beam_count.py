@@ -1246,15 +1246,15 @@ if __name__=='__main__':
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
-    beam_filenames = [r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-b-test.dwg",
-                    r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-sb-test.dwg",
-                    r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-fb-test.dwg"]
+    beam_filenames = [r"D:\Desktop\BeamQC\TEST\INPUT\123456-2023-03-08-16-46-XS-BEAM-4546.dwg"]
+    #                 r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-sb-test.dwg",
+    #                 r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-fb-test.dwg"]
     # beam_filename = r"D:\Desktop\BeamQC\TEST\DEMO\數量計算\Other-大梁\2F-大梁 - Rec.dwg"
     progress_file = './result/tmp'#sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\柱樓層參數.xlsx'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\INPUT\123456-2023-03-08-16-46-floor.xlsx'
     project_name = 'test_1F'
     # 在beam裡面自訂圖層
     layer_config = {
@@ -1301,7 +1301,7 @@ if __name__=='__main__':
     # start = time.time()
     # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
     # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0224_sb_fb_b-all.pkl')
-    count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0222_sb_fb_b.pkl',
+    count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0308_sb_fb_b.pkl',
                                project_name=project_name,output_folder=output_folder,template_name='公司2',floor_parameter_xlsx=floor_parameter_xlsx)
     # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0224_sb_fb_b-1.pkl'),progress_file=progress_file)
     # create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)

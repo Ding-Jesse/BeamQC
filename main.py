@@ -133,11 +133,15 @@ def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_fil
 
 def storefile(file,file_directory,file_new_directory,project_name):
     filename_beam = secure_filename(file.filename)
+    check_beam_name = os.path.splitext(filename_beam)
+    if check_beam_name[1] == '':
+        filename_beam = f'temp.{check_beam_name[0]}'
+    print(f'file:{file.filename} file:{filename_beam}')
     save_file = os.path.join(file_directory, f'{project_name}-{filename_beam}')
     file_new_name = os.path.join(file_new_directory, f'{project_name}_MARKON-{filename_beam}')
     file.save(save_file)
     file_ok = True
-    return file_ok , file_new_name
+    return file_ok , file_new_name,save_file
 
 def OutputExcel(df:pd.DataFrame,file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[]):
     if os.path.exists(file_path):
@@ -177,20 +181,27 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
         for j in auto_fit_columns:
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
+
+def Output_Config(project_name:str,layer_config:dict,file_new_directory:str):
+    with open(os.path.join(file_new_directory, f'{project_name}_layer_config.txt'),'w') as f:
+        f.write(str(layer_config))
+    pass
 if __name__ == '__main__':
-    from collections import Counter
-    counter = Counter()
-    counter.update({'A':1,'B':1})
-    counter.update({'A':1})
-    counter.update({'A':1})
-    counter.keys()
-    # data={
-    #     'A':1,
-    #     'B':2
-    # }
-    df = pd.DataFrame.from_dict(counter, orient='index',columns=['item'])
-    # df = pd.DataFrame(data=data,columns=['item'],index=data.keys())
-    print(df)
+    # from collections import Counter
+    l = []
+    if l[0] == 1:
+        print(1)
+    # counter.update({'A':1,'B':1})
+    # counter.update({'A':1})
+    # counter.update({'A':1})
+    # counter.keys()
+    # # data={
+    # #     'A':1,
+    # #     'B':2
+    # # }
+    # df = pd.DataFrame.from_dict(counter, orient='index',columns=['item'])
+    # # df = pd.DataFrame(data=data,columns=['item'],index=data.keys())
+    # print(df)
     # from functools import wraps
     # def logger(function):
     #     # @wraps(function)

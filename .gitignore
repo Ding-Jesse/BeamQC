@@ -1,0 +1,17 @@
+/File/*.exe
+
+/__pycache__
+
+*.pkl
+
+result/
+
+static/*.mp4
+
+flask_session/
+
+TEST/
+
+.vscode/
+
+config/__pycache__

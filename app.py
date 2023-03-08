@@ -6,7 +6,7 @@ from flask import Flask, request, redirect, url_for, render_template,send_from_d
 from flask_mail import Mail, Message
 from flask_session import Session
 from werkzeug.utils import secure_filename
-from main import main_functionV3, main_col_function,storefile
+from main import main_functionV3, main_col_function,storefile,Output_Config
 import functools
 import json
 import time
@@ -112,6 +112,17 @@ def upload_file():
             sml_beam_text_layer = request.form['sml_beam_text_layer']
             size_layer = request.form['size_layer']
             col_layer = request.form['col_layer']
+            layer_config = {
+                'line_layer':line_layer,
+                'text_layer':text_layer,
+                'block_layer':block_layer,
+                'floor_layer':floor_layer,
+                'big_beam_layer':big_beam_layer,
+                'big_beam_text_layer':big_beam_text_layer,
+                'sml_beam_layer':sml_beam_layer,
+                'size_layer':size_layer,
+                'col_layer':col_layer
+            }
 
             xs_col = request.form.get('xs-col')
             xs_beam = request.form.get('xs-beam')
@@ -126,26 +137,34 @@ def upload_file():
             print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
             progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
             if len(uploaded_beams) > 1: dwg_type = 'muti'
+            Output_Config(project_name=project_name,layer_config=layer_config,file_new_directory=app.config['OUTPUT_FOLDER'])
             for uploaded_beam in uploaded_beams:
                 if uploaded_beam and allowed_file(uploaded_beam.filename) and xs_beam:
-                    beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
-                    filename_beam = secure_filename(uploaded_beam.filename)
-                    beam_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_beam}'))
+                    beam_ok, beam_new_file,input_beam_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
+                    # filename_beam = secure_filename(uploaded_beam.filename)
+                    # beam_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_beam}'))
+                    # print(input_beam_file)
+                    beam_file.append(input_beam_file)
             for uploaded_column in uploaded_columns:
                 if uploaded_column and allowed_file(uploaded_column.filename) and xs_col:
-                    column_ok, column_new_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
-                    filename_column = secure_filename(uploaded_column.filename)
-                    column_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_column}'))
+                    column_ok, column_new_file,input_column_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
+                    # filename_column = secure_filename(uploaded_column.filename)
+                    # column_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_column}'))
+                    column_file.append(input_column_file)
             for uploaded_plan in uploaded_plans:
                 if uploaded_plan and allowed_file(uploaded_plan.filename):
-                    plan_ok, plan_new_file = storefile(uploaded_plan,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
-                    filename_plan = secure_filename(uploaded_plan.filename)
-                    plan_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}'))
-                    col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-column-{filename_plan}')
+                    plan_ok, plan_new_file,input_plan_file = storefile(uploaded_plan,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],project_name)
+                    # filename_plan = secure_filename(uploaded_plan.filename)
+                    # plan_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}'))
+                    plan_file.append(input_plan_file)
+                    col_plan_new_file = f'{os.path.splitext(plan_new_file)[0]}_column.dwg'
+                    print(col_plan_new_file)
+                    # col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-column-{uploaded_plan.filename}')
             if beam_ok and len(plan_file)==1:filenames.append(os.path.split(plan_new_file)[1])
             if len(beam_file)==1:filenames.append(os.path.split(beam_new_file)[1])
             if len(column_file)==1:filenames.append(os.path.split(column_new_file)[1])
             if column_ok and len(plan_file)==1:filenames.append(os.path.split(col_plan_new_file)[1])
+            # return
                 # filename_plan = secure_filename(uploaded_plan.filename)
                 # plan_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}')
                 # plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-{filename_plan}')
@@ -321,14 +340,16 @@ def count_beam():
             response.content_type = 'application/json'
             return response
         for uploaded_beam in uploaded_beams:
-            beam_ok, beam_new_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
-            beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_beam.filename)}')
+            beam_ok, beam_new_file,input_beam_file = storefile(uploaded_beam,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            # beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_beam.filename)}')
+            beam_filename = input_beam_file
             beam_filenames.append(beam_filename)
             temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
             print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
-            xlsx_ok, xlsx_new_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
-            xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            xlsx_ok, xlsx_new_file,input_xlsx_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            xlsx_filename = input_xlsx_file
             print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
             'rebar_data_layer':request.form['rebar_data_layer'].split('\r\n'), # 箭頭和鋼筋文字的塗層
@@ -389,14 +410,16 @@ def count_column():
             response.content_type = 'application/json'
             return response
         for uploaded_column in uploaded_columns:
-            column_ok, column_new_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
-            column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
+            column_ok, column_new_file,input_column_file = storefile(uploaded_column,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            # column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
+            column_filename = input_column_file
             column_filenames.append(column_filename)
             temp_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
             print(f'column_filename:{column_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
-            xlsx_ok, xlsx_new_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
-            xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            xlsx_ok, xlsx_new_file,input_xlsx_file = storefile(uploaded_xlsx,app.config['UPLOAD_FOLDER'],app.config['OUTPUT_FOLDER'],f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+            xlsx_filename = input_xlsx_file
             print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
             'text_layer':request.form['column_text_layer'].split('\r\n'),

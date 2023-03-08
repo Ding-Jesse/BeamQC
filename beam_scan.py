@@ -121,6 +121,7 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax 
     def index_0110(b:Beam):
+        if not b.rebar_table['bottom']['middle']:return f'無鋼筋資料'
         middle_number = b.rebar_table['bottom']['middle'][0].number
         if middle_number > 3:
             if b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Middle) > \
@@ -129,6 +130,7 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0111(b:Beam):
+        if not b.rebar_table['top']['left']:return f'無鋼筋資料'
         left_number = b.rebar_table['top']['left'][0].number
         if left_number > 3:
             if b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Left) > \
@@ -136,6 +138,7 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0112(b:Beam):
+        if not b.rebar_table['top']['right']:return f'無鋼筋資料'
         right_number = b.rebar_table['top']['right'][0].number
         if right_number > 3:
             if b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Right) > \
@@ -284,6 +287,7 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0221(b:Beam):
+        if not b.rebar_table['bottom']['middle']:return f'無鋼筋資料'
         middle_number = b.rebar_table['bottom']['middle'][0].number
         if middle_number > 3:
             if b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle) > \
