@@ -2,7 +2,7 @@ from multiprocessing.spawn import prepare
 import time
 import multiprocessing
 # from AutocadApi import read_plan,read_beam,write_beam,write_plan,error
-from plan_to_beam import read_plan,read_beam,write_beam,write_plan,write_result_log
+from plan_to_beam import run_plan,run_beam,output_error_list,write_beam,write_plan,write_result_log
 from werkzeug.utils import secure_filename
 import os
 import plan_to_col
@@ -13,14 +13,28 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment,Font,PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 
-def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_filename,big_file,sml_file,text_layer,block_layer,floor_layer,size_layer,big_beam_layer,big_beam_text_layer,sml_beam_layer,sml_beam_text_layer,task_name,progress_file,sizing,mline_scaling):
+def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_filename,project_name,output_directory,layer_config,progress_file,sizing,mline_scaling):
     start = time.time()
 
     plan_file = './result/plan.txt' # plan.txt的路徑
     beam_file = './result/beam.txt' # beam.txt的路徑
     excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
-    
+    big_file = os.path.join(output_directory,f'{project_name}-大梁.txt')
+    sml_file = os.path.join(output_directory,f'{project_name}-小梁.txt')
+    fbeam_file = os.path.join(output_directory,f'{project_name}-地梁.txt')
+    task_name = project_name
     date = time.strftime("%Y-%m-%d", time.localtime())
+
+    # layer_config = {
+    #     'text_layer':text_layer,
+    #     'block_layer':block_layer,
+    #     'floor_layer':floor_layer,
+    #     'big_beam_layer':big_beam_layer,
+    #     'big_beam_text_layer':big_beam_text_layer,
+    #     'sml_beam_layer':sml_beam_layer,
+    #     'size_layer':size_layer,
+    #     'sml_beam_text_layer':sml_beam_text_layer
+    # }
 
     multiprocessing.freeze_support()    
     pool = multiprocessing.Pool()
@@ -33,11 +47,10 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
     dic_beam = {}
 
     for plan_filename in plan_filenames:
-        res_plan.append(pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date)))
-    
+        res_plan.append(pool.apply_async(run_plan,(plan_filename, plan_new_filename, big_file, sml_file,layer_config , plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
     for beam_filename in beam_filenames:
-        res_beam.append(pool.apply_async(read_beam, (beam_filename, text_layer, beam_file, progress_file, sizing)))
-    
+        res_beam.append(pool.apply_async(run_beam,(beam_filename, layer_config['text_layer'], beam_file, progress_file, sizing)))
+        
     plan_drawing = 0
     if len(plan_filenames) == 1:
         plan_drawing = 1
@@ -53,7 +66,13 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
                 dic_plan = plan[1]
         else:
             end = time.time()
-            write_result_log(excel_file, task_name, '', '', '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            write_result_log(excel_file = excel_file, 
+                    task_name = task_name, 
+                    plan_result=[], 
+                    beam_result=[], 
+                    runtime = f'{round(end - start, 2)}(s)', 
+                    date= time.strftime("%Y-%m-%d %H:%M", time.localtime()), 
+                    other='plan failed')
             return
 
     for beam in res_beam:
@@ -64,15 +83,58 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
                 dic_beam = beam[1]
         else:
             end = time.time()
-            write_result_log(excel_file, task_name, '', '', '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            write_result_log(excel_file = excel_file, 
+                             task_name = task_name, 
+                             plan_result=[], 
+                             beam_result=[], 
+                             runtime = f'{round(end - start, 2)}(s)', 
+                             date= time.strftime("%Y-%m-%d %H:%M", time.localtime()), 
+                             other='beam failed')
             return
 
-    plan_result = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, plan_drawing, progress_file, sizing, mline_scaling)
-    beam_result = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, beam_drawing, progress_file, sizing)
-
+    plan_error_list,f_fbeam,f_big,f_sml = write_plan(plan_filename, 
+                                                     plan_new_filename, 
+                                                     set_plan, set_beam, 
+                                                     dic_plan, big_file, 
+                                                     sml_file, date, 
+                                                     plan_drawing, progress_file, 
+                                                     sizing, mline_scaling,
+                                                     fbeam_file=fbeam_file)
+    plan_result = output_error_list(error_list=plan_error_list,
+                                    f_fbeam=f_fbeam,
+                                    f_big=f_big,
+                                    f_sml=f_sml,
+                                    title_text='XS-BEAM',
+                                    set_item=set_plan,
+                                    progress_file=progress_file)
+    beam_error_list,f_fbeam,f_big,f_sml = write_beam(beam_filename, 
+                                                     beam_new_filename, 
+                                                     set_plan, 
+                                                     set_beam, 
+                                                     dic_beam, 
+                                                     big_file, 
+                                                     sml_file, 
+                                                     date, 
+                                                     beam_drawing, 
+                                                     progress_file, 
+                                                     sizing,
+                                                     fbeam_file=fbeam_file)
+    beam_result = output_error_list(error_list=beam_error_list,
+                                    f_sml=f_sml,
+                                    f_big=f_big,
+                                    f_fbeam=f_fbeam,
+                                    title_text='XS-PLAN',
+                                    set_item=set_beam,
+                                    progress_file=progress_file)
     end = time.time()
-    write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-
+    write_result_log(excel_file = excel_file,
+                     task_name= task_name,
+                     plan_result = plan_result,
+                     beam_result= beam_result,
+                     runtime= f'{round(end - start, 2)}(s)',
+                     date = time.strftime("%Y-%m-%d %H:%M", time.localtime()),
+                     other =  'none')
+    return [big_file,sml_file,fbeam_file]
 def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_filename,result_file,text_layer,line_layer,block_layer,floor_layer,col_layer,task_name,progress_file):
     start = time.time()
 
@@ -187,10 +249,60 @@ def Output_Config(project_name:str,layer_config:dict,file_new_directory:str):
         f.write(str(layer_config))
     pass
 if __name__ == '__main__':
-    # from collections import Counter
-    l = []
-    if l[0] == 1:
-        print(1)
+    print(os.path.basename(r'D:\Desktop\BeamQC\TEST\2023-0310\XS-BEAM(南基地).dwg'))
+    # beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\XS-BEAM(南基地).dwg']
+    # plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\岡山(南基地)-XS-PLAN-TEST.dwg']#sys.argv[2] # XS-PLAN的路徑
+    # beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
+    # plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
+    # big_file = r"D:\Desktop\BeamQC\TEST\big-4.txt"#sys.argv[5] # 大梁結果
+    # sml_file = r"D:\Desktop\BeamQC\TEST\sml-4.txt"#sys.argv[6] # 小梁結果
+    # fbeam_file = r"D:\Desktop\BeamQC\TEST\fb-4.txt"#sys.argv[6] # 地梁結果
+    # # 在beam裡面自訂圖層
+    # text_layer = 'S-RC'#sys.argv[7]
+
+    # # 在plan裡面自訂圖層
+    # block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
+    # floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
+    # size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
+    # big_beam_layer = 'S-RCBMG'#大樑複線圖層
+    # big_beam_text_layer = 'S-TEXTG'#大樑文字圖層
+    # sml_beam_layer = 'S-RCBMB'#小梁複線圖層
+    # sml_beam_text_layer = 'S-TEXTB'#小梁文字圖層
+    # task_name = 'temp'#sys.argv[13]
+
+    # progress_file = './result/tmp'#sys.argv[14]
+
+    # sizing = 1 # 要不要對尺寸
+    # mline_scaling = 1 # 要不要對複線寬度
+
+    # plan_file = './result/plan.txt' # plan.txt的路徑
+    # beam_file = './result/beam.txt' # beam.txt的路徑
+    # excel_file = './result/result_log.xlsx' # result_log.xlsx的路徑
+    
+    # date = time.strftime("%Y-%m-%d", time.localtime())
+    # layer_config = {
+    #     # 'line_layer':line_layer,
+    #     'text_layer':text_layer,
+    #     'block_layer':block_layer,
+    #     'floor_layer':floor_layer,
+    #     'big_beam_layer':big_beam_layer,
+    #     'big_beam_text_layer':big_beam_text_layer,
+    #     'sml_beam_layer':sml_beam_layer,
+    #     'size_layer':size_layer,
+    #     'sml_beam_text_layer':sml_beam_text_layer
+    #     # 'col_layer':col_layer
+    # }
+    # # from collections import Counter
+    # main_functionV3(beam_filenames=beam_filenames,
+    #                 beam_new_filename=beam_new_filename,
+    #                 plan_filenames=plan_filenames,
+    #                 plan_new_filename=plan_new_filename,
+    #                 project_name=task_name,
+    #                 output_directory=r"D:\Desktop\BeamQC\TEST\2023-0310",
+    #                 layer_config=layer_config,
+    #                 progress_file=progress_file,
+    #                 sizing=sizing,
+    #                 mline_scaling=mline_scaling)
     # counter.update({'A':1,'B':1})
     # counter.update({'A':1})
     # counter.update({'A':1})

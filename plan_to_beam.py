@@ -13,11 +13,10 @@ import time
 import multiprocessing
 import os
 import pandas as pd
-import sys
 from functools import cmp_to_key
 from math import inf
 import save_temp_file
-import traceback
+import json
 
 def turn_floor_to_float(floor): # 把字串變成小數 (因為1MF = 1.5, 所以不能用整數)
 
@@ -175,7 +174,7 @@ def mycmp(a, b): # a, b 皆為 tuple , 可能是 ((floor, beam), 0, correct) 或
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡B']
 beam_head1 = ['B', 'b', 'G', 'g']
-beam_head2 = ['FB','Fb','CB', 'CG', 'cb']
+beam_head2 = ['FB','FG','Fb','CB', 'CG', 'cb']
 
 def read_plan(plan_filename, layer_config:dict, progress_file, sizing, mline_scaling):
     def _cal_ratio(pt1,pt2):
@@ -338,7 +337,8 @@ def read_plan(plan_filename, layer_config:dict, progress_file, sizing, mline_sca
                         if 'Fbn' in object.TextString:
                             coor_to_size_beam.add((coor, 'Fb'))
                         if 'dbn' in object.TextString:
-                            coor_to_size_beam.add((coor, 'db'))
+                            coor_to_size_beam.add((coor, 'db')) #車道梁特別處理
+                            break
                         if 'Gn' in object.TextString and 'FGn' not in object.TextString:
                             if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Gn') >= 2):
                                 coor_to_size_beam.add((coor, 'CG'))
@@ -565,6 +565,7 @@ def read_plan(plan_filename, layer_config:dict, progress_file, sizing, mline_sca
 
 def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_data:dict,sizing:bool,mline_scaling:bool, big_file:str, sml_file:str, result_filename:str, progress_file:str,date,fbeam_file:str):
     error_count = 0
+    warning_list = []
     def get_distance(coor1,coor2):
         if isinstance(coor1,tuple) and isinstance(coor2,tuple):
             return abs(coor1[0][0]-coor2[0][0]) + abs(coor1[0][1]-coor2[0][1])
@@ -816,6 +817,7 @@ def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_da
                             set_plan.remove((floor, beam_name, '', beam_rotate))
                             dic_plan.pop((floor, beam_name, '', beam_rotate))
                             error(f'read_plan error in step 12: {floor} {beam_name} duplicate. ')
+                            warning_list.append(f'{floor} {beam_name} duplicate. ')
                         set_plan.add((floor, beam_name, beam_size, beam_rotate))
                         dic_plan[(floor, beam_name, beam_size, beam_rotate)] = full_coor
                         check_list.append((floor, beam_name))
@@ -824,6 +826,7 @@ def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_da
                             set_plan.add((floor, beam_name, '', beam_rotate))
                             dic_plan[(floor, beam_name, '', beam_rotate)] = full_coor
                             error(f'read_plan error in step 12: {floor} {beam_name} cannot find size. ')
+                            warning_list.append(f'{floor} {beam_name} cannot find size. ')
 
                 else: # 不用對尺寸
                     set_plan.add((floor, beam_name))
@@ -998,9 +1001,9 @@ def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_da
         f.write(f'{x}\n')
     f.close()
 
-    return (set_plan, dic_plan)
+    return (set_plan, dic_plan,warning_list)
 
-def read_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
+def read_beam(beam_filename, text_layer, progress_file):
     error_count = 0
     progress('開始讀取梁配筋圖', progress_file)
     # Step 1. 打開應用程式
@@ -1150,7 +1153,11 @@ def read_beam(beam_filename, text_layer, result_filename, progress_file, sizing)
         except:
             pass
         return False
-
+    doc_beam.Close(SaveChanges=False)
+    progress('梁配筋圖讀取進度 9/9', progress_file)
+    progress('梁配筋圖讀取完成。', progress_file)
+    return floor_to_beam_set
+def sort_beam(floor_to_beam_set:set,result_filename:str,progress_file:str,sizing:bool):
     # Step 8. 算出Bmax, Fmax, Rmax
     Bmax = 0
     Fmax = 0
@@ -1241,9 +1248,7 @@ def read_beam(beam_filename, text_layer, result_filename, progress_file, sizing)
                 set_beam.add((floor, beam))
                 dic_beam[(floor, beam)] = coor
 
-    doc_beam.Close(SaveChanges=False)
-    progress('梁配筋圖讀取進度 9/9', progress_file)
-    progress('梁配筋圖讀取完成。', progress_file)
+
 
     # beam.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w")
@@ -1410,7 +1415,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
         doc_plan.Close(SaveChanges=True)
     return error_list,f_fbeam,f_big,f_sml
     
-def output_error_list(error_list:list,f_big:TextIOWrapper,f_sml:TextIOWrapper,f_fbeam:TextIOWrapper,title_text = 'XS-BEAM',set_item = set):
+def output_error_list(error_list:list,f_big:TextIOWrapper,f_sml:TextIOWrapper,f_fbeam:TextIOWrapper,title_text = 'XS-BEAM',set_item = set,progress_file = './result/tmp'):
     beam_error_size_list = []
     beam_no_beam_list = []
     sbeam_error_size_list = []
@@ -1756,10 +1761,28 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
     # progress("標註梁配筋圖及輸出核對結果至'大梁.txt'和'小梁.txt'完成。", progress_file)
     return (error_list,f_fbeam,f_big,f_sml)
 
-def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other):
-    sheet_name = 'result_log'
-    new_list = [(task_name, plan_not_beam_big, plan_not_beam_sml, beam_not_plan_big, beam_not_plan_sml, date, runtime, other)]
-    dfNew=pd.DataFrame(new_list, columns = ['名稱' , 'in plan not in beam 大梁', 'in plan not in beam 小梁','in beam not in plan 大梁', 'in plan not In beam 小梁', '執行時間', '執行日期' , '備註'])
+def write_result_log(excel_file, task_name, plan_result, beam_result, date, runtime, other):
+    sheet_name = 'result_log_new'
+    if not plan_result:
+        plan_result = ['','','']
+    if not beam_result:
+        beam_result = ['','','']
+    plan_not_beam_big = plan_result[0]
+    plan_not_beam_sml = plan_result[1]
+    plan_not_beam_fb = plan_result[2]
+    beam_not_plan_big = beam_result[0]
+    beam_not_plan_sml = beam_result[1]
+    beam_not_plan_fb = beam_result[2]
+    new_list = [(task_name, 
+                 plan_not_beam_big, 
+                 plan_not_beam_sml, 
+                 plan_not_beam_fb,
+                 beam_not_plan_big, 
+                 beam_not_plan_sml, 
+                 beam_not_plan_fb,
+                 date, runtime, other)]
+    dfNew=pd.DataFrame(new_list, columns = ['名稱' , '平面圖大梁錯誤率', '平面圖小梁錯誤率','平面圖地梁錯誤率', '配筋圖大梁錯誤率'
+                                            , '配筋圖小梁錯誤率', '配筋圖地梁錯誤率', '執行時間', '執行日期' , '備註'])
     if os.path.exists(excel_file):
         writer = pd.ExcelWriter(excel_file,engine='openpyxl',mode='a', if_sheet_exists='replace')
         df = pd.read_excel(excel_file)  
@@ -1771,7 +1794,8 @@ def write_result_log(excel_file, task_name, plan_not_beam_big, plan_not_beam_sml
     writer.save()    
     return
 def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:dict, result_filename, progress_file, sizing, mline_scaling, date,fbeam_file):
-    if False:
+    start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    if True:
         plan_data = read_plan(plan_filename=plan_filename,
                 layer_config=layer_config,
                 progress_file=progress_file,
@@ -1780,7 +1804,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
         save_temp_file.save_pkl(data=plan_data,tmp_file='plan_to_beam_0307-2.pkl')
     else:
         plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
-    set_plan, dic_plan = sort_plan(plan_filename=plan_filename,
+    set_plan, dic_plan,warning_list = sort_plan(plan_filename=plan_filename,
               plan_new_filename=plan_new_filename,
               plan_data=plan_data,
               layer_config=layer_config,
@@ -1792,13 +1816,52 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
               result_filename=result_filename,
               progress_file=progress_file,
               date=date)
+    output_txt = f'{os.path.splitext(plan_new_filename)[0]}_result.txt'
+    end_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    output_progress_report(output_filename=output_txt,
+                           layer_config=layer_config,
+                           start_date=start_date,
+                           end_date=end_date,
+                           project_name=plan_filename,
+                           warning_list=warning_list,
+                           plan_filename=plan_filename,
+                           plan_data=plan_data)
     return (set_plan,dic_plan)
+def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
+    pass
+    if True: 
+        floor_to_beam_set = read_beam(beam_filename=beam_filename,text_layer=text_layer,progress_file=progress_file)
+        save_temp_file.save_pkl(data=floor_to_beam_set,tmp_file='beam_set.pkl')
+    else:
+        floor_to_beam_set = save_temp_file.read_temp('beam_set.pkl')
+    set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
+                                   result_filename=result_filename,
+                                   progress_file=progress_file,
+                                   sizing=sizing)
+    return (set_beam,dic_beam)
+
+def output_progress_report(output_filename:str,layer_config:dict,start_date,end_date,plan_data:dict,project_name:str,plan_filename:str,warning_list:list):
+    delimiter = '\n'
+    cad_data = {
+        '圖框':len(plan_data['block_coor_list']),
+        '平面圖梁編號':len(plan_data['coor_to_beam_set']),
+        '表格梁編號':len(plan_data['coor_to_size_beam']),
+        '表格梁尺寸':len(plan_data['coor_to_size_string'])
+    }
+    with open(output_filename,'w') as f:
+        f.write(f'專案名稱:{project_name}\n平面圖名稱:{plan_filename}\n開始時間:{start_date} \n結束時間:{end_date} \n')
+        f.write(f'圖層參數:{layer_config} \n')
+        f.write(f'CAD資料:{cad_data}]\n')
+        f.write(f'平面圖樓層:{plan_data["coor_to_floor_set"]}]\n')
+        f.write(f'==========================\n')
+        f.write(f'錯誤訊息:\n')
+        f.write(f'{delimiter.join(warning_list)}')
 
 error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    # plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
+    plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:/Desktop/BeamQC/TEST/INPUT\2023-03-03-15-45temp-temp.dwg"#sys.argv[1] # XS-BEAM的路徑
@@ -1812,18 +1875,18 @@ if __name__=='__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0307\頂福XS-BEAM-TEST.dwg']
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0307\頂福XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\XS-BEAM(南基地).dwg']
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\岡山(南基地)-XS-PLAN-TEST.dwg']#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"D:\Desktop\BeamQC\TEST\big-3.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\sml-3.txt"#sys.argv[6] # 小梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\fb-3.txt"#sys.argv[6] # 地梁結果
+    big_file = r"D:\Desktop\BeamQC\TEST\big-4.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"D:\Desktop\BeamQC\TEST\sml-4.txt"#sys.argv[6] # 小梁結果
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\fb-4.txt"#sys.argv[6] # 地梁結果
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = 'DEFPOINTS'#sys.argv[8] # 框框的圖層
+    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
@@ -1866,12 +1929,14 @@ if __name__=='__main__':
     dic_beam = {}
 
     for plan_filename in plan_filenames:
-        # res_plan.append(pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
+    #     # res_plan.append(pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
         res_plan.append(pool.apply_async(run_plan,(plan_filename, plan_new_filename, big_file, sml_file,layer_config , plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
     for beam_filename in beam_filenames:
-        res_beam.append(pool.apply_async(read_beam, (beam_filename, text_layer, beam_file, progress_file, sizing)))
+        # res_beam.append(pool.apply_async(read_beam, (beam_filename, text_layer, beam_file, progress_file, sizing)))
+        res_beam.append(pool.apply_async(run_beam,(beam_filename, layer_config['text_layer'], beam_file, progress_file, sizing)))
     # plan_filename = plan_filenames[0]
     # beam_filename = beam_filenames[0]
+    # run_plan(plan_filenames[0], plan_new_filename, big_file, sml_file,layer_config , plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)
     plan_drawing = 0
     if len(plan_filenames) == 1:
         plan_drawing = 1
@@ -1898,16 +1963,10 @@ if __name__=='__main__':
         else:
             end = time.time()
             write_result_log(excel_file, task_name, '', '', '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
-    save_temp_file.save_pkl({'set_plan':set_plan,'set_beam':set_beam,'dic_plan':dic_plan,'dic_beam':dic_beam},'plan_to_beam_0307-1.pkl')
-    temp = save_temp_file.read_temp('plan_to_beam_0307-1.pkl')
-    set_beam = temp['set_beam']
-    set_plan = temp['set_plan']
-    dic_plan = temp['dic_plan']
-    dic_beam = temp['dic_beam']
     plan_error_list,f_fbeam,f_big,f_sml = write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, big_file, sml_file, date, plan_drawing, progress_file, sizing, mline_scaling,fbeam_file=fbeam_file)
     plan_result = output_error_list(error_list=plan_error_list,f_fbeam=f_fbeam,f_big=f_big,f_sml=f_sml,title_text='XS-BEAM',set_item=set_plan)
     beam_error_list,f_fbeam,f_big,f_sml = write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, beam_drawing, progress_file, sizing,fbeam_file=fbeam_file)
     beam_result = output_error_list(error_list=beam_error_list,f_sml=f_sml,f_big=f_big,f_fbeam=f_fbeam,title_text='XS-PLAN',set_item=set_beam)
     end = time.time()
     print(end - start)
-    # write_result_log(excel_file, task_name, plan_result[0], plan_result[1], beam_result[0], beam_result[1], f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    write_result_log(excel_file = excel_file,task_name= task_name,plan_result = plan_result,beam_result= beam_result,runtime= f'{round(end - start, 2)}(s)',date = time.strftime("%Y-%m-%d %H:%M", time.localtime()),other =  'none')

@@ -80,31 +80,42 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
 
     # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間 
     flag = 0
+    layer_list = [floor_layer, col_layer]
+    non_trash_list = layer_list + [block_layer]
     while not flag and error_count <= 10:
         try:
             count = 0
             total = msp_plan.Count
-            layer_list = [floor_layer, col_layer]
-            non_trash_list = layer_list + [block_layer]
             progress(f'正在炸平面圖的圖塊及篩選判斷用的物件，平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
             for object in msp_plan:
-                count += 1
-                if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
-                    object.Explode()
-                if object.Layer not in non_trash_list:
-                    object.Delete()
-                if count % 1000 == 0:
-                    progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+                explode_fail = 0
+                while explode_fail <= 3:
+                    try:
+                        count += 1
+                        if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:#block 不會自動炸，需要手動修正
+                            object.Explode()
+                        if object.Layer not in non_trash_list:
+                            object.Delete()
+                        if count % 1000 == 0:
+                            progress(f'平面圖已讀取{count}/{total}個物件', progress_file) # 每1000個跳一次，確認有在動
+                        break
+                    except:
+                        explode_fail += 1
+                        time.sleep(5)
+                        try:
+                            msp_plan = doc_plan.Modelspace
+                        except:
+                            pass
             flag = 1
-            
+
         except Exception as e:
             error_count += 1
             time.sleep(5)
+            error(f'read_plan error in step 5: {e}, error_count = {error_count}.')
             try:
                 msp_plan = doc_plan.Modelspace
             except:
                 pass
-            error(f'read_plan error in step 5: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 5/11', progress_file)
 
     # Step 6. 重新匯入modelspace

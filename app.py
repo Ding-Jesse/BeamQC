@@ -113,7 +113,6 @@ def upload_file():
             size_layer = request.form['size_layer']
             col_layer = request.form['col_layer']
             layer_config = {
-                'line_layer':line_layer,
                 'text_layer':text_layer,
                 'block_layer':block_layer,
                 'floor_layer':floor_layer,
@@ -121,7 +120,7 @@ def upload_file():
                 'big_beam_text_layer':big_beam_text_layer,
                 'sml_beam_layer':sml_beam_layer,
                 'size_layer':size_layer,
-                'col_layer':col_layer
+                'sml_beam_text_layer':sml_beam_text_layer
             }
 
             xs_col = request.form.get('xs-col')
@@ -173,10 +172,19 @@ def upload_file():
                 # plan_ok = True
             if beam_ok and plan_ok:
                 # main function
-                txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
-                sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
-                main_functionV3(beam_file,plan_file,beam_new_file,plan_new_file,txt_file,sb_txt_file,text_layer,block_layer,floor_layer,size_layer,big_beam_layer,big_beam_text_layer,sml_beam_layer,sml_beam_text_layer,project_name,progress_file,sizing,mline_scaling)
-                filenames_beam = [f'{project_name}-{beam_type}.txt',f'{project_name}-{sbeam_type}.txt']
+                # txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
+                # sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
+                output_file = main_functionV3(beam_filenames = beam_file,
+                                plan_filenames = plan_file,
+                                beam_new_filename = beam_new_file,
+                                plan_new_filename = plan_new_file,
+                                output_directory = app.config['OUTPUT_FOLDER'],
+                                project_name = project_name,
+                                layer_config = layer_config,
+                                progress_file = progress_file,
+                                sizing = sizing,
+                                mline_scaling = mline_scaling)
+                filenames_beam = output_file
                 filenames.extend(filenames_beam) 
             if column_ok and plan_ok:
                 # main function
