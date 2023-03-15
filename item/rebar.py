@@ -49,17 +49,24 @@ def RebarDiameter(size="#3"):
     return _rebar_dia[size]
 
 if __name__ == '__main__':
-
-    class testclass:
-        def __init__(self,i) -> None:
-            self.val = i
-            pass
-        def add_value(self,i):
-            print('in map')
-            self.val += i 
-        def __str__(self) -> str:
-            return self.val
-            pass
+    
+    print(','.join(list(map(lambda r:r.text.replace('-','') ,[]))))
+    # import pandas as pd
+    # ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
+    # for i in range(10):
+    #     temp_df = pd.DataFrame(data={'樓層':1,'編號':1,'備註':1},index=['temp'])
+    #     ng_df = pd.concat([ng_df,temp_df],ignore_index=True)
+    # print(ng_df)
+    # class testclass:
+    #     def __init__(self,i) -> None:
+    #         self.val = i
+    #         pass
+    #     def add_value(self,i):
+    #         print('in map')
+    #         self.val += i 
+    #     def __str__(self) -> str:
+    #         return self.val
+    #         pass
     # def full2half(c: str) -> str:
     #     return chr(ord(c)-65248)
 
@@ -81,9 +88,3 @@ if __name__ == '__main__':
     #     print(temp['1'][i]) 
     #     pass
     # print(temp)
-    set1=set()
-    set2=set()
-    set1.add((1,2))
-    set2.add((1,2,1))
-    set1.update(set2)
-    print(set2)

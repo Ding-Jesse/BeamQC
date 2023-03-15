@@ -134,7 +134,7 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
                      runtime= f'{round(end - start, 2)}(s)',
                      date = time.strftime("%Y-%m-%d %H:%M", time.localtime()),
                      other =  'none')
-    return [big_file,sml_file,fbeam_file]
+    return [os.path.basename(big_file),os.path.basename(sml_file),os.path.basename(fbeam_file)]
 def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_filename,result_file,text_layer,line_layer,block_layer,floor_layer,col_layer,task_name,progress_file):
     start = time.time()
 

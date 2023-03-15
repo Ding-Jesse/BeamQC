@@ -15,3 +15,5 @@ TEST/
 .vscode/
 
 config/__pycache__
+
+item/__pycache__/*.pyc
