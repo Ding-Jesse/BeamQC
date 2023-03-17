@@ -148,7 +148,7 @@ def sort_beam_cad(msp_beam,layer_config:dict,entity_config:dict, progress_file='
     block_layer = layer_config['block_layer']
     beam_text_layer = layer_config['beam_text_layer']
     bounding_block_layer = layer_config['bounding_block_layer']
-    beam_layer = ['S-RC']
+    beam_layer = layer_config['rc_block_layer']
     print(f'temp_file:{temp_file}')
     coor_to_rebar_list = [] # (頭座標，尾座標，長度)
     coor_to_bend_rebar_list = [] # (直的端點，橫的端點，長度)
@@ -219,7 +219,7 @@ def sort_beam_cad(msp_beam,layer_config:dict,entity_config:dict, progress_file='
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2))
                     coor_to_tie_text_list.append((object.TextString, coor))
                 if object.Layer in beam_layer and object.ObjectName in ['AcDbPolyline']:
-                    if len(object.Coordinates) >= 10:
+                    if len(object.Coordinates) >= 8:
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
                         coor_to_rc_block_list.append(((coor1,coor2),''))
@@ -589,6 +589,9 @@ def combine_beam_boundingbox(coor_to_beam_list:list,coor_to_bounding_block_list:
     def _get_distance(pt1,pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
+    def _get_distance_block(pt1,pt2):
+        # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
+        return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])*3
     for beam in coor_to_beam_list:
         bounding_box = [block for block in coor_to_bounding_block_list if inblock(block[0],beam[1])]
         if len(bounding_box)==0:continue
@@ -602,9 +605,18 @@ def combine_beam_boundingbox(coor_to_beam_list:list,coor_to_bounding_block_list:
             left_bounding_box_list = [block for block in coor_to_rc_block_list if block[0][1][0] <= beam.get_coor()[0] and block[0][1][1] > beam.get_coor()[1]]
             right_bounding_box_list = [block for block in coor_to_rc_block_list if block[0][0][0] >= beam.get_coor()[0] and block[0][0][1] > beam.get_coor()[1]]
             if len(left_bounding_box_list) and len(right_bounding_box_list):
-                left_bounding_box = min(left_bounding_box_list,key=lambda b:_get_distance(b[0][0],beam.get_coor()))
-                right_bounding_box = min(right_bounding_box_list,key=lambda b:_get_distance(b[0][0],beam.get_coor()))
-                beam.set_bounding_box(left_bounding_box[0][1][0],beam.get_coor()[1],right_bounding_box[0][0][0],right_bounding_box[0][1][1])
+                left_bounding_box = min(left_bounding_box_list,key=lambda b:_get_distance_block(b[0][0],beam.get_coor()))
+                right_bounding_box = min(right_bounding_box_list,key=lambda b:_get_distance_block(b[0][0],beam.get_coor()))
+                top_bounding = max(left_bounding_box[0][0][1],left_bounding_box[0][1][1],right_bounding_box[0][0][1],right_bounding_box[0][1][1])
+                bot_bounding = min(left_bounding_box[0][0][1],left_bounding_box[0][1][1],right_bounding_box[0][0][1],right_bounding_box[0][1][1])
+                if abs(bot_bounding - top_bounding) < 30:
+                    pass
+                    left_bounding_box_list = [new_block for new_block in left_bounding_box_list if new_block[0][1][1] > top_bounding]
+                    right_bounding_box_list = [new_block for new_block in right_bounding_box_list if new_block[0][1][1] > top_bounding]
+                    new_left_bounding_box = min(left_bounding_box_list,key=lambda b:_get_distance_block(b[0][0],beam.get_coor()))
+                    new_right_bounding_box = min(right_bounding_box_list,key=lambda b:_get_distance_block(b[0][0],beam.get_coor()))
+                    top_bounding = max(new_left_bounding_box[0][0][1],new_left_bounding_box[0][1][1],new_right_bounding_box[0][0][1],new_right_bounding_box[0][1][1])
+                beam.set_bounding_box(left_bounding_box[0][1][0],beam.get_coor()[1],right_bounding_box[0][0][0],top_bounding)
         else:
             nearest_block = min(bounding_box,key=lambda b:_get_distance(b[0][0],beam.get_coor()))
             beam.set_bounding_box(nearest_block[0][0][0],nearest_block[0][0][1],nearest_block[0][1][0],nearest_block[0][1][1])
@@ -892,6 +904,7 @@ def count_rebar_in_block(coor_to_arrow_dic:dict,coor_to_block_list:list,coor_to_
 def summary_block_rebar_tie(coor_to_block_list):
     rebar_length_dic = {}
     tie_count_dic = {}
+    output_txt_2 = ''
     with open(output_txt_2, 'w',encoding= 'utf-8') as f:
     # f = open(output_txt, "w", encoding = 'utf-8')
     
@@ -1116,7 +1129,16 @@ def draw_rebar_line(class_beam_list:list[Beam],msp_beam:object,doc_beam:object,o
             line1 =msp_beam.AddPolyline(points1)
             line1.SetWidth(0, 1, 1)
             line1.color = 240
-
+        beam_bounding_box = beam.get_bounding_box()
+        block_list = [beam_bounding_box[0][0], beam_bounding_box[0][1], 0, 
+                      beam_bounding_box[1][0], beam_bounding_box[0][1], 0,
+                      beam_bounding_box[1][0], beam_bounding_box[1][1], 0, 
+                      beam_bounding_box[0][0], beam_bounding_box[1][1], 0,
+                      beam_bounding_box[0][0], beam_bounding_box[0][1], 0,]
+        points1 = vtFloat(block_list)
+        block =msp_beam.AddPolyline(points1)
+        block.SetWidth(0, 1, 1)
+        block.color = 50
             # coor_list2 = [beam.coor.x, beam.coor.y, 0, rebar.end_pt.x, rebar.end_pt.y, 0]
         # coor_list2 = [min_right_coor[0], min_right_coor[1], 0, x[1][0], x[1][1], 0]
     doc_beam.SaveAs(output_dwg)
@@ -1344,7 +1366,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0313 RCAD\XS-BEAM(北基地)-B-3.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0313 RCAD\2F-大梁.dwg"
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
@@ -1367,15 +1389,17 @@ if __name__=='__main__':
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
         'block_layer':['S-GRID'], # 框框的圖層
         'beam_text_layer' :['S-RC'], # 梁的字串圖層
-        'bounding_block_layer':['S-ARCH']
+        'bounding_block_layer':['S-ARCH'],
+        'rc_block_layer':['S-RC'] # 支承端圖層
     }
     # layer_config = {
-    #     'rebar_data_layer':'NBAR', # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer':'RBAR', # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer':'NBAR', # 箍筋文字圖層
-    #     'block_layer':'DEFPOINTS', # 框框的圖層
-    #     'beam_text_layer' :'TITLE', # 梁的字串圖層
-    #     'bounding_block_layer':'S-ARCH'
+    #     'rebar_data_layer':['NBAR'], # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer':['RBAR'], # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer':['NBAR'], # 箍筋文字圖層
+    #     'block_layer':['DEFPOINTS'], # 框框的圖層
+    #     'beam_text_layer' :['TITLE'], # 梁的字串圖層
+    #     'bounding_block_layer':['S-ARCH'],
+    #     'rc_block_layer':['OLINE']
     # }
     entity_type ={
         'rebar_layer':['AcDbPolyline'],
@@ -1404,7 +1428,7 @@ if __name__=='__main__':
     # print(l)
     start = time.time()
     msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0315_b-1-test.pkl')
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0317_2F_b.pkl')
     # count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0308_sb_fb_b.pkl',
                             #    project_name=project_name,output_folder=output_folder,template_name='公司2',floor_parameter_xlsx=floor_parameter_xlsx)
     class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0315_b-1-test.pkl'),progress_file=progress_file)

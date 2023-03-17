@@ -50,7 +50,7 @@ def RebarDiameter(size="#3"):
 
 if __name__ == '__main__':
     
-    print(','.join(list(map(lambda r:r.text.replace('-','') ,[]))))
+    print(','.join([]))
     # import pandas as pd
     # ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
     # for i in range(10):

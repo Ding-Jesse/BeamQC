@@ -177,7 +177,7 @@ class Beam:
         except:
             self.depth = 0
             self.width = 0
-        temp_serial = self.serial.split(' ')[1]
+        temp_serial = ''.join(self.serial.split(' ')[1:])
         match_obj = re.search(r'(.+)\((.*?)\)',temp_serial)
         if match_obj:
             serial = match_obj.group(1).replace(" ","")
