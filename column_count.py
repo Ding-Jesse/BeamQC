@@ -537,7 +537,7 @@ def output_col_excel(column_list:list[Column],output_folder:str,project_name:str
 def floor_parameter(column_list:list[Column],floor_parameter_xlsx:str):
     floor_list:list[Floor]
     floor_list = []
-    parameter_df = read_parameter_df(floor_parameter_xlsx,'參數表')
+    parameter_df = read_parameter_df(floor_parameter_xlsx,'柱參數表')
     parameter_df.set_index(['樓層'],inplace=True)
     for c in column_list:
         for floor in c.multi_floor:
@@ -550,7 +550,7 @@ def floor_parameter(column_list:list[Column],floor_parameter_xlsx:str):
     for floor_name in parameter_df.index:
         temp_floor = Floor(floor_name)
         floor_list.append(temp_floor)
-        temp_floor.set_prop(parameter_df.loc[floor_name])
+        temp_floor.set_column_prop(parameter_df.loc[floor_name])
         temp_floor.add_column([c for c in column_list if c.floor == temp_floor.floor_name])
     
     return floor_list

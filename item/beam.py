@@ -12,7 +12,7 @@ class Rebar:
     start_pt = Point
     end_pt = Point
     length = 0
-    text = 0
+    text:str
     number=0
     size = ''
     As = 0
@@ -40,6 +40,7 @@ class BeamType(Enum):
     FB = 'fbeam'
     Grider = 'beam'
     SB = 'sbeam'
+    Other = 'other'
 class Tie:
     # start_pt=Point
     count = 0
@@ -176,16 +177,18 @@ class Beam:
         except:
             self.depth = 0
             self.width = 0
-        temp_serial = self.serial.split(' ')[1]
+        temp_serial = ''.join(self.serial.split(' ')[1:])
         match_obj = re.search(r'(.+)\((.*?)\)',temp_serial)
         if match_obj:
             serial = match_obj.group(1).replace(" ","")
+            self.beam_type = BeamType.Other
             if re.search(r'^[B|G]',serial):
                 self.beam_type = BeamType.Grider
             if re.search(r'^F',serial):
                 self.beam_type = BeamType.FB
             if re.search(r'^b',serial):
-                self.beam_type = BeamType.SB 
+                self.beam_type = BeamType.SB
+            self.serial = serial 
     def get_loading(self,band_width):
         pass
         return self.floor_object.loading['SDL']* 0.1 * band_width + self.floor_object.loading['LL'] * 0.1* band_width + self.width * self.depth * 2.4 /1000 # t/m

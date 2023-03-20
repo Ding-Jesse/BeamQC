@@ -15,6 +15,8 @@ class Floor:
     coupler:dict[str,float]
     floor_name:str
     loading:dict[str,float]
+    is_seismic:bool
+    slab_height:dict[str,float]
     def __init__(self,floor_name):
         if floor_name[-1] != 'F':
             floor_name += 'F'
@@ -24,19 +26,31 @@ class Floor:
         self.beam_list = []
         self.material_list = {}
         self.overlap_option ={}
+        self.slab_height = {}
         self.concrete_count =defaultdict(lambda:0)
         self.beam_rebar_count = defaultdict(lambda:0)
         self.loading = defaultdict(lambda:0)
         self.coupler = {}
         self.formwork_count = 0
+        self.is_seismic = False
         pass
-    def set_prop(self,kwargs):
+
+    def set_beam_prop(self,kwargs):
+        self.material_list.update({'fc':kwargs["混凝土強度fc'(kgf/cm2)"]})
+        self.material_list.update({'fy':kwargs["鋼筋強度fy(kgf/cm2)"]})
+        self.loading.update({"SDL":kwargs["SDL(t/m2)"]})
+        self.loading.update({"LL":kwargs["LL(t/m2)"]})
+        self.is_seismic = kwargs["是否需耐震"] == "是"
+        self.slab_height.update({'top':kwargs["上版厚(cm)"]})
+        self.slab_height.update({'bot':kwargs["下版厚(cm)"]})
+        self.height = float(kwargs["樓高"])
+    def set_column_prop(self,kwargs):
         self.material_list.update({'fc':kwargs["混凝土強度fc'(kgf/cm2)"]})
         self.material_list.update({'fy':kwargs["鋼筋強度fy(kgf/cm2)"]})
         self.overlap_option.update({"tight_tie":kwargs["全段緊密"],"coupler":kwargs["續接器"],"overlap":kwargs["續接方式"]})
-        self.loading.update({"SDL":kwargs["SDL(t/m2)"]})
-        self.loading.update({"LL":kwargs["LL(t/m2)"]})
         self.height = float(kwargs["樓高"])
+        self.is_seismic = kwargs["是否需耐震"] == "是"
+
     def add_column(self,c_list:list[column.Column]):
         if not c_list:return
         for c in c_list:
