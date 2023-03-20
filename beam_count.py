@@ -1366,7 +1366,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0313 RCAD\2F-大梁.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0313 RCAD\XS-BEAM(南基地).dwg"
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
@@ -1428,10 +1428,10 @@ if __name__=='__main__':
     # print(l)
     start = time.time()
     msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0317_2F_b.pkl')
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0320-test.pkl')
     # count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0308_sb_fb_b.pkl',
                             #    project_name=project_name,output_folder=output_folder,template_name='公司2',floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0315_b-1-test.pkl'),progress_file=progress_file)
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0320-test.pkl'),progress_file=progress_file)
     create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
     draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
     print(f'Total Time:{time.time() - start}')

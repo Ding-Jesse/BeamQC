@@ -1875,8 +1875,8 @@ if __name__=='__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\XS-BEAM(南基地).dwg']
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\岡山(南基地)-XS-PLAN-TEST.dwg']#sys.argv[2] # XS-PLAN的路徑
+    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0320\2023-03-20-17-24O4 TEST-XS-Beam.dwg']
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0320\2023-03-20-17-24O4 TEST-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
     big_file = r"D:\Desktop\BeamQC\TEST\big-4.txt"#sys.argv[5] # 大梁結果
@@ -1886,7 +1886,7 @@ if __name__=='__main__':
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
+    block_layer = '0'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
