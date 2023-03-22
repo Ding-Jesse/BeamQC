@@ -6,6 +6,7 @@ from item.rebar import RebarInfo,RebarArea
 from item import floor
 from item.point import Point
 from enum import Enum
+commom_pattern = r'(,)|(、)'
 
 class Rebar:
     
@@ -75,6 +76,7 @@ class Beam:
     rebar_count:dict[str,float]
     tie_count:dict[str,float]
     floor_object:floor.Floor
+    multi_floor:list[str]
     serial = ''
     floor = ''
     depth = 0
@@ -91,6 +93,7 @@ class Beam:
     # coor = Point
     # bounding_box = (Point,Point)
     def __init__(self,serial,x,y):
+        self.beam_type = BeamType.Other
         self.coor = Point()
         self.bounding_box = (Point(),Point())
         self.start_pt = Point()
@@ -103,6 +106,7 @@ class Beam:
         self.rebar_count = {}
         self.tie_count = {}
         self.ng_message = []
+        self.multi_floor = []
         self.rebar={
             'top_first':[],
             'top_second':[],
@@ -140,6 +144,7 @@ class Beam:
         self.coor.x = x
         self.coor.y = y
         self.get_beam_info()
+
     def add_rebar(self,**kwargs):
         if 'add_up' in kwargs:
             if kwargs['add_up'] == 'bend':
@@ -165,8 +170,15 @@ class Beam:
         return (self.coor.x,self.coor.y)
     def get_beam_info(self):
         self.floor = self.serial.split(' ')[0]
+        if re.search(commom_pattern,self.floor):
+            sep = re.search(commom_pattern,self.floor).group(0)
+            for floor_text in self.floor.split(sep):
+                self.multi_floor.append(floor_text)
+            self.floor = self.multi_floor[0]
         if self.floor[-1] != 'F':
             self.floor += 'F'
+        temp_serial = ''.join(self.serial.split(' ')[1:])
+        self.serial = ''.join(self.serial.split(' ')[1:])
         matches= re.findall(r"\((.*?)\)",self.serial,re.MULTILINE)
         # if len(matches) == 0 or 'X' not in matches[0]:return
         if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE))==0:return
@@ -177,7 +189,7 @@ class Beam:
         except:
             self.depth = 0
             self.width = 0
-        temp_serial = ''.join(self.serial.split(' ')[1:])
+        # temp_serial = ''.join(self.serial.split(' ')[1:])
         match_obj = re.search(r'(.+)\((.*?)\)',temp_serial)
         if match_obj:
             serial = match_obj.group(1).replace(" ","")

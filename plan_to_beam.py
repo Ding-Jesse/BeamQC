@@ -435,7 +435,7 @@ def read_plan(plan_filename, layer_config:dict, progress_file, sizing, mline_sca
                         size = re.search(r'(\d+(x|X)\d+)',beam)
                         if size:
                             none_concat_size_text_list.append(((coor1, coor2),size.group(0)))
-                            continue
+                            break
                         else:
                             print(object.TextString)
                 if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader")\
@@ -1861,7 +1861,7 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
+    # plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:/Desktop/BeamQC/TEST/INPUT\2023-03-03-15-45temp-temp.dwg"#sys.argv[1] # XS-BEAM的路徑

@@ -38,6 +38,7 @@ class Column:
     formwork:float
     x_dict:dict[str,float]
     y_dict:dict[str,float]
+    ng_message:list[str]
     def __init__(self):
         # self.rebar_text = ''
         self.fc = 0
@@ -69,6 +70,7 @@ class Column:
         self.middle_tie = None
         self.rebar_count ={}
         self.floor_object = None
+        self.ng_message = []
     def set_border(self,list1:list,list2:list):
         left_bot = Point((list1[0],list2[2]))
         left_top = Point((list1[0],list2[3]))

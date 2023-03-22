@@ -103,7 +103,7 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
             new_row = pd.DataFrame(floor.rebar_count,index=[floor.floor_name])
             new_row_concrete = pd.DataFrame(floor.concrete_count,index=[floor.floor_name])
             new_row_coupler = pd.DataFrame(floor.coupler,index=[floor.floor_name])
-            new_row_formwork = pd.DataFrame(floor.formwork_count,index=[floor.floor_name])
+            new_row_formwork = pd.DataFrame({'模板':floor.formwork_count},index=[floor.floor_name])
 
             df = pd.concat([df, new_row], verify_integrity=True)
             concrete_df = pd.concat([concrete_df,new_row_concrete],verify_integrity=True)

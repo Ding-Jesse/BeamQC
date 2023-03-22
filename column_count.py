@@ -11,7 +11,7 @@ import copy
 from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error
 from item.column import Column
 from beam_count import vtPnt
-from column_scan import column_check,create_column_scan
+from column_scan import column_check,create_column_scan,output_detail_scan_report
 from main import OutputExcel
 from multiprocessing.pool import ThreadPool as Pool
 from item.floor import Floor,read_parameter_df,summary_floor_rebar
@@ -118,8 +118,8 @@ def read_column_cad(column_filename):
     #         error(f'read_col error in step 6: {e}, error_count = {error_count}.')
     return msp_column,doc_column
 
-def sort_col_cad(msp_column,doc_column,layer_config,temp_file):
-    layer_config = {key:value for key,value in layer_config}
+def sort_col_cad(msp_column,doc_column,layer_config:dict,temp_file):
+    layer_config = {key:value for key,value in layer_config.items()}
     text_layer = list(layer_config['text_layer'])
     line_layer = list(layer_config['line_layer'])
     rebar_text_layer = list(layer_config['rebar_text_layer'])
@@ -273,7 +273,7 @@ def sort_col_cad(msp_column,doc_column,layer_config,temp_file):
     except:
         pass
 
-def cal_column_rebar(data={},msp_column = None ,doc_column = None):
+def cal_column_rebar(data={}):
     # output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
     # output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
     # excel_filename = (
@@ -316,16 +316,17 @@ def create_report(output_column_list:list[Column],floor_parameter_xlsx='',output
     cs_list = create_column_scan()
     scan_df = column_check(column_list=output_column_list,column_scan_list=cs_list)
 
-    rebar_df,concrete_df,coupler_df = summary_floor_rebar(floor_list=floor_list,item_type='column')
+    rebar_df,concrete_df,coupler_df,formwork_df = summary_floor_rebar(floor_list=floor_list,item_type='column')
     column_df = output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
-
-    OutputExcel(df=scan_df,file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    ng_df = output_detail_scan_report(column_list=output_column_list)
+    OutputExcel(df_list=[scan_df],file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
             columns_list=range(2,len(scan_df.columns)+2),rows_list=range(2,len(scan_df.index)+2))
-    OutputExcel(df=rebar_df,file_path=excel_filename,sheet_name='鋼筋統計表')
-    OutputExcel(df=concrete_df,file_path=excel_filename,sheet_name='混凝土統計表')
-    OutputExcel(df=coupler_df,file_path=excel_filename,sheet_name='續接器統計表')
-    OutputExcel(df=column_df,file_path=excel_filename,sheet_name='柱統計表')
-
+    OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
+    OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
+    OutputExcel(df_list=[coupler_df],file_path=excel_filename,sheet_name='續接器統計表')
+    OutputExcel(df_list=[column_df],file_path=excel_filename,sheet_name='柱統計表')
+    OutputExcel(df_list=[formwork_df],file_path=excel_filename,sheet_name='模板統計表')
+    OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
     return excel_filename
 
 def concat_grid_line(line_list:list,start_line:list,overlap:function):
@@ -582,7 +583,7 @@ def sort_floor_column(floor_list:list[Floor],column_list:list[Column]):
 def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,temp_file:list[str],output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     def read_col_multi(column_filename,temp_file):
         msp_column,doc_column = read_column_cad(column_filename=column_filename)
-        sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file=temp_file)
+        sort_col_cad(msp_column=msp_column,doc_column=doc_column,layer_config=layer_config,temp_file=temp_file)
         output_column_list = cal_column_rebar(data=save_temp_file.read_temp(temp_file))
         return output_column_list
     start = time.time()# 開始測量執行時間
@@ -596,7 +597,10 @@ def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,te
         for job in jobs:
             output_column_list = job.get()
             column_list.extend(output_column_list)  
-    excel_filename = create_report(output_column_list=column_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name)
+    excel_filename = create_report(output_column_list=column_list,
+                                   floor_parameter_xlsx=floor_parameter_xlsx,
+                                   output_folder=output_folder,
+                                   project_name=project_name)
     end = time.time()
     print("執行時間：%f 秒" % (end - start))
     return os.path.basename(excel_filename)
@@ -612,12 +616,12 @@ def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',
 if __name__ == '__main__':
     col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-1.dwg'#sys.argv[1] # XS-COL的路徑
     column_filenames = [
-        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-1.dwg',#sys.argv[1] # XS-COL的路徑
-        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-2.dwg',#sys.argv[1] # XS-COL的路徑
-        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
-        r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
+        r'D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-COL.dwg',#sys.argv[1] # XS-COL的路徑
+        # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-2.dwg',#sys.argv[1] # XS-COL的路徑
+        # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
+        # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--test.xlsx'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0320\東仁\樓層參數_floor(1).xlsx'
     output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     project_name = 'test_column'
     # layer_config = {
@@ -656,17 +660,17 @@ if __name__ == '__main__':
         'rebar_layer':['S-REINFD'], # 鋼筋和箍筋的線的塗層
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
         'tie_layer':['S-REINF'], # 箍筋文字圖層
-        'block_layer':['Page'], # 框框的圖層
-        'column_rc_layer':'S-RC' #斷面圖層
+        'block_layer':['0'], # 框框的圖層
+        'column_rc_layer':['S-RC'] #斷面圖層
     }
     msp_column = None
     doc_column = None
     # msp_column,doc_column = read_column_cad(col_filename)
     # sort_col_cad(msp_column=msp_column,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl')
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\test_col_Elements_1_0215-0.pkl'))
+    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\test_col_Elements_1_0215-0.pkl'))
     # create_report(output_column_list=column_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
-    # count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='test_col_Elements_1_0215.pkl',
-    #                              output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
+    count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='temp_0322_COL_DonRen.pkl',
+                                 output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
 
         

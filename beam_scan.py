@@ -10,11 +10,16 @@ class BeamScan(ColumnScan):
     pass
 def beam_check(beam_list:list[Beam],beam_scan_list:list[BeamScan]):
     df:pd.DataFrame
-    df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in beam_scan_list])
+    enoc_list = [bs for bs in beam_scan_list if bs.index_score[('Index2','經濟性')]== 1]
+    code_list = [bs for bs in beam_scan_list if bs not in enoc_list]
+    enoc_df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in enoc_list])
+    code_df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in code_list])
     for b in beam_list:
-        for bs in beam_scan_list:
-            df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
-    return df
+        for bs in enoc_list:
+            enoc_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
+        for bs in code_list:
+            code_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
+    return enoc_df,code_df
 def output_detail_scan_report(beam_list:list[Beam]):
     ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
     for b in beam_list:
@@ -72,6 +77,7 @@ def set_check_scan(beam_scan:BeamScan):
     protect_layer = 7
     def index_0101(b:Beam):
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if 0.0025 * b.width > tie.Ash/tie.spacing:
                 b.ng_message.append(f'101:0.0025 * {b.width} > {tie.Ash}/{tie.spacing} => {0.0025 * b.width} > {tie.Ash/tie.spacing}')
                 return fail_syntax
@@ -154,12 +160,16 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0113(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if tie.spacing < 10 :
                 return fail_syntax
         return pass_syntax
     def index_0114(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if tie.spacing > 30 :
                 return fail_syntax
         return pass_syntax     
@@ -225,7 +235,9 @@ def set_check_scan(beam_scan:BeamScan):
             return fail_syntax
         return pass_syntax
     def index_0209(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             Vs = tie.Ash*2*b.fy*(b.depth - protect_layer)/tie.spacing
             if Vs > 2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer):
                 b.ng_message.append(f'0209:Vs:{Vs}  > 4Vc:{2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer)}')
@@ -306,12 +318,15 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0219(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
             if tie.spacing < 10:
                 return fail_syntax
         return pass_syntax
     def index_0220(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if tie.spacing > 30:
                 return fail_syntax
         return pass_syntax
