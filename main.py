@@ -265,9 +265,28 @@ def GetAllFiles(mypath:str):
     from os.path import isfile, join
     return glob.glob(join(mypath,"*.dwg"))
 if __name__ == '__main__':
-    l = '12F,11F'
+    floor_text = 'R1F-13F'
+    stash_pattern = r'(\w+)[-](\w+)'
     import re
-    print(re.search(r'(,)|(、)',l).group(0))
+    from numpy import arange
+    from plan_to_beam import turn_floor_to_float,turn_floor_to_string
+    def _get_floor_list(floor1:float,floor2:float):
+        if floor1 >= floor2:
+            l = list(range(int(floor1),int(floor2),-1))
+            l.append(floor2)
+            return l
+        else:
+            l = list(range(int(floor1),int(floor2),1))
+            l.append(floor2)
+            return l
+    floor_tuple = re.findall(stash_pattern ,floor_text)
+    for floors in floor_tuple:
+        first_floor = turn_floor_to_float(floor=floors[0])
+        second_floor = turn_floor_to_float(floor=floors[-1])
+        if first_floor and second_floor and max(first_floor,second_floor) < 100:
+            for floor_float in _get_floor_list(second_floor,first_floor):
+                print(turn_floor_to_string(floor_float))
+            print('1')
     # import glob
     # from os.path import isfile, join
     # mypath = r'D:\Desktop\BeamQC\TEST\2023-0320\東仁'

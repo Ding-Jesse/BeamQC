@@ -16,7 +16,7 @@ from beam_scan import create_beam_scan,beam_check,create_sbeam_scan,create_fbeam
 from main import OutputExcel,Add_Row_Title
 from multiprocessing.pool import ThreadPool as Pool
 from collections import Counter
-
+from item.rebar import isRebarSize,readRebarExcel
 error_file = './result/error_log.txt' # error_log.txt的路徑
 def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
@@ -339,9 +339,12 @@ def sort_arrow_to_word(coor_to_arrow_dic:dict,coor_to_data_list:list):
     new_coor_to_arrow_dic = {}
     head_to_data_dic = {} # 座標 -> (number, size)
     tail_to_data_dic = {}
+    text:str
+    
     #method 2
     for arrow_head,arrow_data in coor_to_arrow_dic.items():
         rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0]]
+        # rebar_data_temp = [r for r in rebar_data_temp if '-' in r[0] and r[0].split('-')[0].isdigit()]
         text,coor = min(rebar_data_temp,key=lambda rebar_text:_get_distance(arrow_data[0],rebar_text[1]))
         arrow_tail,rebar_length,line_coor = arrow_data
         if(abs(arrow_tail[1] - coor[1])> min_diff):
@@ -355,7 +358,13 @@ def sort_arrow_to_word(coor_to_arrow_dic:dict,coor_to_data_list:list):
             print(f'{text} not satisfied rule')
             continue
         number = text.split('-')[0]
-        size =  text.split('-')[1]    
+        size =  text.split('-')[1]  
+        if not isRebarSize(size):
+            print(size)
+            continue
+        if not number.isdigit():
+            print(text)
+            continue
         rebar_data.extend([number,size ,coor])
         new_coor_to_arrow_dic.update({arrow_head:(*rebar_data  ,)})
         head_to_data_dic.update({(line_coor[0] - rebar_length/2,line_coor[1]):{'number':number,'size':size}})
@@ -531,15 +540,15 @@ def count_tie(coor_to_tie_text_list:list,coor_to_block_list:list,coor_to_tie_lis
                     count *= int(size.split('#')[0])
                     size = f"#{size.split('#')[1]}"
                 coor_sorted_tie_list.append((tie,coor,tie_num,count,size))
-                for block in coor_to_block_list:
-                    if inblock(block=block[0],pt=coor):
-                        # print(f'pt:{coor} in block:{block[0]}')
-                        # y[2] 是該格的tie_count_dic: size -> number
-                        if size not in block[2]:
-                            block[2][size] = count
-                        else:
-                            block[2][size] += count
-                        break
+                # for block in coor_to_block_list:
+                #     if inblock(block=block[0],pt=coor):
+                #         # print(f'pt:{coor} in block:{block[0]}')
+                #         # y[2] 是該格的tie_count_dic: size -> number
+                #         if size not in block[2]:
+                #             block[2][size] = count
+                #         else:
+                #             block[2][size] += count
+                #         break
 
         else: # 沒算好自己算
             if not '@' in tie or not '#' in tie:
@@ -574,15 +583,15 @@ def count_tie(coor_to_tie_text_list:list,coor_to_block_list:list,coor_to_tie_lis
                 count *= int(size.split('#')[0])
                 size = f"#{size.split('#')[1]}"
             coor_sorted_tie_list.append((tie,coor,tie_num,count,size))
-            for block in coor_to_block_list:
-                if inblock(block=block[0],pt=coor):
-                    # print(f'pt:{coor} in block:{block[0]}')
-                    # y[2] 是該格的tie_count_dic: size -> number
-                    if size not in block[2]:
-                        block[2][size] = count
-                    else:
-                        block[2][size] += count
-                    break
+            # for block in coor_to_block_list:
+            #     if inblock(block=block[0],pt=coor):
+            #         # print(f'pt:{coor} in block:{block[0]}')
+            #         # y[2] 是該格的tie_count_dic: size -> number
+            #         if size not in block[2]:
+            #             block[2][size] = count
+            #         else:
+            #             block[2][size] += count
+            #         break
     return coor_sorted_tie_list
 
 ## 組合手動框選與梁文字
@@ -659,6 +668,10 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
     for arrow_head,arrow_item in coor_to_arrow_dic.items():
         tail_coor,length,line_head_coor,number,size,line_tail_coor= arrow_item
+        try:
+            number = int(number)
+        except:
+            continue
         bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=arrow_head)]
         if len(bounding_box) == 0:
             coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < arrow_head[1]]
@@ -953,7 +966,7 @@ def inblock(block:tuple,pt:tuple):
         return True
     return False
 
-def cal_beam_rebar(data={},progress_file=''):
+def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     # output_txt = f'{output_folder}{project_name}'
     if not data:
         return
@@ -980,6 +993,8 @@ def cal_beam_rebar(data={},progress_file=''):
         '梁圖框':len(coor_to_bounding_block_list)
     }
     class_beam_list = []
+
+    readRebarExcel(file_path=rebar_parameter_excel)
     # Step 8. 對應箭頭跟鋼筋
     coor_to_arrow_dic,no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,coor_to_rebar_list)
     progress('梁配筋圖讀取進度 8/15', progress_file)
@@ -1004,7 +1019,7 @@ def cal_beam_rebar(data={},progress_file=''):
     progress('梁配筋圖讀取進度 12/15', progress_file)
 
     # Step 14-15 和 16 為箍筋部分，14-15在算框框內的數量，16在算每個梁的總長度，兩者獨立
-    count_rebar_in_block(coor_to_arrow_dic,coor_to_block_list,coor_to_rebar_list_straight=coor_to_rebar_list_straight,coor_to_bend_rebar_list=coor_to_bend_rebar_list)
+    # count_rebar_in_block(coor_to_arrow_dic,coor_to_block_list,coor_to_rebar_list_straight=coor_to_rebar_list_straight,coor_to_bend_rebar_list=coor_to_bend_rebar_list)
     # Step 14. 算箍筋
     coor_sorted_tie_list = count_tie(coor_to_tie_text_list=coor_to_tie_text_list,coor_to_block_list=coor_to_block_list,coor_to_tie_list=coor_to_tie_list)
     add_beam_to_list(coor_to_beam_list=coor_to_beam_list,class_beam_list=class_beam_list)
@@ -1347,7 +1362,9 @@ def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='
     def read_beam_multi(beam_filename,temp_file):
         msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
         sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=get_template(template_name),temp_file=temp_file,progress_file=progress_file)
-        output_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(temp_file),progress_file=progress_file)
+        output_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(temp_file),
+                                                   progress_file=progress_file,
+                                                   rebar_parameter_excel=floor_parameter_xlsx)
         output_dwg = draw_rebar_line(class_beam_list=output_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
         return output_beam_list,cad_data,os.path.basename(output_dwg)
     start = time.time()# 開始測量執行時間
@@ -1402,31 +1419,32 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    # beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0313 RCAD\XS-BEAM(南基地).dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-BEAM(南基地).dwg"
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
-    beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-1.dwg",
-                      r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-2.dwg",
-                      r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-3.dwg",
-                      ]
-    beam_filenames = GetAllFiles(r"D:\Desktop\BeamQC\TEST\2023-0320\東仁")
+    # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-1.dwg",
+    #                   r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-2.dwg",
+    #                   r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-3.dwg",
+    #                   ]
+    # beam_filenames = GetAllFiles(r"D:\Desktop\BeamQC\TEST\2023-0324\東仁")
     #                 r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-sb-test.dwg",
     #                 r"D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-24-17-37-fb-test.dwg"]
     # beam_filename = r"D:\Desktop\BeamQC\TEST\DEMO\數量計算\Other-大梁\2F-大梁 - Rec.dwg"
     progress_file = './result/tmp'#sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
-    output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
+    # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\岡山'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0320\東仁\樓層參數_floor(1).xlsx'
-    project_name = '0322-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\岡山樓層參數_floor(1).xlsx'
+    project_name = '0327-test'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
         'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-        'block_layer':['S-GRID'], # 框框的圖層
+        'block_layer':['DwFm'], # 框框的圖層
         'beam_text_layer' :['S-RC'], # 梁的字串圖層
         'bounding_block_layer':['S-ARCH'],
         'rc_block_layer':['S-RC'] # 支承端圖層
@@ -1466,12 +1484,19 @@ if __name__=='__main__':
     # test(l)
     # print(l)
     start = time.time()
-    # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0320-test.pkl')
-    count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file='temp_0322_DonRen.pkl',
-                               project_name=project_name,output_folder=output_folder,template_name='公司2',floor_parameter_xlsx=floor_parameter_xlsx)
-    # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0322_DonRen-2.pkl'),progress_file=progress_file)
-    # create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
+    msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+    sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0327-South-Gangshan.pkl')
+    # count_beam_multiprocessing(beam_filenames=beam_filenames,
+    #                            layer_config=layer_config,
+    #                            temp_file='temp_0324_DonRen.pkl',
+    #                            project_name=project_name,
+    #                            output_folder=output_folder,
+    #                            template_name='公司2',
+    #                            floor_parameter_xlsx=floor_parameter_xlsx)
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0327-South-Gangshan.pkl'),
+                                              progress_file=progress_file,
+                                              rebar_parameter_excel= floor_parameter_xlsx)
+    create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
     # draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
     # print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])

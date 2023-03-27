@@ -1,13 +1,14 @@
 from __future__ import annotations
 import re
 import pandas as pd
+from plan_to_beam import turn_floor_to_float,turn_floor_to_string
 from typing import Tuple
-from item.rebar import RebarInfo,RebarArea
+from item.rebar import RebarInfo,RebarArea,RebarFy
 from item import floor
 from item.point import Point
 from enum import Enum
 commom_pattern = r'(,)|(、)'
-
+stash_pattern = r'(\w+)[-](\w+)'
 class Rebar:
     
     start_pt = Point
@@ -16,6 +17,7 @@ class Rebar:
     text:str
     number=0
     size = ''
+    fy = 0
     As = 0
     def __init__(self,start_pt,end_pt,length,number,size,text,add_up=''):
         self.start_pt = Point(start_pt)
@@ -27,6 +29,7 @@ class Rebar:
         self.start_pt.x -= self.length/2
         self.end_pt.x += self.length/2
         self.As = RebarArea(self.size) * self.number
+        self.fy = RebarFy(self.size)
     def __str__(self) -> str:
         return self.text
     def __repr__(self) -> str:
@@ -50,6 +53,7 @@ class Tie:
     text = 0
     spacing = 0
     Ash = 0
+    fy = 0
     def __init__(self,tie,coor,tie_num,count,size):
         self.start_pt = Point(coor)
         self.count = count
@@ -57,6 +61,7 @@ class Tie:
         self.text = tie
         self.tie_num = tie_num
         self.Ash = RebarArea(self.size) * 2
+        self.fy = RebarFy(self.size)
         match_obj = re.search(r'(\d*)([#|D]\d+)[@](\d+)',self.text)
         if match_obj:
             self.spacing = float(match_obj.group(3))
@@ -169,18 +174,41 @@ class Beam:
     def get_coor(self):
         return (self.coor.x,self.coor.y)
     def get_beam_info(self):
+        def _get_floor_list(floor1:float,floor2:float):
+            if floor1 >= floor2:
+                l = list(range(int(floor1),int(floor2),-1))
+                l.append(floor2)
+                return l
+            else:
+                l = list(range(int(floor1),int(floor2),1))
+                l.append(floor2)
+                return l
+        ## get beam floor
         self.floor = self.serial.split(' ')[0]
         if re.search(commom_pattern,self.floor):
             sep = re.search(commom_pattern,self.floor).group(0)
             for floor_text in self.floor.split(sep):
                 self.multi_floor.append(floor_text)
             self.floor = self.multi_floor[0]
+        if re.search(stash_pattern,self.floor):
+            try:
+                floor_tuple = re.findall(stash_pattern ,self.floor)
+                for floors in floor_tuple:
+                    first_floor = turn_floor_to_float(floor=floors[0])
+                    second_floor = turn_floor_to_float(floor=floors[-1])
+                    if first_floor and second_floor and max(first_floor,second_floor) < 100:
+                        for floor_float in _get_floor_list(second_floor,first_floor):
+                            self.multi_floor.append(turn_floor_to_string(floor_float))
+                        self.floor = self.multi_floor[0]
+            except:
+                pass
         if self.floor[-1] != 'F':
             self.floor += 'F'
+
+        ## get beam width/depth
         temp_serial = ''.join(self.serial.split(' ')[1:])
         self.serial = ''.join(self.serial.split(' ')[1:])
         matches= re.findall(r"\((.*?)\)",self.serial,re.MULTILINE)
-        # if len(matches) == 0 or 'X' not in matches[0]:return
         if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE))==0:return
         split_char = re.findall(r"X|x",matches[0])[0]
         try:
@@ -189,7 +217,8 @@ class Beam:
         except:
             self.depth = 0
             self.width = 0
-        # temp_serial = ''.join(self.serial.split(' ')[1:])
+        
+        ## get beam serial/type
         match_obj = re.search(r'(.+)\((.*?)\)',temp_serial)
         if match_obj:
             serial = match_obj.group(1).replace(" ","")
@@ -206,16 +235,21 @@ class Beam:
         return self.floor_object.loading['SDL']* 0.1 * band_width + self.floor_object.loading['LL'] * 0.1* band_width + self.width * self.depth * 2.4 /1000 # t/m
 
     def sort_beam_rebar(self):
-
+        min_diff = 30
         if not self.rebar_list:return
         self.start_pt.x = min(self.rebar_list,key=lambda rebar:rebar.start_pt.x).start_pt.x
         self.end_pt.x = max(self.rebar_list,key=lambda rebar:rebar.end_pt.x).end_pt.x
+        if self.end_pt.x - self.bounding_box[1].x > min_diff:
+            self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
         self.length = abs(self.start_pt.x - self.end_pt.x)
         self.rebar_list.sort(key=lambda rebar:(rebar.start_pt.y,rebar.start_pt.x))
         
         top_y = self.rebar_list[-1].start_pt.y
         bot_y = self.rebar_list[0].start_pt.y
         for rebar in self.rebar_list:
+            if rebar.end_pt.x > self.end_pt.x:
+                rebar.end_pt.x = self.end_pt.x
+                rebar.length -= abs(rebar.end_pt.x - self.end_pt.x)
             if bot_y == rebar.start_pt.y:
                 self.rebar['bot_first'].append(rebar)
             elif top_y == rebar.start_pt.y:

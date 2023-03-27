@@ -43,12 +43,18 @@ class Floor:
         self.is_seismic = kwargs["是否需耐震"] == "是"
         self.slab_height.update({'top':kwargs["上版厚(cm)"]})
         self.slab_height.update({'bot':kwargs["下版厚(cm)"]})
-        self.height = float(kwargs["樓高"])
+        try: 
+            self.height = float(kwargs["樓高"])
+        except:
+            self.height = 0
     def set_column_prop(self,kwargs):
         self.material_list.update({'fc':kwargs["混凝土強度fc'(kgf/cm2)"]})
         self.material_list.update({'fy':kwargs["鋼筋強度fy(kgf/cm2)"]})
         self.overlap_option.update({"tight_tie":kwargs["全段緊密"],"coupler":kwargs["續接器"],"overlap":kwargs["續接方式"]})
-        self.height = float(kwargs["樓高"])
+        try: 
+            self.height = float(kwargs["樓高"])
+        except:
+            self.height = 0
         self.is_seismic = kwargs["是否需耐震"] == "是"
 
     def add_column(self,c_list:list[column.Column]):
