@@ -622,13 +622,13 @@ def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',
 if __name__ == '__main__':
     col_filename = r'D:\Desktop\BeamQC\TEST\2023-0324\淡海\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
     column_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(北基地).dwg',#sys.argv[1] # XS-COL的路徑
-        r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
+        r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-XS-COL.dwg',#sys.argv[1] # XS-COL的路徑
+        # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\岡山樓層參數_floor(1).xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\岡山'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-floor.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓'
     project_name = 'test_Gangshan_column'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
@@ -677,13 +677,13 @@ if __name__ == '__main__':
     #              layer_config=layer_config,
     #              temp_file=r'temp_0324-Danhai_column.pkl')
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0324\東仁-2\東仁-2023-03-25-09-37-temp-col.pkl'),
-    #                                rebar_excel_path=floor_parameter_xlsx)
-    # create_report(output_column_list=column_list,
-    #               output_folder=output_folder,
-    #               project_name=project_name,
-    #               floor_parameter_xlsx=floor_parameter_xlsx)
-    count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='temp_0327_COL_Gangshan.pkl',
-                                 output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-temp-0.pkl'),
+                                   rebar_excel_path=floor_parameter_xlsx)
+    create_report(output_column_list=column_list,
+                  output_folder=output_folder,
+                  project_name=project_name,
+                  floor_parameter_xlsx=floor_parameter_xlsx)
+    # count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='temp_0327_COL_Gangshan.pkl',
+    #                              output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
 
         
