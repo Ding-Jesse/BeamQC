@@ -370,7 +370,10 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             
     progress('平面圖讀取進度 11/11', progress_file)
     progress('平面圖讀取完畢。', progress_file)
-    doc_plan.Close(SaveChanges=False)
+    try:
+        doc_plan.Close(SaveChanges=False)
+    except:
+        error('read_plan error in step 12: cannot close.')
 
     # plan.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w", encoding = 'utf-8')
@@ -552,7 +555,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
         tmp_set = set(new_coor_to_col_line_list)
         new_coor_to_col_line_list = list(tmp_set)
         new_coor_to_col_line_list.sort(key = lambda x: x[0])
-        for y in range(len(new_coor_to_col_line_list)): # 再看x座標被哪兩條線夾住
+        for y in range(len(new_coor_to_col_line_list)-1): # 再看x座標被哪兩條線夾住
             if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
                 col_to_line_set.add((col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
     progress('柱配筋圖讀取進度 8/10', progress_file)
@@ -910,20 +913,20 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
-    col_filenames = [r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg']
+    col_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-08-342023-0327 中德楠梓-2023-0324_XS-col.dwg']
     #print(col_filename.split(',')) 
     # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0303\XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\INPUT\XS-PLAN_new.dwg'#sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\INPUT\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-08-342023-0327 中德楠梓-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0327\XS-PLAN_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0327\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
     result_file = r'D:\Desktop\BeamQC\TEST\INPUT\column.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層
     text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
-    line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
+    line_layer = 'S-TABLE'#sys.argv[7] # 線的圖層
 
     # 在plan裡面自訂圖層
-    block_layer = '0'#sys.argv[8] # 圖框的圖層
+    block_layer = 'DEFPOINTS'#sys.argv[8] # 圖框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
 
@@ -944,30 +947,49 @@ if __name__=='__main__':
     # col_file_count = col_filename.count(',') + 1
     plan_file_count = len(plan_filenames)
     col_file_count = len(col_filenames)
-    res_plan = [None] * plan_file_count
-    res_col = [None] * col_file_count
+    res_plan = []
+    res_col = []
     set_plan = set()
     dic_plan = {}
     set_col = set()
     dic_col = {}
+    # read_col(col_filename = col_filenames[0], 
+    #          text_layer = text_layer, 
+    #          line_layer = line_layer, 
+    #          result_filename = result_file, 
+    #          progress_file = progress_file)
+    
+    for plan_dwg_file in plan_filenames:
+        res_plan.append(pool.apply_async(read_plan, (plan_dwg_file, floor_layer, col_layer, block_layer, plan_file, progress_file)))
 
-    for plan_file in plan_filenames:
-        res_plan.append(pool.apply_async(read_plan, (plan_file, floor_layer, col_layer, block_layer, plan_file, progress_file)))
-
-    for col_file in col_filenames:
-        res_col.append(pool.apply_async(read_col, (col_file, text_layer, line_layer, col_file, progress_file)))
-
-    for i in range(plan_file_count):
-        final_plan = res_plan[i].get()
-        set_plan = set_plan | final_plan[0]
-        if plan_file_count == 1 and col_file_count == 1:
-            dic_plan = final_plan[1]
-
-    for i in range(col_file_count):
-        final_col = res_col[i].get()
-        set_col = set_col | final_col[0]
-        if plan_file_count == 1 and col_file_count == 1:
-            dic_col = final_col[1]
+    for col_dwg_file in col_filenames:
+        res_col.append(pool.apply_async(read_col, (col_dwg_file, text_layer, line_layer, col_file, progress_file)))
+    
+    plan_drawing = 0
+    if len(plan_filenames) == 1:
+        plan_drawing = 1
+    col_drawing = 0
+    if len(col_filenames) == 1:
+        col_drawing = 1
+    
+    for plan in res_plan:
+        plan = plan.get()
+        if plan:
+            set_plan = set_plan | plan[0]
+            if plan_drawing:
+                dic_plan = plan[1]
+        else:
+            end = time.time()
+            write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    for col in res_col:
+        col = col.get()
+        if col:
+            set_col = set_col | col[0]
+            if col_drawing:
+                dic_col = col[1]
+        else:
+            end = time.time()
+            write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
 
     drawing = 0
     if plan_file_count == 1 and col_file_count == 1:
@@ -978,4 +1000,5 @@ if __name__=='__main__':
 
     end = time.time()
     print(end - start)
+
     # write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')

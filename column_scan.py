@@ -4,6 +4,7 @@ import pandas as pd
 import pprint
 from math import ceil
 from item.floor import read_parameter_df
+from item.rebar import RebarDiameter
 # from column_count import OutputExcel
 class ColumnScan:
     scan_index:int
@@ -21,7 +22,10 @@ class ColumnScan:
         self.ng_message = kwagrs[('NG Message', '')]
         self.index_score = {key:item for key,item in kwagrs.items() if 'Index' in key[0]}
     def check(self,column:Column):
-        return self.check_function(column)
+        try:
+            return self.check_function(column)
+        except:
+            return "Error"
     def set_check_function(self,func):
         self.check_function = func
 
@@ -64,6 +68,13 @@ def create_column_scan():
         set_check_scan(column_scan=column_scan)
         column_scan_list.append(column_scan)
     return column_scan_list
+def output_detail_scan_report(column_list:list[Column]):
+    ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
+    for b in column_list:
+        for ng_message in b.ng_message:
+            temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'備註':ng_message},index=[0])
+            ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
+    return ng_df
 def column_check(column_list:list[Column],column_scan_list:list[ColumnScan]):
     df:pd.DataFrame
     df = pd.DataFrame(columns=[str(c.floor)+str(c.serial) for c in column_list],index=[cs.ng_message for cs in column_scan_list])
@@ -94,9 +105,10 @@ def set_check_scan(column_scan:ColumnScan):
         Ach = (c.x_size - 8) * (c.y_size - 8)
         code15_3_X = 0.3 * (c.y_size - 8)* c.confine_tie.spacing * c.fc/c.fy * (Ag/Ach - 1)
         code15_4_X = 0.09 * (c.y_size - 8) * c.confine_tie.spacing * c.fc/c.fy
+        if not c.floor_object.is_seismic: code15_4_X = 0
         if x_Ash < code15_3_X or x_Ash <code15_4_X:
-            print(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.3Code = {code15_3_X}')
-            print(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.4Code = {code15_4_X}')
+            c.ng_message.append(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.3Code = 0.3 * ({c.y_size} - 8)* {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1)={code15_3_X}')
+            c.ng_message.append(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.4Code = 0.09 * ({c.y_size} - 8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} ={code15_4_X}')
             return fail_syntax
         return pass_syntax
     def index_0404(c:Column):
@@ -107,9 +119,10 @@ def set_check_scan(column_scan:ColumnScan):
         Ach = (c.x_size - 8) * (c.y_size - 8)
         code15_3_Y = 0.3 * (c.x_size-8) * c.confine_tie.spacing * c.fc/c.fy * (Ag/Ach - 1)
         code15_4_Y = 0.09 * (c.x_size-8) * c.confine_tie.spacing * c.fc/c.fy
+        if not c.floor_object.is_seismic: code15_4_Y = 0
         if y_Ash < code15_3_Y or y_Ash <code15_4_Y:
-            print(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.3Code = {code15_3_Y}')
-            print(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.4Code = {code15_4_Y}')
+            c.ng_message.append(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.3Code = 0.3 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1) ={code15_3_Y}')
+            c.ng_message.append(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.4Code = 0.09 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} = {code15_4_Y}')
             return fail_syntax
         return pass_syntax
     def index_0405(c:Column):
@@ -125,6 +138,28 @@ def set_check_scan(column_scan:ColumnScan):
         if c.y_tie <  ceil((len(c.x_row)-1)/2)-1:
             return fail_syntax
         return pass_syntax
+    def index_0408(c:Column):
+        if c.up_column and c.up_column.up_column:
+            first = max(c.rebar,key=lambda r:RebarDiameter(r.size)).size
+            second = max(c.up_column.rebar,key=lambda r:RebarDiameter(r.size)).size
+            third = max(c.up_column.up_column.rebar,key=lambda r:RebarDiameter(r.size)).size
+            if first != second and second != third:
+                return fail_syntax
+        return pass_syntax
+    def index_0409(c:Column):
+        rebar_dia = max(RebarDiameter(r.size) for r in c.rebar)
+        spacing = (c.x_size - c.protect_layer * 2 - 1.27 * 2 - len(c.x_row)*rebar_dia)/(len(c.x_row) - 1)
+        if spacing < 1.5*rebar_dia:
+            c.ng_message.append(f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{spacing} < 1.5db:{1.5*rebar_dia}')
+            return fail_syntax
+        return pass_syntax
+    def index_0410(c:Column):
+        rebar_dia = max(RebarDiameter(r.size) for r in c.rebar)
+        spacing = (c.y_size - c.protect_layer * 2 - 1.27 * 2 - len(c.y_row)*rebar_dia)/(len(c.y_row) - 1)
+        if spacing < 1.5*rebar_dia:
+            c.ng_message.append(f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{spacing} < 1.5db:{1.5*rebar_dia}')
+            return fail_syntax
+        return pass_syntax
     if column_scan.scan_index == 401:column_scan.set_check_function(index_0401)       
     if column_scan.scan_index == 402:column_scan.set_check_function(index_0402)
     if column_scan.scan_index == 403:column_scan.set_check_function(index_0403)
@@ -132,6 +167,9 @@ def set_check_scan(column_scan:ColumnScan):
     if column_scan.scan_index == 405:column_scan.set_check_function(index_0405)
     if column_scan.scan_index == 406:column_scan.set_check_function(index_0406)
     if column_scan.scan_index == 407:column_scan.set_check_function(index_0407)
+    if column_scan.scan_index == 408:column_scan.set_check_function(index_0408)
+    if column_scan.scan_index == 409:column_scan.set_check_function(index_0409)
+    if column_scan.scan_index == 410:column_scan.set_check_function(index_0410)
 # def read_scan_excel(read_file:str,sheet_name:str):
 #     return pd.read_excel(
 #         read_file, sheet_name=sheet_name,header=[0,1])

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Tuple
 import re
 import copy
-from item.rebar import RebarInfo,RebarArea
+from item.rebar import RebarInfo,RebarArea,RebarFy
 from item.point import Point
 from item import floor
 from math import pow,sqrt
@@ -38,6 +38,8 @@ class Column:
     formwork:float
     x_dict:dict[str,float]
     y_dict:dict[str,float]
+    ng_message:list[str]
+    protect_layer = 4
     def __init__(self):
         # self.rebar_text = ''
         self.fc = 0
@@ -69,6 +71,8 @@ class Column:
         self.middle_tie = None
         self.rebar_count ={}
         self.floor_object = None
+        self.ng_message = []
+        self.protect_layer = 4
     def set_border(self,list1:list,list2:list):
         left_bot = Point((list1[0],list2[2]))
         left_top = Point((list1[0],list2[3]))
@@ -179,7 +183,9 @@ class Column:
         for rebar,text in copy_bot_rebar:
             rebar.length = self.height/2
             self.rebar.append(rebar)
-        self.cal_coupler(copy_up_rebar,copy_bot_rebar)  
+        self.cal_coupler(copy_up_rebar,copy_bot_rebar) 
+        if self.rebar:
+            self.fy = max(self.rebar,key=lambda r:r.fy).fy 
         # copy_up_rebar.length = self.height/2
         # copy_bot_rebar.length = self.height/2
         # self.rebar.append(copy_up_rebar)
@@ -249,6 +255,7 @@ class Rebar:
     size = ''
     As = 0
     mass = 0
+    fy = 0
     def __init__(self,rebar_text:str):
         self.text = rebar_text
         match_obj = re.search(r'(\d+).([#|D]\d+)',self.text)
@@ -257,6 +264,7 @@ class Rebar:
             self.size = match_obj.group(2)
             self.mass = self.number * RebarInfo(self.size)
             self.As = self.number * RebarArea(self.size)
+            self.fy = RebarFy(self.size)
 class Tie:
     length = 0
     size = ''
@@ -264,6 +272,7 @@ class Tie:
     spacing = 0
     number = 0
     Ash = 0
+    fy = 0
     def __init__(self,tie_text:str,length:float):
         self.text = tie_text
         self.length = length
@@ -273,6 +282,7 @@ class Tie:
             self.size = match_obj.group(1)
             self.number = length//self.spacing
             self.Ash = RebarArea(self.size)
+            self.fy = RebarFy(self.size)
     def change_spacing(self,new_spacing:float):
         self.spacing = new_spacing
         self.number = self.length//self.spacing

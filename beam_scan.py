@@ -1,6 +1,6 @@
 from __future__ import annotations
 from column_scan import ColumnScan,rename_unnamed
-from item.beam import Beam,RebarType
+from item.beam import Beam,RebarType,Rebar,Tie
 from math import sqrt,ceil
 from item.rebar import RebarDiameter
 from item.floor import read_parameter_df
@@ -10,11 +10,16 @@ class BeamScan(ColumnScan):
     pass
 def beam_check(beam_list:list[Beam],beam_scan_list:list[BeamScan]):
     df:pd.DataFrame
-    df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in beam_scan_list])
+    enoc_list = [bs for bs in beam_scan_list if bs.index_score[('Index2','經濟性')]== 1]
+    code_list = [bs for bs in beam_scan_list if bs not in enoc_list]
+    enoc_df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in enoc_list])
+    code_df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in code_list])
     for b in beam_list:
-        for bs in beam_scan_list:
-            df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
-    return df
+        for bs in enoc_list:
+            enoc_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
+        for bs in code_list:
+            code_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
+    return enoc_df,code_df
 def output_detail_scan_report(beam_list:list[Beam]):
     ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
     for b in beam_list:
@@ -72,6 +77,7 @@ def set_check_scan(beam_scan:BeamScan):
     protect_layer = 7
     def index_0101(b:Beam):
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if 0.0025 * b.width > tie.Ash/tie.spacing:
                 b.ng_message.append(f'101:0.0025 * {b.width} > {tie.Ash}/{tie.spacing} => {0.0025 * b.width} > {tie.Ash/tie.spacing}')
                 return fail_syntax
@@ -79,7 +85,7 @@ def set_check_scan(beam_scan:BeamScan):
     def index_0102(b:Beam):
         clear_depth = (b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < b.depth * 4 and b.middle_tie:
-            if 0.0015 * b.width * clear_depth > b.middle_tie[0].As:
+            if 0.0015 * b.width * clear_depth > b.middle_tie[0].As*2:
                 b.ng_message.append(f'102:0.0015 * {b.width} * {clear_depth} > {b.middle_tie[0].As} => {0.0015 * b.width * clear_depth} > {b.middle_tie[0].As}')
                 return fail_syntax
         return pass_syntax
@@ -154,25 +160,37 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0113(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if tie.spacing < 10 :
                 return fail_syntax
         return pass_syntax
     def index_0114(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if tie.spacing > 30 :
                 return fail_syntax
         return pass_syntax     
-    def get_code_3_6(b:Beam):
-        code3_3 = 0.8*sqrt(b.fc)/b.fy*b.width*(b.depth-protect_layer)
-        code3_4 = 14/b.fy*b.width*(b.depth-protect_layer)
+    def get_code_3_6(b:Beam,rebar_type1:RebarType,rebar_type2:RebarType):
+        fy = b.fy
+        rebar_list = b.rebar_table[rebar_type1.value][rebar_type2.value]
+        if rebar_list:
+            fy = rebar_list[0].fy
+        code3_3 = 0.8*sqrt(b.fc)/fy*b.width*(b.depth-protect_layer)
+        code3_4 = 14/fy*b.width*(b.depth-protect_layer)
         return code3_3,code3_4
-    def get_code_15_4_2_1(b:Beam):
-        code15_4_2 = (b.fc + 100)/(4*b.fy)
+    def get_code_15_4_2_1(b:Beam,rebar_type1:RebarType,rebar_type2:RebarType):
+        fy = b.fy
+        rebar_list = b.rebar_table[rebar_type1.value][rebar_type2.value]
+        if rebar_list:
+            fy = rebar_list[0].fy
+        code15_4_2 = (b.fc + 100)/(4*fy)
         code15_4_2_1 = 0.025
         return code15_4_2 ,code15_4_2_1
     def index_0201(b:Beam):
-        code3_3 ,code3_4= get_code_3_6(b=b)
+        code3_3 ,code3_4= get_code_3_6(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Left)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Left)
         if rebar_As < code3_3 or rebar_As < code3_4:
             b.ng_message.append(f'0201:max(code3_3:{round(code3_3,2)}cm2 ,code3_4:{round(code3_4,2)}cm2) > 鋼筋總面積:{rebar_As}')
@@ -180,35 +198,35 @@ def set_check_scan(beam_scan:BeamScan):
         return pass_syntax
     def index_0202(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code3_3 ,code3_4= get_code_3_6(b=b)
+        code3_3 ,code3_4= get_code_3_6(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle)
         if rebar_As < code3_3 or rebar_As < code3_4:
             b.ng_message.append(f'0202:max(code3_3:{round(code3_3,2)}cm2 ,code3_4:{round(code3_4,2)}cm2) > 鋼筋總面積:{rebar_As}')
             return fail_syntax
         return pass_syntax
     def index_0203(b:Beam):
-        code3_3 ,code3_4= get_code_3_6(b=b)
+        code3_3 ,code3_4= get_code_3_6(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Right)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Right)
         if  rebar_As < code3_3 or rebar_As < code3_4:
             b.ng_message.append(f'0203:max(code3_3:{round(code3_3,2)}cm2 ,code3_4:{round(code3_4,2)}cm2) > 鋼筋總面積:{rebar_As}')
             return fail_syntax
         return pass_syntax
     def index_0204(b:Beam):
-        code3_3 ,code3_4= get_code_3_6(b=b)
+        code3_3 ,code3_4= get_code_3_6(b=b,rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Left)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Left)
         if  rebar_As < code3_3 or rebar_As < code3_4:
             b.ng_message.append(f'0204:max(code3_3:{round(code3_3,2)}cm2 ,code3_4:{round(code3_4,2)}cm2) > 鋼筋總面積:{rebar_As}')
             return fail_syntax
         return pass_syntax
     def index_0205(b:Beam):
-        code3_3 ,code3_4= get_code_3_6(b=b)
+        code3_3 ,code3_4= get_code_3_6(b=b,rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Middle)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Middle)
         if  rebar_As < code3_3 or rebar_As < code3_4:
             b.ng_message.append(f'0205:max(code3_3:{round(code3_3,2)}cm2 ,code3_4:{round(code3_4,2)}cm2) > 鋼筋總面積:{rebar_As}')
             return fail_syntax
         return pass_syntax
     def index_0206(b:Beam):
-        code3_3 ,code3_4= get_code_3_6(b=b)
+        code3_3 ,code3_4= get_code_3_6(b=b,rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Right)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Right)
         if  rebar_As < code3_3 or rebar_As < code3_4:
             b.ng_message.append(f'0206:max(code3_3:{round(code3_3,2)}cm2 ,code3_4:{round(code3_4,2)}cm2) > 鋼筋總面積:{rebar_As}')
@@ -225,8 +243,10 @@ def set_check_scan(beam_scan:BeamScan):
             return fail_syntax
         return pass_syntax
     def index_0209(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
-            Vs = tie.Ash*2*b.fy*(b.depth - protect_layer)/tie.spacing
+            if tie is None:continue
+            Vs = tie.Ash*2*tie.fy*(b.depth - protect_layer)/tie.spacing
             if Vs > 2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer):
                 b.ng_message.append(f'0209:Vs:{Vs}  > 4Vc:{2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer)}')
                 return fail_syntax
@@ -234,8 +254,9 @@ def set_check_scan(beam_scan:BeamScan):
     def index_0210(b:Beam):
         for pos,rebar_list in b.rebar.items():
             for rebar in rebar_list:
+                if rebar.number <= 1 : continue
                 spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
-                if spacing < RebarDiameter(rebar.size):
+                if spacing < RebarDiameter(rebar.size) or spacing < 2.5:
                     return fail_syntax
         return pass_syntax
     def index_0211(b:Beam):
@@ -246,7 +267,7 @@ def set_check_scan(beam_scan:BeamScan):
         return pass_syntax
     def index_0212(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b)
+        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Left)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Left)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1 :
             b.ng_message.append(f'0212:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
@@ -254,7 +275,7 @@ def set_check_scan(beam_scan:BeamScan):
         return pass_syntax
     def index_0213(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b)
+        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle)
         if rebar_As/(b.width * (b.depth - protect_layer))> code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(f'0213:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
@@ -262,7 +283,7 @@ def set_check_scan(beam_scan:BeamScan):
         return pass_syntax
     def index_0214(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b)
+        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Left)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Left)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(f'0214:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
@@ -270,21 +291,21 @@ def set_check_scan(beam_scan:BeamScan):
         return pass_syntax
     def index_0215(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b)
+        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b,rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Left)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Left)
         if rebar_As/(b.width * (b.depth - protect_layer))> code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             return fail_syntax
         return pass_syntax
     def index_0216(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b)
+        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b,rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Middle)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Middle)
         if rebar_As/(b.width * (b.depth - protect_layer))> code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             return fail_syntax
         return pass_syntax
     def index_0217(b:Beam):
         if not b.floor_object.is_seismic:return "不檢核此項"
-        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b)
+        code15_4_2 ,code15_4_2_1 = get_code_15_4_2_1(b=b,rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Right)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Right)
         if rebar_As/(b.width * (b.depth - protect_layer))> code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             return fail_syntax
@@ -306,12 +327,15 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0219(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
             if tie.spacing < 10:
                 return fail_syntax
         return pass_syntax
     def index_0220(b:Beam):
+        if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
+            if tie is None:continue
             if tie.spacing > 30:
                 return fail_syntax
         return pass_syntax
@@ -329,10 +353,21 @@ def set_check_scan(beam_scan:BeamScan):
             if 0.0015 * b.width * 1.5 < b.middle_tie[0].As:
                 return fail_syntax
         return pass_syntax
+    def index_0223(b:Beam):
+        for rebar_type1 in [RebarType.Top.value,RebarType.Bottom.value]:
+            for rebar_type2 in [RebarType.Right.value,RebarType.Middle.value,RebarType.Left.value]:
+                if b.rebar_table[rebar_type1][rebar_type2]:
+                    rebar = b.rebar_table[rebar_type1][rebar_type2][0]
+                    spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
+                    if spacing < 1.5 * RebarDiameter(rebar.size):
+                        b.ng_message.append(f'{rebar.text} : 間距為{spacing} cm < 1.5db :{1.5 * RebarDiameter(rebar.size)}')
+                        return fail_syntax
+        return pass_syntax
+
     def index_0301(b:Beam):
         return index_0201(b=b)
     def index_0302(b:Beam):
-        code3_3,code3_4 = get_code_3_6(b=b)
+        code3_3,code3_4 = get_code_3_6(b=b,rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Top,rebar_type2=RebarType.Middle)
         if  rebar_As < code3_3 or rebar_As < code3_4:
             return fail_syntax
@@ -368,10 +403,21 @@ def set_check_scan(beam_scan:BeamScan):
         L = b.length
         wu = b.get_loading(band_width=band_width)
         rebar_As = b.get_rebar_table(rebar_type1=RebarType.Bottom,rebar_type2=RebarType.Middle)
-        if 0.6*(1/8)*wu*L**2 >  rebar_As*b.fy*(b.depth - protect_layer):
+        if rebar_As == 0:return '無鋼筋資料'
+        rebar_fy = b.rebar_table[RebarType.Bottom.value][RebarType.Middle.value][0].fy
+        if 0.6*(1/8)*wu*L**2 >  rebar_As*rebar_fy*(b.depth - protect_layer):
             return fail_syntax
         return pass_syntax
-    
+    def index_0313(b:Beam):
+        for rebar_type1 in [RebarType.Top.value,RebarType.Bottom.value]:
+            for rebar_type2 in [RebarType.Right.value,RebarType.Middle.value,RebarType.Left.value]:
+                if b.rebar_table[rebar_type1][rebar_type2]:
+                    rebar = b.rebar_table[rebar_type1][rebar_type2][0]
+                    spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
+                    if spacing < 1.2 * RebarDiameter(rebar.size):
+                        b.ng_message.append(f'{rebar.text} : 間距為{spacing} cm < 1.5db :{1.5 * RebarDiameter(rebar.size)}')
+                        return fail_syntax
+        return pass_syntax
     if beam_scan.scan_index == 201:beam_scan.set_check_function(index_0201)
     if beam_scan.scan_index == 202:beam_scan.set_check_function(index_0202)
     if beam_scan.scan_index == 203:beam_scan.set_check_function(index_0203)
@@ -394,6 +440,7 @@ def set_check_scan(beam_scan:BeamScan):
     if beam_scan.scan_index == 220:beam_scan.set_check_function(index_0220)
     if beam_scan.scan_index == 221:beam_scan.set_check_function(index_0221)
     if beam_scan.scan_index == 222:beam_scan.set_check_function(index_0222)
+    if beam_scan.scan_index == 223:beam_scan.set_check_function(index_0223)
 
     if beam_scan.scan_index == 101:beam_scan.set_check_function(index_0101)
     if beam_scan.scan_index == 102:beam_scan.set_check_function(index_0102)
@@ -422,3 +469,4 @@ def set_check_scan(beam_scan:BeamScan):
     if beam_scan.scan_index == 310:beam_scan.set_check_function(index_0310)
     if beam_scan.scan_index == 311:beam_scan.set_check_function(index_0311)
     if beam_scan.scan_index == 312:beam_scan.set_check_function(index_0312)
+    if beam_scan.scan_index == 313:beam_scan.set_check_function(index_0313)

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from multiprocessing.spawn import prepare
 import time
 import multiprocessing
@@ -205,7 +206,7 @@ def storefile(file,file_directory,file_new_directory,project_name):
     file_ok = True
     return file_ok , file_new_name,save_file
 
-def OutputExcel(df:pd.DataFrame,file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[]):
+def OutputExcel(df_list:list[pd.DataFrame],file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[],df_spacing = 0 ):
     if os.path.exists(file_path):
         book = load_workbook(file_path)
         writer = pd.ExcelWriter(file_path, engine='openpyxl') 
@@ -213,8 +214,11 @@ def OutputExcel(df:pd.DataFrame,file_path,sheet_name,auto_fit_columns=[],auto_fi
         # sheet = book[sheet_name]
         # sheet.column_dimensions['A'] =ColumnDimension(sheet,'L',bestFit=True)
     else:
-        writer = pd.ExcelWriter(file_path, engine='xlsxwriter') 
-    df.to_excel(writer,sheet_name=sheet_name)
+        writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
+    row = 0
+    for df in df_list: 
+        df.to_excel(writer,sheet_name=sheet_name,startrow=row)
+        row += len(df.index) + df_spacing
     writer.save()
 
     book = load_workbook(file_path)
@@ -243,13 +247,50 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
         for j in auto_fit_columns:
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
-
+def Add_Row_Title(file_path:str,sheet_name:str,i:int,j:int,title_text:str,font_size = 12):
+    book = load_workbook(file_path)
+    writer = pd.ExcelWriter(file_path, engine='openpyxl') 
+    writer.book = book
+    sheet = book[sheet_name]
+    sheet.cell(i,j).value = title_text
+    sheet.cell(i,j).alignment = Alignment(vertical='center',wrap_text=True,horizontal='center')
+    sheet.cell(i,j).font = Font(name='Calibri',size= font_size)
+    writer.save()
 def Output_Config(project_name:str,layer_config:dict,file_new_directory:str):
     with open(os.path.join(file_new_directory, f'{project_name}_layer_config.txt'),'w') as f:
         f.write(str(layer_config))
     pass
+def GetAllFiles(mypath:str):
+    import glob
+    from os.path import isfile, join
+    return glob.glob(join(mypath,"*.dwg"))
 if __name__ == '__main__':
-    print(os.path.basename(r'D:\Desktop\BeamQC\TEST\2023-0310\XS-BEAM(南基地).dwg'))
+    floor_text = 'R1F-13F'
+    stash_pattern = r'(\w+)[-](\w+)'
+    import re
+    from numpy import arange
+    from plan_to_beam import turn_floor_to_float,turn_floor_to_string
+    def _get_floor_list(floor1:float,floor2:float):
+        if floor1 >= floor2:
+            l = list(range(int(floor1),int(floor2),-1))
+            l.append(floor2)
+            return l
+        else:
+            l = list(range(int(floor1),int(floor2),1))
+            l.append(floor2)
+            return l
+    floor_tuple = re.findall(stash_pattern ,floor_text)
+    for floors in floor_tuple:
+        first_floor = turn_floor_to_float(floor=floors[0])
+        second_floor = turn_floor_to_float(floor=floors[-1])
+        if first_floor and second_floor and max(first_floor,second_floor) < 100:
+            for floor_float in _get_floor_list(second_floor,first_floor):
+                print(turn_floor_to_string(floor_float))
+            print('1')
+    # import glob
+    # from os.path import isfile, join
+    # mypath = r'D:\Desktop\BeamQC\TEST\2023-0320\東仁'
+    # print(type(glob.glob(join(mypath,"*.dwg"))))
     # beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\XS-BEAM(南基地).dwg']
     # plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0310\岡山(南基地)-XS-PLAN-TEST.dwg']#sys.argv[2] # XS-PLAN的路徑
     # beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑

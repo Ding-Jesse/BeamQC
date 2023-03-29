@@ -19,6 +19,11 @@
     <input type="text" id="password" name="password" placeholder="請輸入驗證碼" required >
 </div>
 <button id="checkcode">確認驗證碼</button>
+<div class="item">
+    <labe>管理者登入</label>
+    <input type="text" id="admin" name="admin" placeholder="請輸入驗證碼" required >
+</div>
+<button id="check_admin">管理者登入</button>
 </body>
 <script>
     $("#sendtext").click(
@@ -65,6 +70,30 @@
                         window.location.replace("/tool2");
                     },
                     error:(data)=>{
+                        alert(data.validate)
+                    },
+                    dataType:"json"
+                }
+            );
+        }
+    );
+    $("#check_admin").click(
+        function(){
+            var password_number = document.getElementById('admin').value;
+            $.ajax(
+                {
+                    type:"POST",
+                    url:"/admin_login",
+                    data:{
+                        'user_code':password_number
+                    },
+                    success:(data)=>{
+                        console.log(data)
+                        alert(data.validate);
+                        window.location.replace("/tool2");
+                    },
+                    error:(data)=>{
+                        console.log(data.responseJSON.validate)
                         alert(data.validate)
                     },
                     dataType:"json"

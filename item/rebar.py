@@ -1,4 +1,5 @@
-
+import pandas as pd
+# import item.floor
 
 _rebar = {
     "#3":0.957,
@@ -36,21 +37,59 @@ _rebar_dia = {
     "10":3.226,
     "11":3.581
 }
+rebar_dict = {}
 
 def RebarInfo(size="#3"):
-    if "(E.F)" in size:return _rebar[size.replace("(E.F)","").replace(" ","")]*2
-    if "E.F" in size:return _rebar[size.replace("E.F","").replace(" ","")]*2
+    if "(E.F)" in size:
+        size = size.replace("(E.F)","").replace(" ","")
+    if "E.F" in size:
+        size = size.replace("E.F","").replace(" ","")
+    global rebar_dict
+    if size in rebar_dict:
+        return rebar_dict[size]['重量（kg/m）'] /100 * 1000
     return _rebar[size]*7.85
 def RebarArea(size="#3"):
-    if "(E.F)" in size:return _rebar[size.replace("(E.F)","").replace(" ","")]*2
-    if "E.F" in size:return _rebar[size.replace("E.F","").replace(" ","")]*2
+    if "(E.F)" in size:
+        size = size.replace("(E.F)","").replace(" ","")
+    if "E.F" in size:
+        size = size.replace("E.F","").replace(" ","")
+    global rebar_dict
+    if size in rebar_dict:
+        return rebar_dict[size]['截面積（cm²）']
+    # if "(E.F)" in size:return _rebar[size.replace("(E.F)","").replace(" ","")]*2
+    # if "E.F" in size:return _rebar[size.replace("E.F","").replace(" ","")]*2
     return _rebar[size]
 def RebarDiameter(size="#3"):
+    global rebar_dict
+    if size in rebar_dict:
+        return rebar_dict[size]['直徑（cm）']
     return _rebar_dia[size]
+def RebarFy(size="#3"):
+    global rebar_dict
+    if size in rebar_dict:
+        return rebar_dict[size]['fy(kgf/cm2)']
+    return 4200
+def isRebarSize(size):
+    try:
+        RebarInfo(size=size)
+        return True
+    except:
+        return False
+def readRebarExcel(file_path:str):
+    global rebar_dict
+    # rebar_df:pd.DataFrame = item.floor.read_parameter_df(read_file=file_path,sheet_name="鋼筋資料表")
+    rebar_df:pd.DataFrame = pd.read_excel(file_path, sheet_name="鋼筋資料表",header=[0])
+    rebar_df.set_index('鋼筋尺寸',inplace=True)
+    rebar_dict = rebar_df.to_dict('index')
+    pass
+def PrintRebarDict():
+    global rebar_dict
+    print(rebar_dict)
 
 if __name__ == '__main__':
-    
-    print(','.join([]))
+    readRebarExcel(r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx')
+    PrintRebarDict()
+    # print(','.join([]))
     # import pandas as pd
     # ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
     # for i in range(10):

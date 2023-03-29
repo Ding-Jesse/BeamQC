@@ -283,6 +283,7 @@ def sendVerifyCode():
 @login_required
 def tool2():
     if app.config['TESTING']:
+        # return render_template('verifycode.html')
         return render_template('tool2.html')
     if 'isverify' not in session:
         return render_template('verifycode.html')
@@ -316,6 +317,24 @@ def checkcode():
         session['isverify'] = 'expire'
         return response
 
+@app.route('/admin_login', methods=['POST'])
+def admin_login():
+    user_code = request.form.get('user_code')
+    if user_code == "wp32s%v9jhh!n+5i":
+        response = Response()
+        response.status_code = 200
+        response.data = json.dumps({'validate':f'Correct Code'})
+        response.content_type = 'application/json'
+        session['isverify'] = 'valid'
+        return response
+    else:
+        response = Response()
+        response.status_code = 404
+        response.data = json.dumps({'validate':f'Wrong Code'})
+        response.content_type = 'application/json'
+        session['isverify'] = 'expire'
+        return response
+    pass
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -365,7 +384,8 @@ def count_beam():
             'tie_text_layer':request.form['tie_text_layer'].split('\r\n'), # 箍筋文字圖層
             'block_layer':request.form['block_layer'].split('\r\n'), # 框框的圖層
             'beam_text_layer' :request.form['beam_text_layer'].split('\r\n'), # 梁的字串圖層
-            'bounding_block_layer':request.form['bounding_block_layer'].split('\r\n')
+            'bounding_block_layer':request.form['bounding_block_layer'].split('\r\n'),
+            'rc_block_layer':request.form['rc_block_layer'].split('\r\n')
             }
         print(layer_config)
         if beam_filename != '' and temp_file != '' and beam_ok:

@@ -435,7 +435,7 @@ def read_plan(plan_filename, layer_config:dict, progress_file, sizing, mline_sca
                         size = re.search(r'(\d+(x|X)\d+)',beam)
                         if size:
                             none_concat_size_text_list.append(((coor1, coor2),size.group(0)))
-                            continue
+                            break
                         else:
                             print(object.TextString)
                 if object.Layer in [big_beam_text_layer, sml_beam_text_layer] and (object.ObjectName == "AcDbText" or object.ObjectName == "AcDbMLeader")\
@@ -1861,7 +1861,7 @@ error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
     start = time.time()
-    plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
+    # plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:/Desktop/BeamQC/TEST/INPUT\2023-03-03-15-45temp-temp.dwg"#sys.argv[1] # XS-BEAM的路徑
@@ -1875,13 +1875,13 @@ if __name__=='__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0320\2023-03-20-17-24O4 TEST-XS-Beam.dwg']
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0320\2023-03-20-17-24O4 TEST-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-17-37高雄O4-XS-BEAM.dwg']
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-17-37高雄O4-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"D:\Desktop\BeamQC\TEST\big-4.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\sml-4.txt"#sys.argv[6] # 小梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\fb-4.txt"#sys.argv[6] # 地梁結果
+    big_file = r"D:\Desktop\BeamQC\TEST\2023-0327\big-4.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"D:\Desktop\BeamQC\TEST\2023-0327\sml-4.txt"#sys.argv[6] # 小梁結果
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-0327\fb-4.txt"#sys.argv[6] # 地梁結果
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
