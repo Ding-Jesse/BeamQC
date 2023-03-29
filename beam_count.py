@@ -276,7 +276,7 @@ def sort_arrow_line(coor_to_arrow_dic:dict,coor_to_rebar_list:list):
     #method 2
     new_coor_to_arrow_dic = {}
     no_arrow_line_list = []
-    min_diff = 50
+    min_diff = 10
     for i,rebar in enumerate(coor_to_rebar_list):
         if i == 199:
             print('1')
@@ -637,19 +637,19 @@ def combine_beam_tie(coor_sorted_tie_list:list,coor_to_beam_list:list,class_beam
     def _get_distance(pt1,pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1]) 
-    for tie,coor,tie_num,count,size in coor_sorted_tie_list:
-        bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=coor)]
-        if len(bounding_box) == 0:
-            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < coor[1]]
-            if len(coor_sorted_beam_list) == 0:continue
-            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],coor))
-        else:
-            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],coor))
-        nearest_beam[2].append(tie)
-        if size in nearest_beam[3]:
-            nearest_beam[3][size] += count
-        else:
-            nearest_beam[3][size] = count
+    # for tie,coor,tie_num,count,size in coor_sorted_tie_list:
+    #     bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=coor)]
+    #     if len(bounding_box) == 0:
+    #         coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < coor[1]]
+    #         if len(coor_sorted_beam_list) == 0:continue
+    #         nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],coor))
+    #     else:
+    #         nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],coor))
+    #     nearest_beam[2].append(tie)
+    #     if size in nearest_beam[3]:
+    #         nearest_beam[3][size] += count
+    #     else:
+    #         nearest_beam[3][size] = count
 
     for tie,coor,tie_num,count,size in coor_sorted_tie_list:
         bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=coor)]
@@ -660,36 +660,82 @@ def combine_beam_tie(coor_sorted_tie_list:list,coor_to_beam_list:list,class_beam
         else:
             nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),coor))
         nearest_beam.add_tie(tie,coor,tie_num,count,size)
+## 截斷主筋
+def break_down_rebar(coor_to_arrow_dic:dict,class_beam_list:list[Beam]):
+    def _get_distance(pt1,pt2):
+        return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
+    add_list = []
+    
+    for arrow_head in list(coor_to_arrow_dic.keys()):
+        right_nearest_beam = None
+        left_nearest_beam = None
+        arrow_item = coor_to_arrow_dic[arrow_head]
 
+        tail_coor,length,line_mid_coor,number,size,text_coor= arrow_item
+        line_left_pt = (line_mid_coor[0] - length/2 ,line_mid_coor[1])
+        line_right_pt = (line_mid_coor[0] + length/2 ,line_mid_coor[1])
+
+        left_bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=line_left_pt)]
+        if len(left_bounding_box) > 1:
+            left_nearest_beam = min(left_bounding_box,key=lambda b:_get_distance(b.get_coor(),line_left_pt))
+        elif left_bounding_box:
+            left_nearest_beam = left_bounding_box[0]
+        
+        right_bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=line_right_pt)]
+        if len(right_bounding_box) > 1:
+            right_nearest_beam = min(right_bounding_box,key=lambda b:_get_distance(b.get_coor(),line_right_pt))
+        elif right_bounding_box:
+            right_nearest_beam = right_bounding_box[0]
+        
+        if left_nearest_beam and right_nearest_beam:
+            if left_nearest_beam.serial != right_nearest_beam.serial:
+                left_bound = left_nearest_beam.get_bounding_box()[1]
+                coor_to_arrow_dic.pop(arrow_head)
+                new_mid_coor = ((line_left_pt[0] + left_bound[0])/2 , line_left_pt[1])
+                coor_to_arrow_dic.update({line_left_pt:((left_bound[0],line_left_pt[1]),
+                                                        abs(line_left_pt[0] - left_bound[0]),
+                                                        new_mid_coor,
+                                                        number,
+                                                        size,
+                                                        text_coor)})
+                right_bound =right_nearest_beam.get_bounding_box()[0]
+                new_mid_coor = ((line_right_pt[0] + right_bound[0])/2 , line_right_pt[1])
+                coor_to_arrow_dic.update({line_right_pt:(line_right_pt[0],
+                                                         abs(line_right_pt[0] - right_bound[0]),
+                                                         new_mid_coor,
+                                                         number,
+                                                         size,
+                                                         text_coor)})
+    pass
 ## 組合主筋與梁文字
 def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,coor_to_bend_rebar_list:list,coor_to_beam_list:list,class_beam_list:list[Beam]):
     #以箭頭的頭為搜尋中心
     def _get_distance(pt1,pt2):
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
-    for arrow_head,arrow_item in coor_to_arrow_dic.items():
-        tail_coor,length,line_head_coor,number,size,line_tail_coor= arrow_item
-        try:
-            number = int(number)
-        except:
-            continue
-        bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=arrow_head)]
-        if len(bounding_box) == 0:
-            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < arrow_head[1]]
-            if len(coor_sorted_beam_list) == 0:continue
-            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],arrow_head))
-        else:
-            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],arrow_head))
-        nearest_beam[5].append({f'{number}-{size}':length})
-        if size in nearest_beam[6]:
-            if 'E.F' in size:
-                nearest_beam[6][size] += length
-            else:
-                nearest_beam[6][size] += int(number)*length
-        else:
-            if 'E.F' in size:
-                nearest_beam[6][size] = length
-            else:
-                nearest_beam[6][size] = int(number)*length
+    # for arrow_head,arrow_item in coor_to_arrow_dic.items():
+    #     tail_coor,length,line_head_coor,number,size,line_tail_coor= arrow_item
+    #     try:
+    #         number = int(number)
+    #     except:
+    #         continue
+    #     bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=arrow_head)]
+    #     if len(bounding_box) == 0:
+    #         coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < arrow_head[1]]
+    #         if len(coor_sorted_beam_list) == 0:continue
+    #         nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],arrow_head))
+    #     else:
+    #         nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],arrow_head))
+    #     nearest_beam[5].append({f'{number}-{size}':length})
+    #     if size in nearest_beam[6]:
+    #         if 'E.F' in size:
+    #             nearest_beam[6][size] += length
+    #         else:
+    #             nearest_beam[6][size] += int(number)*length
+    #     else:
+    #         if 'E.F' in size:
+    #             nearest_beam[6][size] = length
+    #         else:
+    #             nearest_beam[6][size] = int(number)*length
 
     for arrow_head,arrow_item in coor_to_arrow_dic.items():
         tail_coor,length,line_mid_coor,number,size,text_coor= arrow_item
@@ -716,44 +762,44 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
         nearest_beam.add_rebar(start_pt = mid_pt, end_pt = mid_pt,
                                 length = length, number = number, size = size,text=f'{number}-{size}',add_up='straight')
 
-    for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
-        head_coor,tail_coor,length,number,size= rebar_line
-        mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
-        bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
-        if len(bounding_box) == 0:
-            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt[1]]
-            if len(coor_sorted_beam_list) == 0:continue
-            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
-        else:
-            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
-        nearest_beam[5].append({f'支承端{number}-{size}':length})
-        if rebar_line[4] in nearest_beam[6]:
-            nearest_beam[6][size] += int(number)*length
-        else:
-            nearest_beam[6][size] = int(number)*length
+    # for rebar_line in coor_to_rebar_list_straight:# (頭座標，尾座標，長度，number，size)
+    #     head_coor,tail_coor,length,number,size= rebar_line
+    #     mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
+    #     bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
+    #     if len(bounding_box) == 0:
+    #         coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt[1]]
+    #         if len(coor_sorted_beam_list) == 0:continue
+    #         nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
+    #     else:
+    #         nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
+    #     nearest_beam[5].append({f'支承端{number}-{size}':length})
+    #     if rebar_line[4] in nearest_beam[6]:
+    #         nearest_beam[6][size] += int(number)*length
+    #     else:
+    #         nearest_beam[6][size] = int(number)*length
 
-    for bend_line in coor_to_bend_rebar_list:# (直的端點，橫的端點，長度，number，size)
-        head_coor,tail_coor,length,number,size= bend_line
-        # mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
-        mid_pt = head_coor
-        bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
-        if len(bounding_box) == 0:
-            coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt[1]]
-            if len(coor_sorted_beam_list) == 0:continue
-            nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
-        else:
-            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
-        nearest_beam[5].append({f'彎鉤{number}-{size}':length})
-        if bend_line[4] in nearest_beam[6]:
-            if 'E.F' in size:
-                nearest_beam[6][size] += length
-            else:
-                nearest_beam[6][size] += int(number)*length
-        else:
-            if 'E.F' in size:
-                nearest_beam[6][size] = length
-            else:
-                nearest_beam[6][size] = int(number)*length
+    # for bend_line in coor_to_bend_rebar_list:# (直的端點，橫的端點，長度，number，size)
+    #     head_coor,tail_coor,length,number,size= bend_line
+    #     # mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
+    #     mid_pt = head_coor
+    #     bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=mid_pt)]
+    #     if len(bounding_box) == 0:
+    #         coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < mid_pt[1]]
+    #         if len(coor_sorted_beam_list) == 0:continue
+    #         nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],mid_pt))
+    #     else:
+    #         nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],mid_pt))
+    #     nearest_beam[5].append({f'彎鉤{number}-{size}':length})
+    #     if bend_line[4] in nearest_beam[6]:
+    #         if 'E.F' in size:
+    #             nearest_beam[6][size] += length
+    #         else:
+    #             nearest_beam[6][size] += int(number)*length
+    #     else:
+    #         if 'E.F' in size:
+    #             nearest_beam[6][size] = length
+    #         else:
+    #             nearest_beam[6][size] = int(number)*length
 
     for bend_line in coor_to_bend_rebar_list:# (直的端點，橫的端點，長度，number，size)
         head_coor,tail_coor,length,number,size= bend_line
@@ -1027,6 +1073,8 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
                              coor_to_bounding_block_list=coor_to_bounding_block_list,
                              class_beam_list=class_beam_list,
                              coor_to_rc_block_list=coor_to_rc_block_list)
+    break_down_rebar(coor_to_arrow_dic=coor_to_arrow_dic,
+                     class_beam_list=class_beam_list)
     combine_beam_tie(coor_sorted_tie_list=coor_sorted_tie_list,
                      coor_to_beam_list=coor_to_beam_list,
                      class_beam_list=class_beam_list)
@@ -1199,7 +1247,11 @@ def sort_beam(class_beam_list:list[Beam]):
             class_beam_list.append(new_beam)
     return
 def output_beam(class_beam_list:list[Beam]):
-
+    def output_rebar_pos(row,i,pos,text):
+        if abs(i) >= 2:
+            beam.at[row + i,pos] = f'{beam.at[row + i,pos]}+{text}'
+        else:
+            beam.at[row + i,pos] = text
     header_info_1 = [('樓層', ''), ('編號', ''), ('RC 梁寬', ''), ('RC 梁深', '')]
     header_rebar = [('主筋', ''),('主筋', '左'),('主筋', '中'),('主筋', '右'),('主筋長度', '左'),('主筋長度', '中'),('主筋長度', '右')]
 
@@ -1237,17 +1289,22 @@ def output_beam(class_beam_list:list[Beam]):
         beam.at[row,('RC 梁深','')] = b.depth
         beam.at[row,('腰筋', '')] = b.get_middle_tie()
         for i,rebar in enumerate(b.rebar_table[RebarType.Top.value][RebarType.Left.value],start=0):
-            beam.at[row + i,('主筋', '左')] = rebar.text
+            output_rebar_pos(row,i,('主筋', '左'),rebar.text)
+            # beam.at[row + i,('主筋', '左')] = rebar.text
         for i,rebar in enumerate(b.rebar_table[RebarType.Bottom.value][RebarType.Left.value],start=0):
-            beam.at[row + 3 - i,('主筋', '左')] = rebar.text
+            output_rebar_pos(row + 3,-i,('主筋', '左'),rebar.text)
+            # beam.at[row + 3 - i,('主筋', '左')] = rebar.text
         for i,rebar in enumerate(b.rebar_table[RebarType.Top.value][RebarType.Middle.value],start=0):
-            beam.at[row + i,('主筋', '中')] = rebar.text
+            output_rebar_pos(row ,i,('主筋', '中'),rebar.text)
+            # beam.at[row + i,('主筋', '中')] = rebar.text
         for i,rebar in enumerate(b.rebar_table[RebarType.Bottom.value][RebarType.Middle.value],start=0):
-            beam.at[row + 3 - i,('主筋', '中')] = rebar.text
+            output_rebar_pos(row + 3,-i,('主筋', '中'),rebar.text)
         for i,rebar in enumerate(b.rebar_table[RebarType.Top.value][RebarType.Right.value],start=0):
-            beam.at[row + i,('主筋', '右')] = rebar.text
+            output_rebar_pos(row ,i,('主筋', '右'),rebar.text)
+            # beam.at[row + i,('主筋', '右')] = rebar.text
         for i,rebar in enumerate(b.rebar_table[RebarType.Bottom.value][RebarType.Right.value],start=0):
-            beam.at[row + 3 - i,('主筋', '右')] = rebar.text
+            output_rebar_pos(row + 3,-i,('主筋', '右'),rebar.text)
+            # beam.at[row + 3 - i,('主筋', '右')] = rebar.text
         if b.rebar_table['top_length'][RebarType.Left.value]:
             beam.at[row,('主筋長度', '左')] = b.rebar_table['top_length'][RebarType.Left.value][0]
         if b.rebar_table['top_length'][RebarType.Middle.value]:
@@ -1419,7 +1476,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-BEAM(南基地).dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\0329-test G5-5.dwg"
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
@@ -1435,16 +1492,16 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\岡山'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\岡山樓層參數_floor(1).xlsx'
-    project_name = '0327-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-floor.xlsx'
+    project_name = '0328-test'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
         'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-        'block_layer':['DwFm'], # 框框的圖層
+        'block_layer':['DEFPOINTS'], # 框框的圖層
         'beam_text_layer' :['S-RC'], # 梁的字串圖層
         'bounding_block_layer':['S-ARCH'],
         'rc_block_layer':['S-RC'] # 支承端圖層
@@ -1484,8 +1541,8 @@ if __name__=='__main__':
     # test(l)
     # print(l)
     start = time.time()
-    msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0327-South-Gangshan.pkl')
+    # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file='temp_0329-中德-G5-5.pkl')
     # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='temp_0324_DonRen.pkl',
@@ -1493,7 +1550,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司2',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0327-South-Gangshan.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0329-中德-G5-5.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
