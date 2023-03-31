@@ -11,7 +11,8 @@ import copy
 from math import sqrt,ceil
 from item.beam import Beam,BeamType,RebarType
 from item.rebar import RebarInfo
-from item.floor import Floor,read_parameter_df,summary_floor_rebar
+from item.floor import Floor,read_parameter_df,summary_floor_rebar,summary_floor_rebar_ratio
+from item.excel import AddExcelDataBar,AddBorderLine
 from beam_scan import create_beam_scan,beam_check,create_sbeam_scan,create_fbeam_scan,output_detail_scan_report
 from main import OutputExcel,Add_Row_Title
 from multiprocessing.pool import ThreadPool as Pool
@@ -1105,6 +1106,7 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
 
     floor_list = floor_parameter(beam_list=class_beam_list,floor_parameter_xlsx=floor_parameter_xlsx)
     rebar_df,concrete_df,coupler_df,formwork_df  = summary_floor_rebar(floor_list=floor_list,item_type='beam')
+    ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
     bs_list = create_beam_scan()
     sb_bs_list = create_sbeam_scan()
     fb_bs_list = create_fbeam_scan()
@@ -1114,20 +1116,40 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     ng_df = output_detail_scan_report(beam_list=beam_list + sbeam_list + fbeam_list)
     # ng_df = output_detail_scan_report(beam_list=fbeam_list)
     rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
-    OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-        columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
-    OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-        columns_list=range(2,len(sb_code_df.columns)+2),rows_list=range(2,len(sb_code_df.index)+ 10 + len(sb_enoc_df.index)),df_spacing= 3)
-    OutputExcel(df_list=[fb_code_df,fb_enoc_df],file_path=excel_filename,sheet_name='地梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-        columns_list=range(2,len(fb_code_df.columns)+2),rows_list=range(2,len(fb_code_df.index)+ 10 + len(fb_enoc_df.index)),df_spacing= 3)
-    OutputExcel(df_list=[beam_df],file_path=excel_filename,sheet_name='梁統整表')
-    Add_Row_Title(file_path=excel_filename,sheet_name='梁檢核表',i=len(code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    Add_Row_Title(file_path=excel_filename,sheet_name='小梁檢核表',i=len(sb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    Add_Row_Title(file_path=excel_filename,sheet_name='地梁檢核表',i=len(fb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
-    OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
-    OutputExcel(df_list=[formwork_df],file_path=excel_filename,sheet_name='模板統計表')
-    OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
+    # OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    #     columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
+    # OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    #     columns_list=range(2,len(sb_code_df.columns)+2),rows_list=range(2,len(sb_code_df.index)+ 10 + len(sb_enoc_df.index)),df_spacing= 3)
+    # OutputExcel(df_list=[fb_code_df,fb_enoc_df],file_path=excel_filename,sheet_name='地梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    #     columns_list=range(2,len(fb_code_df.columns)+2),rows_list=range(2,len(fb_code_df.index)+ 10 + len(fb_enoc_df.index)),df_spacing= 3)
+    # OutputExcel(df_list=[beam_df],file_path=excel_filename,sheet_name='梁統整表')
+    # Add_Row_Title(file_path=excel_filename,sheet_name='梁檢核表',i=len(code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    # Add_Row_Title(file_path=excel_filename,sheet_name='小梁檢核表',i=len(sb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    # Add_Row_Title(file_path=excel_filename,sheet_name='地梁檢核表',i=len(fb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    # OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
+    # OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
+    # OutputExcel(df_list=[formwork_df],file_path=excel_filename,sheet_name='模板統計表')
+    # OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
+    OutputExcel(df_list=[ratio_df],
+                file_path=excel_filename,
+                sheet_name='鋼筋比統計表',
+                columns_list=range(2,len(ratio_df.columns) + 2),
+                rows_list=range(2,len(ratio_df.index) + 2)
+                )
+    AddExcelDataBar(workbook_path=excel_filename,
+                    sheet_name='鋼筋比統計表',
+                    start_col=4,
+                    start_row=4,
+                    end_col=len(ratio_df.columns) + 4,
+                    end_row=len(ratio_df.index) + 4)
+    AddBorderLine(workbook_path=excel_filename,
+                    sheet_name='鋼筋比統計表',
+                    start_col=4,
+                    start_row=4,
+                    end_col=len(ratio_df.columns) + 4,
+                    end_row=len(ratio_df.index) + 4,
+                    step_row= 2,
+                    step_col= 3)
     OutputExcel(df_list=[cad_df],file_path=excel_filename,sheet_name='CAD統計表')
     OutputExcel(df_list=[rcad_df],file_path=excel_filename_rcad,sheet_name='RCAD撿料')
     # Step 15. 印出每個框框的結果然後加在一起
@@ -1494,7 +1516,7 @@ if __name__=='__main__':
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-floor.xlsx'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-31-10-52-floor.xlsx'
     project_name = '0328-test'
     # 在beam裡面自訂圖層
     layer_config = {
@@ -1550,7 +1572,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司2',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'temp_0329-中德-G5-5.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-31-10-52-temp-0.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 from item import column,beam
 from collections import defaultdict
+from collections import Counter
+from numpy import arange,empty
 import pandas as pd
 class Floor:
     height:float
@@ -87,9 +89,9 @@ class Floor:
     def summary_beam(self):
         for b in self.beam_list:
             for size,count in b.rebar_count.items():
-                self.beam_rebar_count[size] = round(count/1000/1000,2)
+                self.beam_rebar_count[size] += round(count/1000/1000,2)
             for size,count in b.tie_count.items():
-                self.beam_rebar_count[size] = round(count/1000/1000,2)
+                self.beam_rebar_count[size] += round(count/1000/1000,2)
             self.concrete_count[b.fc] +=   b.concrete
             self.formwork_count += b.formwork
         self.beam_rebar_count['total'] = sum(self.rebar_count.values())
@@ -130,4 +132,77 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
     df.loc['Sum'] = df.sum()
     concrete_df.loc['Sum'] = concrete_df.sum()
     formwork_df.loc['Sum'] = formwork_df.sum()
-    return df,concrete_df,coupler_df,formwork_df 
+    return df,concrete_df,coupler_df,formwork_df
+def summary_floor_rebar_ratio(floor_list:list[Floor]):
+    # df = pd.DataFrame(columns=["0-0.5%","0.5%-1.0%",'1.0%-1.5%','1.5%-2.0%','2.0%-2.5%','2.5%-'],index=[])
+    def def_value():
+        return [
+            [],[],[],
+            [],[],[]
+            ]
+    def def_value_count():
+        return defaultdict(
+            lambda:[0,0,0,
+                    0,0,0])
+    # {
+    #     'floor':[
+    #         [],[],[],
+    #         [],[],[]
+    #         ]
+    # }
+
+    # {
+    #     'ratio':{
+    #         'floor':[
+    #             0,0,0,
+    #             0,0,0
+    #         ]
+    #     }
+    # }
+    pos = {
+        0:'左',
+        1:'中',
+        2:'右'
+    }
+
+    ratio_interval_group = list(arange(0.005,0.03,0.005))
+    temp_dict = defaultdict(def_value)
+    floor_dict = defaultdict(def_value_count)
+    header_list = list(map(lambda r:f'< {r*100}%',ratio_interval_group))
+    header_list.append(f'>= {ratio_interval_group[-1]*100}%')
+    
+    for floor in floor_list:
+        for beam in floor.beam_list:
+            for i,ratio in enumerate(beam.get_rebar_ratio()):
+                for j,ratio_interval in enumerate(ratio_interval_group):
+                    if ratio >= ratio_interval_group[-1]:
+                        floor_dict[floor.floor_name][header_list[j]][i] += 1
+                        break
+                    if ratio < ratio_interval:
+                        floor_dict[floor.floor_name][header_list[j]][i] += 1
+                        break
+                temp_dict[floor.floor_name][i].append(ratio)
+    row = 0
+    df_header_list = []
+    df_header_list.insert(0,('樓層',''))
+    df_header_list.insert(1,('位置',''))
+    for header in header_list:
+        df_header_list.append((header,'左'))
+        df_header_list.append((header,'中'))
+        df_header_list.append((header,'右'))
+
+    df_header_list = pd.MultiIndex.from_tuples(df_header_list)
+    ratio_beam = pd.DataFrame(empty([len(floor_list)*2,len(df_header_list)],dtype='<U16'),columns=df_header_list)
+    
+    for floor,ratio_dict in floor_dict.items():
+        ratio_beam.at[row,('樓層','')] = floor
+        ratio_beam.at[row + 1,('樓層','')] = floor
+        ratio_beam.at[row,('位置','')] = '上'
+        ratio_beam.at[row + 1,('位置','')] = '下'
+        for ratio,count_list in ratio_dict.items():
+            for i,count in enumerate(count_list[:3]):
+                ratio_beam.at[row,(ratio,pos[i])] = count
+            for i,count in enumerate(count_list[3:]):
+                ratio_beam.at[row + 1,(ratio,pos[i])] = count
+        row += 2
+    return ratio_beam

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
 import pandas as pd
+from collections import defaultdict
 from plan_to_beam import turn_floor_to_float,turn_floor_to_string
 from typing import Tuple
 from item.rebar import RebarInfo,RebarArea,RebarFy
@@ -82,6 +83,7 @@ class Beam:
     tie_count:dict[str,float]
     floor_object:floor.Floor
     multi_floor:list[str]
+    rebar_ratio:dict[Tuple[RebarType,RebarType],float]
     serial = ''
     floor = ''
     depth = 0
@@ -95,6 +97,7 @@ class Beam:
     end_pt:Point
     beam_type:BeamType
     ng_message:list[str]
+    protect_layer:int
     # coor = Point
     # bounding_box = (Point,Point)
     def __init__(self,serial,x,y):
@@ -112,6 +115,7 @@ class Beam:
         self.tie_count = {}
         self.ng_message = []
         self.multi_floor = []
+        self.protect_layer = 9
         self.rebar={
             'top_first':[],
             'top_second':[],
@@ -145,6 +149,7 @@ class Beam:
                 'right':[]
             }
         }
+        self.rebar_ratio =defaultdict(lambda:0)
         self.serial = serial
         self.coor.x = x
         self.coor.y = y
@@ -359,11 +364,13 @@ class Beam:
         self.fc = floor.material_list['fc']
         self.fy = floor.material_list['fy']
         self.floor_object = floor
+    ##取得梁配筋面積
     def get_rebar_table(self,rebar_type1:RebarType,rebar_type2:RebarType) -> float:
         As = 0
         for rebar in self.rebar_table[rebar_type1.value][rebar_type2.value]:
             As += rebar.As
         return As
+    ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
         min_diff = 10
         for rebar in self.rebar['top_first']:
@@ -422,4 +429,20 @@ class Beam:
             if self.rebar_table['bottom_length']['left'] > self.rebar_table['bottom_length']['right']:
                 self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['left'])
             else:
-                self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['right'])                
+                self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['right'])
+        self.cal_rebar_ratio()
+    ##計算梁配筋比
+    def cal_rebar_ratio(self):
+        for rebar_type in [RebarType.Top,RebarType.Bottom]:
+            for rebar_type2 in [RebarType.Left,RebarType.Middle,RebarType.Right]:
+                self.rebar_ratio[(rebar_type,rebar_type2)] = self.get_rebar_table(rebar_type1=rebar_type,
+                                                                                  rebar_type2=rebar_type2)/(self.width * (self.depth - self.protect_layer))
+    def get_rebar_ratio(self):
+        return [
+                    self.rebar_ratio[(RebarType.Top,RebarType.Left)],
+                    self.rebar_ratio[(RebarType.Top,RebarType.Middle)],
+                    self.rebar_ratio[(RebarType.Top,RebarType.Right)],
+                    self.rebar_ratio[(RebarType.Bottom,RebarType.Left)],
+                    self.rebar_ratio[(RebarType.Bottom,RebarType.Middle)],
+                    self.rebar_ratio[(RebarType.Bottom,RebarType.Right)],
+                ]                         
