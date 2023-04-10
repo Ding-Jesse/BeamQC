@@ -279,8 +279,6 @@ def sort_arrow_line(coor_to_arrow_dic:dict,coor_to_rebar_list:list):
     no_arrow_line_list = []
     min_diff = 10
     for i,rebar in enumerate(coor_to_rebar_list):
-        if i == 199:
-            print('1')
         head_coor = rebar[0]
         tail_coor = rebar[1]
         mid_coor = (round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])
@@ -1116,20 +1114,20 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     ng_df = output_detail_scan_report(beam_list=beam_list + sbeam_list + fbeam_list)
     # ng_df = output_detail_scan_report(beam_list=fbeam_list)
     rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
-    # OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-    #     columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
-    # OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-    #     columns_list=range(2,len(sb_code_df.columns)+2),rows_list=range(2,len(sb_code_df.index)+ 10 + len(sb_enoc_df.index)),df_spacing= 3)
-    # OutputExcel(df_list=[fb_code_df,fb_enoc_df],file_path=excel_filename,sheet_name='地梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-    #     columns_list=range(2,len(fb_code_df.columns)+2),rows_list=range(2,len(fb_code_df.index)+ 10 + len(fb_enoc_df.index)),df_spacing= 3)
-    # OutputExcel(df_list=[beam_df],file_path=excel_filename,sheet_name='梁統整表')
-    # Add_Row_Title(file_path=excel_filename,sheet_name='梁檢核表',i=len(code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    # Add_Row_Title(file_path=excel_filename,sheet_name='小梁檢核表',i=len(sb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    # Add_Row_Title(file_path=excel_filename,sheet_name='地梁檢核表',i=len(fb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    # OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
-    # OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
-    # OutputExcel(df_list=[formwork_df],file_path=excel_filename,sheet_name='模板統計表')
-    # OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
+    OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+        columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
+    OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+        columns_list=range(2,len(sb_code_df.columns)+2),rows_list=range(2,len(sb_code_df.index)+ 10 + len(sb_enoc_df.index)),df_spacing= 3)
+    OutputExcel(df_list=[fb_code_df,fb_enoc_df],file_path=excel_filename,sheet_name='地梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+        columns_list=range(2,len(fb_code_df.columns)+2),rows_list=range(2,len(fb_code_df.index)+ 10 + len(fb_enoc_df.index)),df_spacing= 3)
+    OutputExcel(df_list=[beam_df],file_path=excel_filename,sheet_name='梁統整表')
+    Add_Row_Title(file_path=excel_filename,sheet_name='梁檢核表',i=len(code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    Add_Row_Title(file_path=excel_filename,sheet_name='小梁檢核表',i=len(sb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    Add_Row_Title(file_path=excel_filename,sheet_name='地梁檢核表',i=len(fb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
+    OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
+    OutputExcel(df_list=[formwork_df],file_path=excel_filename,sheet_name='模板統計表')
+    OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
     OutputExcel(df_list=[ratio_df],
                 file_path=excel_filename,
                 sheet_name='鋼筋比統計表',
@@ -1155,7 +1153,7 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     # Step 15. 印出每個框框的結果然後加在一起
     
     # Step 16. 把箍筋跟beam字串綁在一起
-    return excel_filename
+    return excel_filename,excel_filename_rcad
 def seperate_beam(class_beam_list:list[Beam]):
     
     return [b for b in class_beam_list if b.beam_type == BeamType.FB],\
@@ -1459,10 +1457,10 @@ def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='
             cad_counter.update(cad_data)
             output_dwg_list.append(output_dwg)
             beam_list.extend(output_beam_list)
-    excel_filename = create_report(class_beam_list=beam_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name,cad_data=cad_counter)
+    excel_filename,excel_filename_rcad = create_report(class_beam_list=beam_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name,cad_data=cad_counter)
     end = time.time()
     print("執行時間：%f 秒" % (end - start))
-    return os.path.basename(excel_filename),output_dwg_list
+    return os.path.basename(excel_filename),os.path.basename(excel_filename_rcad),output_dwg_list
 def get_template(name:str):
 
     if name == '公司2':

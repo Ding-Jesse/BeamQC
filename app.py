@@ -354,7 +354,8 @@ def count_beam():
         email_address = request.form['email_address']
         print(request.form['company'])
         template_name = request.form['company']
-        
+        excel_filename = ''
+        excel_filename_rcad = ''
         # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
         beam_filename = ''
         temp_file = ''
@@ -391,18 +392,19 @@ def count_beam():
         if beam_filename != '' and temp_file != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            excel_filename,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file=temp_file,
+            excel_filename,excel_filename_rcad,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file=temp_file,
                                                             project_name=project_name,output_folder=app.config['OUTPUT_FOLDER'],
                                                             template_name=template_name,floor_parameter_xlsx=xlsx_filename)
+            # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
-                session['count_filenames'].extend([excel_filename])
-                session['count_filenames'].extend([output_dwg_list])
+                session['count_filenames'].extend([excel_filename,excel_filename_rcad])
+                session['count_filenames'].extend(output_dwg_list)
             else:
-                session['count_filenames'] = [excel_filename]
+                session['count_filenames'] = [excel_filename,excel_filename_rcad]
                 session['count_filenames'].extend(output_dwg_list)
         if(email_address):
             try:
-                sendResult(email_address,[excel_filename],"梁配筋圖數量計算結果")
+                sendResult(email_address,[excel_filename,excel_filename_rcad],"梁配筋圖數量計算結果")
                 sendResult(email_address,output_dwg_list,"梁配筋圖數量計算結果")
                 print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
             except:
