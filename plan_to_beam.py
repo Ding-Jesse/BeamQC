@@ -1875,13 +1875,13 @@ if __name__=='__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-17-37高雄O4-XS-BEAM.dwg']
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-17-37高雄O4-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0324\台大敏勝\2023-0317 大地梁.dwg']
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0324\台大敏勝\XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"D:\Desktop\BeamQC\TEST\2023-0327\big-4.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\2023-0327\sml-4.txt"#sys.argv[6] # 小梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-0327\fb-4.txt"#sys.argv[6] # 地梁結果
+    big_file = r"D:\Desktop\BeamQC\TEST\2023-0324\台大敏勝\big-4.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"D:\Desktop\BeamQC\TEST\2023-0324\台大敏勝\sml-4.txt"#sys.argv[6] # 小梁結果
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-0324\台大敏勝\fb-4.txt"#sys.argv[6] # 地梁結果
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 

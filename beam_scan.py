@@ -109,11 +109,14 @@ def set_check_scan(beam_scan:BeamScan):
                 return fail_syntax
         return pass_syntax
     def index_0106(b:Beam):
-        for pos,rebar_list in b.rebar.items():
-            for rebar in rebar_list:
-                spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
-                if spacing > 25 :
-                    return fail_syntax
+        for rebar_dict in [b.rebar_table[RebarType.Top.value],b.rebar_table[RebarType.Bottom.value]]:
+            for pos2, rebar_list in rebar_dict.items():
+                    if rebar_list:
+                        rebar = rebar_list[0]
+                        spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
+                        if spacing > 25 :
+                            b.ng_message.append(f'0106:({b.width}- 4*2 - 1.27*2 -{RebarDiameter(rebar.size)})/{rebar.number - 1} = {spacing}cm > 25 cm')
+                            return fail_syntax
         return pass_syntax
     def index_0107(b:Beam):
         for pos,rebar_list in b.rebar.items():
