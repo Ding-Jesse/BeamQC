@@ -144,7 +144,7 @@ def sort_col_cad(msp_column,doc_column,layer_config:dict,temp_file):
         error_count = 0
         while error_count < 10:
             try:
-                # print(f'{object.Layer}:{object.ObjectName}')       
+                print(f'{object.Layer}:{object.ObjectName}')       
                 if object.Layer in tie_layer:
                     if object.ObjectName == "AcDbPolyline":
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
@@ -164,6 +164,9 @@ def sort_col_cad(msp_column,doc_column,layer_config:dict,temp_file):
                     if object.ObjectName == "AcDbCircle":
                         coor1 = (round(object.Center[0],2),round(object.Center[1],2))
                         coor_to_rebar_list.append((coor1,'circle'))
+                    if object.ObjectName == "AcDbEllipse":
+                        coor1 = (round(object.Center[0],2),round(object.Center[1],2))
+                        coor_to_rebar_list.append((coor1,'ellipse'))
                     # if object.ObjectName == "AcDbPolyline":
                     #     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     #     coor_to_rebar_list.append(coor1)
@@ -225,9 +228,9 @@ def sort_col_cad(msp_column,doc_column,layer_config:dict,temp_file):
                 elif object.Layer in line_layer:
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(object.GetBoundingBox()[1][1], 2))
-                    if coor1[0] == coor2[0]:
+                    if abs(coor1[0] - coor2[0]) < 5:
                         coor_to_col_line_list.append((coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
-                    elif coor1[1] == coor2[1]:
+                    elif abs(coor1[1] - coor2[1]) < 5:
                         coor_to_floor_line_list.append((coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
                 if object.Layer in column_rc_layer:
                     if object.ObjectName == "AcDbPolyline":
@@ -305,6 +308,18 @@ def cal_column_rebar(data={},rebar_excel_path=''):
     combine_col_tie(column_list=output_column_list,coor_to_tie_list=coor_to_tie_list,coor_to_tie_text_list=coor_to_tie_text_list)
     return output_column_list
 
+def output_grid_dwg(data,msp_column,doc_column):
+    coor_to_col_set = data['coor_to_col_set']
+    coor_to_floor_set = data['coor_to_floor_set']
+    coor_to_col_line_list = data['coor_to_col_line_list']
+    coor_to_floor_line_list= data['coor_to_floor_line_list']
+    new_coor_to_col_line_list = concat_col_to_grid(coor_to_col_set=coor_to_col_set,coor_to_col_line_list=coor_to_col_line_list)
+    new_coor_to_floor_line_list = concat_floor_to_grid(coor_to_floor_set=coor_to_floor_set,coor_to_floor_line_list=coor_to_floor_line_list)
+    draw_grid_line(new_coor_to_floor_line_list=new_coor_to_floor_line_list,
+                   new_coor_to_col_line_list=new_coor_to_col_line_list,
+                   msp_beam=msp_column,
+                   doc_beam=doc_column)
+
 def create_report(output_column_list:list[Column],floor_parameter_xlsx='',output_folder = '',project_name = ''):
     excel_filename = (
         f'{output_folder}/'
@@ -351,6 +366,7 @@ def concat_col_to_grid(coor_to_col_set:set,coor_to_col_line_list:list):
     # coor_to_col_set:((coor1,coor2),string)
     # coor_to_col_line_list:[(coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1]))] y向格線
     new_coor_to_col_line_list = []
+    # coor_to_col_line_list = [l for l in coor_to_col_line_list if (l[1] == )]
     for element in coor_to_col_set:
         coor = element[0]
         col = element[1]
@@ -397,10 +413,19 @@ def draw_grid_line(new_coor_to_floor_line_list:list,new_coor_to_col_line_list:li
         # coor_list2 = [beam.coor.x, beam.coor.y, 0, rebar.end_pt.x, rebar.end_pt.y, 0]
         points1 = vtFloat(coor_list1)
         line1 = msp_beam.AddPolyline(points1)
-        text1 = msp_beam.AddMText(vtPnt((grid[1][0] + grid[1][1])/2, (grid[1][2] + grid[1][3])/2),10,grid[0])
+        text1 = msp_beam.AddMText(vtPnt((grid[1][0] + grid[1][1])/2 - 25, (grid[1][2] + grid[1][3])/2),10,grid[0])
         text1.Height = 50
         line1.SetWidth(0, 5, 5)
         line1.color = 101
+    for grid in new_coor_to_col_line_list:
+        coor_list1 = [grid[1][0], grid[1][2], 0, grid[1][1], grid[1][2], 0,grid[1][1], grid[1][3], 0,grid[1][0], grid[1][3], 0]
+        # coor_list2 = [beam.coor.x, beam.coor.y, 0, rebar.end_pt.x, rebar.end_pt.y, 0]
+        points1 = vtFloat(coor_list1)
+        line1 = msp_beam.AddPolyline(points1)
+        text1 = msp_beam.AddMText(vtPnt((grid[1][0] + grid[1][1])/2, (grid[1][2] + grid[1][3])/2),10,grid[0])
+        text1.Height = 25
+        line1.SetWidth(0, 5, 5)
+        line1.color = 201
     doc_beam.SaveAs(output_dwg)
     doc_beam.Close(SaveChanges=True)
         # points2 = vtFloat(coor_list2)
@@ -551,7 +576,7 @@ def floor_parameter(column_list:list[Column],floor_parameter_xlsx:str):
                 new_c.multi_floor = []
                 column_list.append(new_c) 
     for floor_name in parameter_df.index:
-        temp_floor = Floor(floor_name)
+        temp_floor = Floor(str(floor_name))
         floor_list.append(temp_floor)
         temp_floor.set_column_prop(parameter_df.loc[floor_name])
         temp_floor.add_column([c for c in column_list if c.floor == temp_floor.floor_name])
@@ -576,11 +601,6 @@ def sort_floor_column(floor_list:list[Floor],column_list:list[Column]):
         list(map(lambda c:match_column(c,up_list,'up'),temp_list))
     column_list.sort(key=lambda c:(c.serial,-1*c.seq))
    
-
-
-
-
-
 
 def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,temp_file:list[str],output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     def read_col_multi(column_filename,temp_file):
@@ -620,16 +640,16 @@ def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',
     print(f'Total Time:{time.time() - start}')
     return os.path.basename(output_excel)
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0324\淡海\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0413\test_楊明區明新段-2023-04-13-14-57-S3-01.dwg'#sys.argv[1] # XS-COL的路徑
     column_filenames = [
         r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-XS-COL.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-floor.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓'
-    project_name = 'test_Gangshan_column'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0413\temp-2023-04-12-19-10-floor.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0413'
+    project_name = 'test_MingXin_column'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
     #     'line_layer':['TABLE'],
@@ -647,42 +667,46 @@ if __name__ == '__main__':
         'rebar_data_leader_layer':['AcDbLeader'],
         'tie_text_layer':['AcDbText']
     }
-    #RCAD
-    # layer_config = {
-    #     'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
-    #     'line_layer':['GirdInner'],
-    #     'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer':['主筋斷面'], # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區'], # 箍筋文字圖層
-    #     'tie_layer':['箍筋線'], # 箍筋文字圖層
-    #     'block_layer':['DEFPOINTS'], # 框框的圖層
-    #     'column_rc_layer':['柱斷面線'] #斷面圖層
-    # }
-    #Elements
+    # RCAD
     layer_config = {
-        'text_layer':['S-TEXT'],
-        'line_layer':['S-TABLE'],
-        'rebar_text_layer':['S-TEXT'], # 箭頭和鋼筋文字的塗層
-        'rebar_layer':['S-REINFD'], # 鋼筋和箍筋的線的塗層
-        'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-        'tie_layer':['S-REINF'], # 箍筋文字圖層
-        'block_layer':['Page'], # 框框的圖層
-        'column_rc_layer':['S-RC'] #斷面圖層
+        'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
+        'line_layer':['GirdInner','GirdBoundary'],
+        'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':['主筋斷面','#8','#10'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區','文字-剪力筋'], # 箍筋文字圖層
+        'tie_layer':['箍筋線'], # 箍筋文字圖層
+        'block_layer':['0'], # 框框的圖層
+        'column_rc_layer':['柱斷面線'] #斷面圖層
     }
+    #Elements
+    # layer_config = {
+    #     'text_layer':['S-TEXT'],
+    #     'line_layer':['S-TABLE'],
+    #     'rebar_text_layer':['S-TEXT'], # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer':['S-REINFD'], # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
+    #     'tie_layer':['S-REINF'], # 箍筋文字圖層
+    #     'block_layer':['Page'], # 框框的圖層
+    #     'column_rc_layer':['S-RC'] #斷面圖層
+    # }
     msp_column = None
     doc_column = None
-    # msp_column,doc_column = read_column_cad(col_filename)
+    msp_column,doc_column = read_column_cad(col_filename)
     # sort_col_cad(msp_column=msp_column,
     #              doc_column=doc_column,
     #              layer_config=layer_config,
-    #              temp_file=r'temp_0324-Danhai_column.pkl')
+    #              temp_file=r'0414-MingXin-column.pkl')
+
+    output_grid_dwg(data=save_temp_file.read_temp(r'0414-MingXin-column.pkl'),
+                    msp_column=msp_column,
+                    doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-temp-0.pkl'),
-                                   rebar_excel_path=floor_parameter_xlsx)
-    create_report(output_column_list=column_list,
-                  output_folder=output_folder,
-                  project_name=project_name,
-                  floor_parameter_xlsx=floor_parameter_xlsx)
+    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'0414-MingXin-column.pkl'),
+    #                                rebar_excel_path=floor_parameter_xlsx)
+    # create_report(output_column_list=column_list,
+    #               output_folder=output_folder,
+    #               project_name=project_name,
+    #               floor_parameter_xlsx=floor_parameter_xlsx)
     # count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='temp_0327_COL_Gangshan.pkl',
     #                              output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
 
