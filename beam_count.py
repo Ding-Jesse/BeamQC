@@ -13,6 +13,7 @@ from item.beam import Beam,BeamType,RebarType
 from item.rebar import RebarInfo
 from item.floor import Floor,read_parameter_df,summary_floor_rebar,summary_floor_rebar_ratio
 from item.excel import AddExcelDataBar,AddBorderLine
+from item.excepteions import NoRebarDataError,BeamFloorNameError
 from beam_scan import create_beam_scan,beam_check,create_sbeam_scan,create_fbeam_scan,output_detail_scan_report
 from main import OutputExcel,Add_Row_Title
 from multiprocessing.pool import ThreadPool as Pool
@@ -341,11 +342,23 @@ def sort_arrow_to_word(coor_to_arrow_dic:dict,coor_to_data_list:list):
     text:str
     
     #method 2
+    ## 腰筋會抓到上層筋
     for arrow_head,arrow_data in coor_to_arrow_dic.items():
-        rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0]]
-        # rebar_data_temp = [r for r in rebar_data_temp if '-' in r[0] and r[0].split('-')[0].isdigit()]
-        text,coor = min(rebar_data_temp,key=lambda rebar_text:_get_distance(arrow_data[0],rebar_text[1]))
         arrow_tail,rebar_length,line_coor = arrow_data
+        rebar_data_temp = []
+        if arrow_head[1] > arrow_tail[1]:
+            ## 箭頭朝上
+            rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0] and r[1][1] <= arrow_head[1]]
+        if arrow_head[1] < arrow_tail[1]:
+            ## 箭頭朝下
+            rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0] and r[1][1] >= arrow_head[1]]
+        if not rebar_data_temp:
+            print(f'arrow head:{arrow_head} has no rebar data')
+            rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0]]
+        if not rebar_data_temp:
+            raise NoRebarDataError
+        
+        text,coor = min(rebar_data_temp,key=lambda rebar_text:_get_distance(arrow_data[0],rebar_text[1]))
         if(abs(arrow_tail[1] - coor[1])> min_diff):
             print(f'{arrow_head} / {arrow_data } cant find pair arrow')
             continue
@@ -824,13 +837,15 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
         head_coor,tail_coor,length,number,size= bend_line
         # mid_pt = ((head_coor[0] + tail_coor[0])/2,(head_coor[1] +tail_coor[1])/2)
         mid_pt = head_coor
-        bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=arrow_head)]
+        bounding_box = [beam for beam in class_beam_list if inblock(block=beam.get_bounding_box(),pt=mid_pt)]
         if len(bounding_box) == 0:
             coor_sorted_beam_list = [beam for beam in class_beam_list  if beam.coor.y < mid_pt[1]]
-            if len(coor_sorted_beam_list) == 0:continue
+            if len(coor_sorted_beam_list) == 0:
+                print(f'{head_coor} bend rebar no beam')
+                continue
             nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b.get_coor(),mid_pt))
         else:
-            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),arrow_head))
+            nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),mid_pt))
         nearest_beam.add_rebar(start_pt = mid_pt, end_pt = mid_pt,
                                 length = length, number = number, size = size,text=f'{number}-{size}',add_up='bend')
 
@@ -1065,8 +1080,11 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     progress('梁配筋圖讀取進度 8/15', progress_file)
         
     # Step 9. 對應箭頭跟文字，並完成head_to_data_dic, tail_to_data_dic
-    coor_to_arrow_dic,head_to_data_dic,tail_to_data_dic = sort_arrow_to_word(coor_to_arrow_dic=coor_to_arrow_dic,
+    try:
+        coor_to_arrow_dic,head_to_data_dic,tail_to_data_dic = sort_arrow_to_word(coor_to_arrow_dic=coor_to_arrow_dic,
                                                                             coor_to_data_list=coor_to_data_list)
+    except NoRebarDataError:
+        print('NoRebarData')
     progress('梁配筋圖讀取進度 9/15', progress_file)
     
     # Step 10. 統計目前的type跟size
@@ -1183,7 +1201,11 @@ def seperate_beam(class_beam_list:list[Beam]):
 def add_beam_to_list(coor_to_beam_list:list,class_beam_list:list):
     floor_pattern = r'(\d+F)|(R\d+)|(PR)|(B\d+)|(MF)'
     for beam in coor_to_beam_list:
-        b = Beam(beam[0],beam[1][0],beam[1][1])
+        try:
+            b = Beam(beam[0],beam[1][0],beam[1][1])
+        except BeamFloorNameError:
+            print(f'{beam[0]} beam serial error')
+            continue
         if re.search(floor_pattern,b.floor) and b.serial != '':
             # print(f'{b.floor} {b.serial} accept')
             class_beam_list.append(b)
@@ -1500,6 +1522,13 @@ def get_template(name:str):
             'rebar_data_leader_layer':['AcDbPolyline'],
             'tie_text_layer':['AcDbMText']
         }
+    if name == '公司3':
+        return {
+            'rebar_layer':['AcDbPolyline'],
+            'rebar_data_layer':['AcDbText'],
+            'rebar_data_leader_layer':['AcDbPolyline'],
+            'tie_text_layer':['AcDbText']
+        }
 
 def floor_parameter(beam_list:list[Beam],floor_parameter_xlsx:str):
     parameter_df:pd.DataFrame
@@ -1519,10 +1548,10 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0413\0414-梁配筋圖-6.dwg"
-    # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0220\大樑-test.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0220\小梁-test.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0220\地梁-test.dwg"]
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0324\東仁\2023-0303 大地梁v2.dwg"
+    beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0413\0417-地梁.dwg",
+                      r"D:\Desktop\BeamQC\TEST\2023-0413\0417-大梁.dwg",
+                      r"D:\Desktop\BeamQC\TEST\2023-0413\0417-小梁.dwg"]
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-1.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-2.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-3.dwg",
@@ -1535,20 +1564,20 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0413'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\東仁'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0413\temp-2023-04-12-19-10-floor.xlsx'
-    project_name = '0414-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\東仁\樓層參數_floor(1).xlsx'
+    project_name = '0417-test'
     # 在beam裡面自訂圖層
-    # layer_config = {
-    #     'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-    #     'block_layer':['DEFPOINTS'], # 框框的圖層
-    #     'beam_text_layer' :['S-RC'], # 梁的字串圖層
-    #     'bounding_block_layer':['S-ARCH'],
-    #     'rc_block_layer':['S-RC'] # 支承端圖層
-    # }
+    layer_config = {
+        'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
+        'block_layer':['S-GRID'], # 框框的圖層
+        'beam_text_layer' :['S-RC'], # 梁的字串圖層
+        'bounding_block_layer':['S-ARCH'],
+        'rc_block_layer':['S-RC'] # 支承端圖層
+    }
     # layer_config = {
     #     'rebar_data_layer':['NBAR'], # 箭頭和鋼筋文字的塗層
     #     'rebar_layer':['RBAR'], # 鋼筋和箍筋的線的塗層
@@ -1559,27 +1588,27 @@ if __name__=='__main__':
     #     'rc_block_layer':['OLINE']
     # }
 
-    layer_config ={
-        'rebar_data_layer': ['主筋文字引線','主筋文字','扭力筋文字','扭力筋文字引線'], 
-        'rebar_layer': ['主筋線','剪力筋線','扭力筋線'], 
-        'tie_text_layer': ['剪力筋文字'], 
-        'block_layer': ['SHEET'], 
-        'beam_text_layer': ['梁跨名稱'], 
-        'bounding_block_layer': [''], 
-        'rc_block_layer': ['梁柱截斷記號','邊界線-梁支撐外線']}
-    entity_type ={
-        'rebar_layer':['AcDbPolyline'],
-        'rebar_data_layer':['AcDbText'],
-        'rebar_data_leader_layer':['AcDbPolyline'],
-        'tie_text_layer':['AcDbText']
-    }
-
+    # layer_config ={
+    #     'rebar_data_layer': ['主筋文字引線','主筋文字','扭力筋文字','扭力筋文字引線'], 
+    #     'rebar_layer': ['主筋線','剪力筋線','扭力筋線'], 
+    #     'tie_text_layer': ['剪力筋文字'], 
+    #     'block_layer': ['SHEET'], 
+    #     'beam_text_layer': ['梁跨名稱'], 
+    #     'bounding_block_layer': [''], 
+    #     'rc_block_layer': ['梁柱截斷記號','邊界線-梁支撐外線']}
     # entity_type ={
     #     'rebar_layer':['AcDbPolyline'],
-    #     'rebar_data_layer':['AcDbMText'],
-    #     'rebar_data_leader_layer':['AcDbLeader'],
+    #     'rebar_data_layer':['AcDbText'],
+    #     'rebar_data_leader_layer':['AcDbPolyline'],
     #     'tie_text_layer':['AcDbText']
     # }
+
+    entity_type ={
+        'rebar_layer':['AcDbPolyline'],
+        'rebar_data_layer':['AcDbMText'],
+        'rebar_data_leader_layer':['AcDbLeader'],
+        'tie_text_layer':['AcDbText']
+    }
     
     # entity_type ={
     #     'rebar_layer':['AcDbLine'],
@@ -1600,19 +1629,27 @@ if __name__=='__main__':
     # test(l)
     # print(l)
     start = time.time()
-    # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=entity_type,progress_file=progress_file,temp_file=r'D:\Desktop\BeamQC\TEST\2023-0413\test06.pkl')
-    # count_beam_multiprocessing(beam_filenames=beam_filenames,
+    msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+    # sort_beam_cad(msp_beam=msp_beam,
+    #               layer_config=layer_config,
+    #               entity_config=entity_type,
+    #               progress_file=progress_file,
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0324\東仁\0417_DonZen_Fb.pkl')
+    # # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
-    #                            temp_file='temp_0324_DonRen.pkl',
+    #                            temp_file='0417_MingXin.pkl',
     #                            project_name=project_name,
     #                            output_folder=output_folder,
-    #                            template_name='公司2',
+    #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0413\test06.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0324\東仁\0417_DonZen_Fb.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
-    create_report(class_beam_list=class_beam_list,output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx,cad_data=cad_data)
+    create_report(class_beam_list=class_beam_list,
+                  output_folder=output_folder,
+                  project_name=project_name,
+                  floor_parameter_xlsx=floor_parameter_xlsx,
+                  cad_data=cad_data)
     # draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
     # print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])

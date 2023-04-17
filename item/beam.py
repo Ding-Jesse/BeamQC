@@ -2,6 +2,7 @@ from __future__ import annotations
 import re
 import pandas as pd
 from collections import defaultdict
+from item.excepteions import BeamFloorNameError
 from plan_to_beam import turn_floor_to_float,turn_floor_to_string
 from typing import Tuple
 from item.rebar import RebarInfo,RebarArea,RebarFy
@@ -195,8 +196,12 @@ class Beam:
             if temp_matchobj:
                 self.floor = temp_matchobj.group(1)
                 self.serial = temp_matchobj.group(2)
+            else:
+                raise BeamFloorNameError
         else:
             self.floor = self.serial.split(' ')[0]
+            if self.floor == '':
+                raise BeamFloorNameError
             self.serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
         if re.search(commom_pattern,self.floor):
             sep = re.search(commom_pattern,self.floor).group(0)
@@ -319,6 +324,7 @@ class Beam:
             if i == 2:
                 self.tie['right'] = tie
     def cal_rebar(self):
+        ## if E.F in rebar_add_list , will show on floor rebar size
         for rebar_list in [self.rebar_list,self.rebar_add_list,self.rebar_bend_list]:
             for rebar in rebar_list:
                 if rebar.size in self.rebar_count:
@@ -331,7 +337,11 @@ class Beam:
                 size = matchObj.group()
                 if not size in self.rebar_count:
                     self.rebar_count[size] = 0
-                self.rebar_count[size] += rebar.length * rebar.number * RebarInfo(size)
+                if "E.F" in rebar.size:
+                    self.rebar_count[size] += rebar.length * rebar.number * RebarInfo(size)*2
+                else:
+                    self.rebar_count[size] += rebar.length * rebar.number * RebarInfo(size)
+                break #middle tie rebar number equal to rebar line number, so only count one middle tie
             pass
         for tie in self.tie_list:
             if tie.size in self.tie_count:
