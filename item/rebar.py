@@ -40,6 +40,8 @@ _rebar_dia = {
 rebar_dict = {}
 
 def RebarInfo(size="#3"):
+    if "E.F." in size:
+        size = size.replace("E.F.","").replace(" ","")
     if "(E.F)" in size:
         size = size.replace("(E.F)","").replace(" ","")
     if "E.F" in size:
@@ -49,6 +51,8 @@ def RebarInfo(size="#3"):
         return rebar_dict[size]['重量（kg/m）'] /100 * 1000
     return _rebar[size]*7.85
 def RebarArea(size="#3"):
+    if "E.F." in size:
+        size = size.replace("E.F.","").replace(" ","")
     if "(E.F)" in size:
         size = size.replace("(E.F)","").replace(" ","")
     if "E.F" in size:

@@ -16,4 +16,6 @@ TEST/
 
 config/__pycache__
 
+config/
+
 item/__pycache__/*.pyc

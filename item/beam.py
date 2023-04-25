@@ -2,6 +2,7 @@ from __future__ import annotations
 import re
 import pandas as pd
 from collections import defaultdict
+from item.excepteions import BeamFloorNameError
 from plan_to_beam import turn_floor_to_float,turn_floor_to_string
 from typing import Tuple
 from item.rebar import RebarInfo,RebarArea,RebarFy
@@ -9,7 +10,7 @@ from item import floor
 from item.point import Point
 from enum import Enum
 commom_pattern = r'(,)|(、)'
-stash_pattern = r'(\w+)[-](\w+)'
+stash_pattern = r'(\w+)[-|~](\w+)'
 class Rebar:
     
     start_pt = Point
@@ -179,6 +180,7 @@ class Beam:
     def get_coor(self):
         return (self.coor.x,self.coor.y)
     def get_beam_info(self):
+        floor_serial_spacing_char = ' '
         def _get_floor_list(floor1:float,floor2:float):
             if floor1 >= floor2:
                 l = list(range(int(floor1),int(floor2),-1))
@@ -189,7 +191,18 @@ class Beam:
                 l.append(floor2)
                 return l
         ## get beam floor
-        self.floor = self.serial.split(' ')[0]
+        if floor_serial_spacing_char not in self.serial:
+            temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))',self.serial)
+            if temp_matchobj:
+                self.floor = temp_matchobj.group(1)
+                self.serial = temp_matchobj.group(2)
+            else:
+                raise BeamFloorNameError
+        else:
+            self.floor = self.serial.split(' ')[0]
+            if self.floor == '':
+                raise BeamFloorNameError
+            self.serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
         if re.search(commom_pattern,self.floor):
             sep = re.search(commom_pattern,self.floor).group(0)
             for floor_text in self.floor.split(sep):
@@ -211,8 +224,9 @@ class Beam:
             self.floor += 'F'
 
         ## get beam width/depth
-        temp_serial = ''.join(self.serial.split(' ')[1:])
-        self.serial = ''.join(self.serial.split(' ')[1:])
+        # temp_serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
+        # self.serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
+        temp_serial = self.serial
         matches= re.findall(r"\((.*?)\)",self.serial,re.MULTILINE)
         if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE))==0:return
         split_char = re.findall(r"X|x",matches[0])[0]
@@ -236,7 +250,6 @@ class Beam:
                 self.beam_type = BeamType.SB
             self.serial = serial 
     def get_loading(self,band_width):
-        pass
         return self.floor_object.loading['SDL']* 0.1 * band_width + self.floor_object.loading['LL'] * 0.1* band_width + self.width * self.depth * 2.4 /1000 # t/m
 
     def sort_beam_rebar(self):
@@ -276,18 +289,20 @@ class Beam:
                 connect_rebar = [r for r in self.rebar_add_list if abs(r.end_pt.x - left_rebar.start_pt.x) < 0.1 and r.start_pt.y == left_rebar.start_pt.y]
                 if connect_rebar:
                     rebar.append(connect_rebar[0])
+                    self.rebar_add_list.remove(connect_rebar[0])
                     left_rebar = min(rebar,key=lambda r:r.start_pt.x)
                 else:
-                    print(f'{self.serial}')
+                    print(f'{self.floor}{self.serial}left rebar error')
                     break
             right_rebar = max(rebar,key=lambda r:r.end_pt.x)
             while right_rebar.end_pt.x < self.end_pt.x:
                 connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - right_rebar.end_pt.x) < 0.1 and r.start_pt.y == right_rebar.end_pt.y]
                 if connect_rebar:
                     rebar.append(connect_rebar[0])
+                    self.rebar_add_list.remove(connect_rebar[0])
                     right_rebar = max(rebar,key=lambda r:r.end_pt.x)
                 else:
-                    print(f'{self.serial}')
+                    print(f'{self.floor}{self.serial}right rebar error')
                     break
             rebar.sort(key=lambda r:(r.start_pt.y,r.start_pt.x))
             for i in range(0,len(rebar)-1):
@@ -309,6 +324,7 @@ class Beam:
             if i == 2:
                 self.tie['right'] = tie
     def cal_rebar(self):
+        ## if E.F in rebar_add_list , will show on floor rebar size
         for rebar_list in [self.rebar_list,self.rebar_add_list,self.rebar_bend_list]:
             for rebar in rebar_list:
                 if rebar.size in self.rebar_count:
@@ -321,7 +337,11 @@ class Beam:
                 size = matchObj.group()
                 if not size in self.rebar_count:
                     self.rebar_count[size] = 0
-                self.rebar_count[size] += rebar.length * rebar.number * RebarInfo(size)
+                if "E.F" in rebar.size:
+                    self.rebar_count[size] += rebar.length * rebar.number * RebarInfo(size)*2
+                else:
+                    self.rebar_count[size] += rebar.length * rebar.number * RebarInfo(size)
+                break #middle tie rebar number equal to rebar line number, so only count one middle tie
             pass
         for tie in self.tie_list:
             if tie.size in self.tie_count:
@@ -435,8 +455,12 @@ class Beam:
     def cal_rebar_ratio(self):
         for rebar_type in [RebarType.Top,RebarType.Bottom]:
             for rebar_type2 in [RebarType.Left,RebarType.Middle,RebarType.Right]:
-                self.rebar_ratio[(rebar_type,rebar_type2)] = self.get_rebar_table(rebar_type1=rebar_type,
-                                                                                  rebar_type2=rebar_type2)/(self.width * (self.depth - self.protect_layer))
+                try:
+                    self.rebar_ratio[(rebar_type,rebar_type2)] = self.get_rebar_table(rebar_type1=rebar_type,
+                                                                                  rebar_type2=rebar_type2)/(self.width * 
+                                                                                                            (self.depth - self.protect_layer))
+                except:
+                    self.rebar_ratio[(rebar_type,rebar_type2)] = 0    
     def get_rebar_ratio(self):
         return [
                     self.rebar_ratio[(RebarType.Top,RebarType.Left)],

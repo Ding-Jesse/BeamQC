@@ -117,7 +117,10 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
             concrete_df = pd.concat([concrete_df,new_row_concrete],verify_integrity=True)
             coupler_df = pd.concat([coupler_df,new_row_coupler],verify_integrity=True)
             formwork_df = pd.concat([formwork_df,new_row_formwork],verify_integrity=True)
-        coupler_df.loc['Sum'] = coupler_df.sum()
+        try:
+            coupler_df.loc['Sum'] = coupler_df.sum()
+        except:
+            pass
     if item_type == 'beam':
         for floor in floor_list:
             floor.summary_beam()
@@ -130,8 +133,11 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
             formwork_df = pd.concat([formwork_df,new_row_formwork],verify_integrity=True)
     df.fillna(value=0,inplace=True)
     df.loc['Sum'] = df.sum()
-    concrete_df.loc['Sum'] = concrete_df.sum()
-    formwork_df.loc['Sum'] = formwork_df.sum()
+    try:
+        concrete_df.loc['Sum'] = concrete_df.sum()
+        formwork_df.loc['Sum'] = formwork_df.sum()
+    except:
+        pass
     return df,concrete_df,coupler_df,formwork_df
 def summary_floor_rebar_ratio(floor_list:list[Floor]):
     # df = pd.DataFrame(columns=["0-0.5%","0.5%-1.0%",'1.0%-1.5%','1.5%-2.0%','2.0%-2.5%','2.5%-'],index=[])
