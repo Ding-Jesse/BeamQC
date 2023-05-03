@@ -1137,10 +1137,10 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
         f'Rcad.xlsx'
     )
     cad_df = pd.DataFrame.from_dict(data=cad_data, orient='index',columns=['數量'])
+    floor_list = floor_parameter(beam_list=class_beam_list,floor_parameter_xlsx=floor_parameter_xlsx)
     beam_df = output_beam(class_beam_list=class_beam_list)
     fbeam_list,sbeam_list,beam_list = seperate_beam(class_beam_list=class_beam_list)
 
-    floor_list = floor_parameter(beam_list=class_beam_list,floor_parameter_xlsx=floor_parameter_xlsx)
     rebar_df,concrete_df,coupler_df,formwork_df  = summary_floor_rebar(floor_list=floor_list,item_type='beam')
     ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
     bs_list = create_beam_scan()
@@ -1326,7 +1326,8 @@ def output_beam(class_beam_list:list[Beam]):
 
     header_info_2 = [
         ('梁長', ''), ('支承寬', '左'), ('支承寬', '右'),
-        ('主筋量', 'g'), ('箍筋量', 'g'),('模板', 'cm2'),('混凝土', 'cm3')
+        ('主筋量', 'g'), ('箍筋量', 'g'),('模板', 'cm2'),('混凝土', 'cm3'),
+        ('搭接長度','左端'),('搭接長度','中央'),('搭接長度','右端')
     ]
     header = pd.MultiIndex.from_tuples(
         header_info_1 + header_rebar + header_sidebar + header_stirrup + header_info_2)
@@ -1335,12 +1336,13 @@ def output_beam(class_beam_list:list[Beam]):
     # beam = pd.DataFrame(np.empty([len(etabs_design.groupby(['Story', 'BayID'])) * 4, len(header)], dtype='<U16'), columns=header)
     row = 0
     # temp_x = 0 
-    # rebar_pos ={
-    #     'top_first':0,
-    #     'top_second':1,
-    #     'bot_first':3,
-    #     'bot_second':2
-    # }
+    rebar_pos ={
+        RebarType.Top:0,
+        RebarType.Bottom:3,
+        RebarType.Left:'左端',
+        RebarType.Middle:'中央',
+        RebarType.Right:'右端'
+    }
     # min_diff = 10
     for b in class_beam_list:
         try:
@@ -1399,6 +1401,8 @@ def output_beam(class_beam_list:list[Beam]):
             #             beam.at[row + rebar_pos[rebar_text],('主筋長度', '中')] = rebar.length
             #             continue
             # for tie_text,tie in b.tie.items():
+            for pos,ld in b.ld_table.items():
+                beam.at[row + rebar_pos[pos[0]],('搭接長度',rebar_pos[pos[1]])] = ld
             if b.tie_list:
                 beam.at[row,('箍筋', '左')] = b.tie['left'].text
                 beam.at[row,('箍筋', '中')] = b.tie['middle'].text
@@ -1406,6 +1410,7 @@ def output_beam(class_beam_list:list[Beam]):
                 beam.at[row,('箍筋長度', '左')] = b.length/4
                 beam.at[row,('箍筋長度', '中')] = b.length/2
                 beam.at[row,('箍筋長度', '右')] = b.length/4
+            
             beam.at[row,('主筋量', 'g')]=b.get_rebar_weight()
             beam.at[row,('箍筋量', 'g')]=b.get_tie_weight()
             beam.at[row,('模板', 'cm2')]=b.get_formwork()
@@ -1487,7 +1492,11 @@ def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='
         output_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(temp_file),
                                                    progress_file=progress_file,
                                                    rebar_parameter_excel=floor_parameter_xlsx)
-        output_dwg = draw_rebar_line(class_beam_list=output_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
+        output_dwg = draw_rebar_line(class_beam_list=output_beam_list,
+                                     msp_beam=msp_beam,
+                                     doc_beam=doc_beam,
+                                     output_folder=output_folder,
+                                     project_name=project_name)
         return output_beam_list,cad_data,os.path.basename(output_dwg)
     start = time.time()# 開始測量執行時間
     with Pool(processes=10) as p:
@@ -1548,7 +1557,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0324\東仁\2023-0303 大地梁v2.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0503\XS-BEAM(北基地).dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0413\0417-地梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-大梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-小梁.dwg"]
@@ -1564,16 +1573,16 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0324\東仁'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0503'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0324\東仁\樓層參數_floor(1).xlsx'
-    project_name = '0417-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0503\岡山樓層參數_floor(1).xlsx'
+    project_name = '0503-test'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
         'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-        'block_layer':['S-GRID'], # 框框的圖層
+        'block_layer':['DEFPOINTS'], # 框框的圖層
         'beam_text_layer' :['S-RC'], # 梁的字串圖層
         'bounding_block_layer':['S-ARCH'],
         'rc_block_layer':['S-RC'] # 支承端圖層
@@ -1596,6 +1605,7 @@ if __name__=='__main__':
     #     'beam_text_layer': ['梁跨名稱'], 
     #     'bounding_block_layer': [''], 
     #     'rc_block_layer': ['梁柱截斷記號','邊界線-梁支撐外線']}
+
     # entity_type ={
     #     'rebar_layer':['AcDbPolyline'],
     #     'rebar_data_layer':['AcDbText'],
@@ -1629,12 +1639,12 @@ if __name__=='__main__':
     # test(l)
     # print(l)
     start = time.time()
-    msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+    # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
     # sort_beam_cad(msp_beam=msp_beam,
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0324\東仁\0417_DonZen_Fb.pkl')
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0503\0503-1.pkl')
     # # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='0417_MingXin.pkl',
@@ -1642,7 +1652,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0324\東仁\0417_DonZen_Fb.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0503\0503-1.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
@@ -1650,7 +1660,11 @@ if __name__=='__main__':
                   project_name=project_name,
                   floor_parameter_xlsx=floor_parameter_xlsx,
                   cad_data=cad_data)
-    # draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_beam,doc_beam=doc_beam,output_folder=output_folder,project_name=project_name)
+    # draw_rebar_line(class_beam_list=class_beam_list,
+    #                 msp_beam=msp_beam,
+    #                 doc_beam=doc_beam,
+    #                 output_folder=output_folder,
+    #                 project_name=project_name)
     # print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])
     # data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0222_sb_fb_b-1.pkl')

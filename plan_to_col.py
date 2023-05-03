@@ -913,20 +913,20 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
-    col_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-08-342023-0327 中德楠梓-2023-0324_XS-col.dwg']
+    col_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-11-37三重永德-2023-0502_.dwg']
     #print(col_filename.split(',')) 
     # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0327\2023-03-27-08-342023-0327 中德楠梓-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0327\XS-PLAN_new.dwg'#sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0327\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
-    result_file = r'D:\Desktop\BeamQC\TEST\INPUT\column.txt'#sys.argv[5] # 柱配筋結果
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-11-37三重永德-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0503\XS-PLAN_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0503\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    result_file = r'D:\Desktop\BeamQC\TEST\2023-0503\column.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層
     text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
-    line_layer = 'S-TABLE'#sys.argv[7] # 線的圖層
+    line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
 
     # 在plan裡面自訂圖層
-    block_layer = 'DEFPOINTS'#sys.argv[8] # 圖框的圖層
+    block_layer = 'DwFm'#sys.argv[8] # 圖框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
 
