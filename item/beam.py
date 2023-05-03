@@ -5,7 +5,7 @@ from collections import defaultdict
 from item.excepteions import BeamFloorNameError
 from plan_to_beam import turn_floor_to_float,turn_floor_to_string
 from typing import Tuple
-from item.rebar import RebarInfo,RebarArea,RebarFy
+from item.rebar import RebarInfo,RebarArea,RebarFy,RebarDiameter
 from item import floor
 from item.point import Point
 from enum import Enum
@@ -451,6 +451,7 @@ class Beam:
             else:
                 self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['right'])
         self.cal_rebar_ratio()
+        self.cal_ld_table()
     ##計算梁配筋比
     def cal_rebar_ratio(self):
         for rebar_type in [RebarType.Top,RebarType.Bottom]:
@@ -469,4 +470,85 @@ class Beam:
                     self.rebar_ratio[(RebarType.Bottom,RebarType.Left)],
                     self.rebar_ratio[(RebarType.Bottom,RebarType.Middle)],
                     self.rebar_ratio[(RebarType.Bottom,RebarType.Right)],
-                ]                         
+                ]
+    def cal_ld(self,rebar:Rebar,tie:Tie):
+        from math import sqrt,ceil
+        cover = 7.5
+        fy = self.fy
+        fc = self.fc
+        fydb = RebarDiameter(rebar.size)
+        fytdb = RebarDiameter(tie.size)
+        spacing = tie.spacing
+        if self.beam_type == BeamType.Grider:
+            spacing = 10
+        width_ = self.width
+        fynum = rebar.number
+        avh = RebarArea(tie.size)
+
+        psitTop_ = 1.3
+        psitBot_ = 1
+        psie_ = 1
+        lamda_ = 1
+        psis_ = 1
+        ld = fy / (sqrt(fc) * 3.5 * lamda_) * fydb
+        if fydb >= 2:
+            psis_ = 1
+            ld_simple_top = fy * psitTop_ * psie_ / (sqrt(fc) * 5.3 * lamda_) * fydb
+            ld_simple_bot = fy * psitBot_ * psie_ / (sqrt(fc) * 5.3 * lamda_) * fydb
+        else:
+            psis_ = 0.8
+            ld_simple_top = fy * psitTop_ * psie_ / (sqrt(fc) * 6.6 * lamda_) * fydb
+            ld_simple_bot = fy * psitBot_ * psie_ / (sqrt(fc) * 6.6 * lamda_) * fydb
+        
+        cs_ = ((width_ - fydb * fynum - fytdb*2 - cover * 2)/(fynum - 1) + fydb) / 2
+        cc_ = cover + fytdb + fydb / 2
+        if cs_ <= cc_ :
+            pass
+            cb_ = cs_
+            atr_ = 2 * avh
+            ktr_ = atr_ * 40 / (spacing * fynum)
+        else:
+            cb_ = cs_
+            atr_ = avh
+            ktr_ = atr_ * 40 / (spacing * fynum)
+        
+        botFactor = psitBot_ * psie_ * psis_ * lamda_ / min((cb_ + ktr_) / fydb, 2.5)
+        topFactor = psitTop_ * botFactor
+
+        bot_ld = botFactor * ld
+        top_ld = topFactor * ld
+
+        bot_lap_ld = ceil(1.3 * min(ld_simple_bot,bot_ld))
+        top_lap_ld = ceil(1.3 * min(ld_simple_top,top_ld))
+
+        return (top_lap_ld,bot_lap_ld)
+    
+    def cal_ld_table(self):
+        self.ld_table = {}
+        if self.rebar_table[RebarType.Top.value][RebarType.Left.value] and self.tie['left']:
+            top_lap_ld,bot_lap_ld = self.cal_ld(rebar = self.rebar_table[RebarType.Top.value][RebarType.Left.value][0],
+                                                tie = self.tie['left'])
+            self.ld_table.update({(RebarType.Top,RebarType.Left):top_lap_ld})
+        if self.rebar_table[RebarType.Top.value][RebarType.Middle.value] and self.tie['middle']:
+            top_lap_ld,bot_lap_ld = self.cal_ld(rebar = self.rebar_table[RebarType.Top.value][RebarType.Middle.value][0],
+                                                tie = self.tie['middle'])
+            self.ld_table.update({(RebarType.Top,RebarType.Middle):top_lap_ld})
+        if self.rebar_table[RebarType.Top.value][RebarType.Right.value] and self.tie['right']:
+            top_lap_ld,bot_lap_ld = self.cal_ld(rebar = self.rebar_table[RebarType.Top.value][RebarType.Right.value][0],
+                                                tie = self.tie['right'])
+            self.ld_table.update({(RebarType.Top,RebarType.Right):top_lap_ld})
+
+        if self.rebar_table[RebarType.Bottom.value][RebarType.Left.value] and self.tie['left']:
+            top_lap_ld,bot_lap_ld = self.cal_ld(rebar = self.rebar_table[RebarType.Bottom.value][RebarType.Left.value][0],
+                                                tie = self.tie['left'])
+            self.ld_table.update({(RebarType.Bottom,RebarType.Left):bot_lap_ld})
+        if self.rebar_table[RebarType.Bottom.value][RebarType.Middle.value] and self.tie['middle']:
+            top_lap_ld,bot_lap_ld = self.cal_ld(rebar = self.rebar_table[RebarType.Bottom.value][RebarType.Middle.value][0],
+                                                tie = self.tie['middle'])
+            self.ld_table.update({(RebarType.Bottom,RebarType.Middle):bot_lap_ld})
+        if self.rebar_table[RebarType.Top.value][RebarType.Right.value] and self.tie['right']:
+            top_lap_ld,bot_lap_ld = self.cal_ld(rebar = self.rebar_table[RebarType.Bottom.value][RebarType.Right.value][0],
+                                                tie = self.tie['right'])
+            self.ld_table.update({(RebarType.Bottom,RebarType.Right):bot_lap_ld})
+
+        
