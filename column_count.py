@@ -640,16 +640,16 @@ def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',
     print(f'Total Time:{time.time() - start}')
     return os.path.basename(output_excel)
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0413\test_楊明區明新段-2023-04-13-14-57-S3-01.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0505\中德楠梓-2023-05-02-14-38-XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
     column_filenames = [
         r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-XS-COL.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0413\temp-2023-04-12-19-10-floor.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0413'
-    project_name = 'test_MingXin_column'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0505\中德楠梓-2023-05-02-14-38-floor.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0505'
+    project_name = 'test_column'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
     #     'line_layer':['TABLE'],
@@ -668,45 +668,45 @@ if __name__ == '__main__':
         'tie_text_layer':['AcDbText']
     }
     # RCAD
-    layer_config = {
-        'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
-        'line_layer':['GirdInner','GirdBoundary'],
-        'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
-        'rebar_layer':['主筋斷面','#8','#10'], # 鋼筋和箍筋的線的塗層
-        'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區','文字-剪力筋'], # 箍筋文字圖層
-        'tie_layer':['箍筋線'], # 箍筋文字圖層
-        'block_layer':['0'], # 框框的圖層
-        'column_rc_layer':['柱斷面線'] #斷面圖層
-    }
-    #Elements
     # layer_config = {
-    #     'text_layer':['S-TEXT'],
-    #     'line_layer':['S-TABLE'],
-    #     'rebar_text_layer':['S-TEXT'], # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer':['S-REINFD'], # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-    #     'tie_layer':['S-REINF'], # 箍筋文字圖層
-    #     'block_layer':['Page'], # 框框的圖層
-    #     'column_rc_layer':['S-RC'] #斷面圖層
+    #     'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
+    #     'line_layer':['GirdInner','GirdBoundary'],
+    #     'rebar_text_layer':['文字-主筋根數'], # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer':['主筋斷面','#8','#10'], # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer':['文字-剪力筋 中央區','文字-剪力筋-BC','文字-剪力筋-圍束區','文字-剪力筋'], # 箍筋文字圖層
+    #     'tie_layer':['箍筋線'], # 箍筋文字圖層
+    #     'block_layer':['0'], # 框框的圖層
+    #     'column_rc_layer':['柱斷面線'] #斷面圖層
     # }
+    #Elements
+    layer_config = {
+        'text_layer':['S-TEXT'],
+        'line_layer':['S-TABLE'],
+        'rebar_text_layer':['S-TEXT'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':['S-REINFD'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
+        'tie_layer':['S-REINF'], # 箍筋文字圖層
+        'block_layer':['0'], # 框框的圖層
+        'column_rc_layer':['S-RC'] #斷面圖層
+    }
     msp_column = None
     doc_column = None
     msp_column,doc_column = read_column_cad(col_filename)
     # sort_col_cad(msp_column=msp_column,
     #              doc_column=doc_column,
     #              layer_config=layer_config,
-    #              temp_file=r'0414-MingXin-column.pkl')
+    #              temp_file=r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl')
 
-    output_grid_dwg(data=save_temp_file.read_temp(r'0414-MingXin-column.pkl'),
+    output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl'),
                     msp_column=msp_column,
                     doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'0414-MingXin-column.pkl'),
-    #                                rebar_excel_path=floor_parameter_xlsx)
-    # create_report(output_column_list=column_list,
-    #               output_folder=output_folder,
-    #               project_name=project_name,
-    #               floor_parameter_xlsx=floor_parameter_xlsx)
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl'),
+                                   rebar_excel_path=floor_parameter_xlsx)
+    create_report(output_column_list=column_list,
+                  output_folder=output_folder,
+                  project_name=project_name,
+                  floor_parameter_xlsx=floor_parameter_xlsx)
     # count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file='temp_0327_COL_Gangshan.pkl',
     #                              output_folder=output_folder,project_name=project_name,floor_parameter_xlsx=floor_parameter_xlsx)
 

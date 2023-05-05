@@ -116,6 +116,7 @@ class Beam:
         self.tie_count = {}
         self.ng_message = []
         self.multi_floor = []
+        self.multi_serial = []
         self.protect_layer = 9
         self.rebar={
             'top_first':[],
@@ -154,7 +155,7 @@ class Beam:
         self.serial = serial
         self.coor.x = x
         self.coor.y = y
-        self.get_beam_info()
+        # self.get_beam_info()
 
     def add_rebar(self,**kwargs):
         if 'add_up' in kwargs:
@@ -179,7 +180,7 @@ class Beam:
         return ((self.bounding_box[0].x,self.bounding_box[0].y),(self.bounding_box[1].x,self.bounding_box[1].y))
     def get_coor(self):
         return (self.coor.x,self.coor.y)
-    def get_beam_info(self):
+    def get_beam_info(self,floor_list:list[str]):
         floor_serial_spacing_char = ' '
         def _get_floor_list(floor1:float,floor2:float):
             if floor1 >= floor2:
@@ -212,12 +213,18 @@ class Beam:
             try:
                 floor_tuple = re.findall(stash_pattern ,self.floor)
                 for floors in floor_tuple:
-                    first_floor = turn_floor_to_float(floor=floors[0])
-                    second_floor = turn_floor_to_float(floor=floors[-1])
-                    if first_floor and second_floor and max(first_floor,second_floor) < 100:
-                        for floor_float in _get_floor_list(second_floor,first_floor):
-                            self.multi_floor.append(turn_floor_to_string(floor_float))
-                        self.floor = self.multi_floor[0]
+                    first_floor = floors[0]
+                    if first_floor[-1] != 'F': first_floor += 'F'
+                    second_floor = floors[-1]
+                    if second_floor [-1] != 'F': second_floor  += 'F'
+                    # if first_floor and second_floor and max(first_floor,second_floor) < 100:
+                    #     for floor_float in _get_floor_list(second_floor,first_floor):
+                    #         self.multi_floor.append(turn_floor_to_string(floor_float))
+                    #     self.floor = self.multi_floor[0]
+                    first_index = min(floor_list.index(first_floor),floor_list.index(second_floor))
+                    second_index = max(floor_list.index(first_floor),floor_list.index(second_floor))
+                    self.multi_floor.extend(floor_list[first_index:second_index + 1])
+                    self.floor = floor_list[0]
             except:
                 pass
         if self.floor[-1] != 'F':
@@ -241,6 +248,12 @@ class Beam:
         match_obj = re.search(r'(.+)\((.*?)\)',temp_serial)
         if match_obj:
             serial = match_obj.group(1).replace(" ","")
+            self.serial = serial 
+            if re.search(commom_pattern,self.serial):
+                sep = re.search(commom_pattern,self.serial).group(0)
+                for serial_text in self.serial.split(sep):
+                    self.multi_serial.append(serial_text)
+                self.serial = self.multi_serial[0]
             self.beam_type = BeamType.Other
             if re.search(r'^[B|G]',serial):
                 self.beam_type = BeamType.Grider
@@ -248,7 +261,7 @@ class Beam:
                 self.beam_type = BeamType.FB
             if re.search(r'^b',serial):
                 self.beam_type = BeamType.SB
-            self.serial = serial 
+            
     def get_loading(self,band_width):
         return self.floor_object.loading['SDL']* 0.1 * band_width + self.floor_object.loading['LL'] * 0.1* band_width + self.width * self.depth * 2.4 /1000 # t/m
 

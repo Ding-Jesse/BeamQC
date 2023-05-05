@@ -1075,6 +1075,17 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     class_beam_list = []
 
     readRebarExcel(file_path=rebar_parameter_excel)
+
+    #2023-0505 add floor xlsx to found floor
+    parameter_df = read_parameter_df(floor_parameter_xlsx,'梁參數表')
+    floor_list = parameter_df['樓層'].tolist()
+    def fix_floor_list(floor):
+        if floor[-1] != 'F':
+            floor += 'F'
+        return floor
+    floor_list = list(map(lambda f: fix_floor_list(f),floor_list))
+
+    # parameter_df.set_index(['樓層'],inplace=True)
     # Step 8. 對應箭頭跟鋼筋
     coor_to_arrow_dic,no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,coor_to_rebar_list)
     progress('梁配筋圖讀取進度 8/15', progress_file)
@@ -1105,7 +1116,9 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     # count_rebar_in_block(coor_to_arrow_dic,coor_to_block_list,coor_to_rebar_list_straight=coor_to_rebar_list_straight,coor_to_bend_rebar_list=coor_to_bend_rebar_list)
     # Step 14. 算箍筋
     coor_sorted_tie_list = count_tie(coor_to_tie_text_list=coor_to_tie_text_list,coor_to_block_list=coor_to_block_list,coor_to_tie_list=coor_to_tie_list)
-    add_beam_to_list(coor_to_beam_list=coor_to_beam_list,class_beam_list=class_beam_list)
+    add_beam_to_list(coor_to_beam_list=coor_to_beam_list,
+                     class_beam_list=class_beam_list,
+                     floor_list=floor_list)
     combine_beam_boundingbox(coor_to_block_list=coor_to_block_list,
                              coor_to_bounding_block_list=coor_to_bounding_block_list,
                              class_beam_list=class_beam_list,
@@ -1198,11 +1211,12 @@ def seperate_beam(class_beam_list:list[Beam]):
             [b for b in class_beam_list if b.beam_type == BeamType.SB],\
             [b for b in class_beam_list if b.beam_type == BeamType.Grider]
 
-def add_beam_to_list(coor_to_beam_list:list,class_beam_list:list):
+def add_beam_to_list(coor_to_beam_list:list,class_beam_list:list,floor_list:list):
     floor_pattern = r'(\d+F)|(R\d+)|(PR)|(B\d+)|(MF)'
     for beam in coor_to_beam_list:
         try:
             b = Beam(beam[0],beam[1][0],beam[1][1])
+            b.get_beam_info(floor_list=floor_list)
         except BeamFloorNameError:
             print(f'{beam[0]} beam serial error')
             continue
@@ -1306,6 +1320,11 @@ def sort_beam(class_beam_list:list[Beam]):
         for floor_text in beam.multi_floor[1:]:
             new_beam = copy.deepcopy(beam)
             new_beam.floor = floor_text
+            class_beam_list.append(new_beam)
+    for beam in class_beam_list[:]:
+        for serial_text in beam.multi_serial[1:]:
+            new_beam = copy.deepcopy(beam)
+            new_beam.serial = serial_text
             class_beam_list.append(new_beam)
     return
 def output_beam(class_beam_list:list[Beam]):
@@ -1557,7 +1576,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0503\XS-BEAM(北基地).dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0505\中德楠梓-2023-05-02-14-38-XS-COL.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0413\0417-地梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-大梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-小梁.dwg"]
@@ -1575,14 +1594,14 @@ if __name__=='__main__':
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
     output_folder = r'D:\Desktop\BeamQC\TEST\2023-0503'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0503\岡山樓層參數_floor(1).xlsx'
-    project_name = '0503-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0505\中德楠梓-2023-05-02-14-38-floor.xlsx'
+    project_name = '0505-test'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
         'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-        'block_layer':['DEFPOINTS'], # 框框的圖層
+        'block_layer':['0'], # 框框的圖層
         'beam_text_layer' :['S-RC'], # 梁的字串圖層
         'bounding_block_layer':['S-ARCH'],
         'rc_block_layer':['S-RC'] # 支承端圖層
@@ -1639,12 +1658,12 @@ if __name__=='__main__':
     # test(l)
     # print(l)
     start = time.time()
-    # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,
-    #               layer_config=layer_config,
-    #               entity_config=entity_type,
-    #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0503\0503-1.pkl')
+    msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+    sort_beam_cad(msp_beam=msp_beam,
+                  layer_config=layer_config,
+                  entity_config=entity_type,
+                  progress_file=progress_file,
+                  temp_file=r'D:\Desktop\BeamQC\TEST\2023-0503\0503-sb-2.pkl')
     # # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='0417_MingXin.pkl',
@@ -1652,7 +1671,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0503\0503-1.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0503\0503-sb-2.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
