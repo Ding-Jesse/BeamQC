@@ -21,7 +21,8 @@ class Rebar:
     size = ''
     fy = 0
     As = 0
-    def __init__(self,start_pt,end_pt,length,number,size,text,add_up=''):
+    arrow_coor:tuple
+    def __init__(self,start_pt,end_pt,length,number,size,text,arrow_coor,add_up=''):
         self.start_pt = Point(start_pt)
         self.end_pt = Point(end_pt)
         self.number = int(number)
@@ -30,6 +31,7 @@ class Rebar:
         self.text = text
         self.start_pt.x -= self.length/2
         self.end_pt.x += self.length/2
+        self.arrow_coor = arrow_coor
         self.As = RebarArea(self.size) * self.number
         self.fy = RebarFy(self.size)
     def __str__(self) -> str:
@@ -272,6 +274,8 @@ class Beam:
         self.end_pt.x = max(self.rebar_list,key=lambda rebar:rebar.end_pt.x).end_pt.x
         if self.end_pt.x - self.bounding_box[1].x > min_diff:
             self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
+        if self.start_pt.x - self.bounding_box[0].x > min_diff:
+            self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
         self.length = abs(self.start_pt.x - self.end_pt.x)
         self.rebar_list.sort(key=lambda rebar:(rebar.start_pt.y,rebar.start_pt.x))
         
@@ -486,7 +490,10 @@ class Beam:
                 ]
     def cal_ld(self,rebar:Rebar,tie:Tie):
         from math import sqrt,ceil
-        cover = 7.5
+        if self.beam_type == BeamType.FB:
+            cover = 7.5
+        else:
+            cover = 4
         fy = self.fy
         fc = self.fc
         fydb = RebarDiameter(rebar.size)
