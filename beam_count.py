@@ -1057,7 +1057,7 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     readRebarExcel(file_path=rebar_parameter_excel)
 
     #2023-0505 add floor xlsx to found floor
-    parameter_df = read_parameter_df(floor_parameter_xlsx,'梁參數表')
+    parameter_df = read_parameter_df(rebar_parameter_excel,'梁參數表')
     floor_list = parameter_df['樓層'].tolist()
     def fix_floor_list(floor):
         if floor[-1] != 'F':
