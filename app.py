@@ -386,7 +386,8 @@ def count_beam():
             'block_layer':request.form['block_layer'].split('\r\n'), # 框框的圖層
             'beam_text_layer' :request.form['beam_text_layer'].split('\r\n'), # 梁的字串圖層
             'bounding_block_layer':request.form['bounding_block_layer'].split('\r\n'),
-            'rc_block_layer':request.form['rc_block_layer'].split('\r\n')
+            'rc_block_layer':request.form['rc_block_layer'].split('\r\n'),
+            's_dim_layer':['S-DIM']
             }
         print(layer_config)
         if beam_filename != '' and temp_file != '' and beam_ok:
@@ -459,7 +460,7 @@ def count_column():
             'tie_text_layer':request.form['column_tie_text_layer'].split('\r\n'), # 箍筋文字圖層
             'tie_layer':request.form['column_tie_layer'].split('\r\n'), # 箍筋文字圖層
             'block_layer':request.form['column_block_layer'].split('\r\n'), # 框框的圖層
-            'column_rc_layer':request.form['column_rc_layer'].split('\r\n') #斷面圖層
+            'column_rc_layer':request.form['column_rc_layer'].split('\r\n'), #斷面圖層
         }
         print(layer_config)
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
