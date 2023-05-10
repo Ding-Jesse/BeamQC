@@ -274,7 +274,7 @@ class Beam:
         self.end_pt.x = max(self.rebar_list,key=lambda rebar:rebar.end_pt.x).end_pt.x
         if self.end_pt.x - self.bounding_box[1].x > min_diff:
             self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
-        if self.start_pt.x - self.bounding_box[0].x > min_diff:
+        if self.start_pt.x - self.bounding_box[0].x > min_diff and self.rebar_add_list:
             self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
         self.length = abs(self.start_pt.x - self.end_pt.x)
         self.rebar_list.sort(key=lambda rebar:(rebar.start_pt.y,rebar.start_pt.x))

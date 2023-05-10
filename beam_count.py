@@ -1568,31 +1568,35 @@ def compare_line_with_dim(coor_to_dim_list:list[tuple[tuple[float,float],float,t
             beam_list = [beam for beam in class_beam_list if inblock(block[0],beam.get_coor())]
             for beam in beam_list:
                 for rebar in beam.rebar_list:
-                    rebar_dim = [dim for dim in dim_list if (rebar.start_pt.x - dim[0][0]) * (rebar.end_pt.x - dim[0][0]) <= 0]
-                    ## 下層筋
-                    if rebar.arrow_coor[0][1] <= rebar.arrow_coor[1][1]:
-                        rebar_dim =[dim for dim in rebar_dim if (dim[0][1] > rebar.arrow_coor[0][1])]
-                    else:
-                        rebar_dim =[dim for dim in rebar_dim if (dim[0][1] < rebar.arrow_coor[0][1])]
-
-                    if not rebar_dim:continue
-
-                    min_dim = min(rebar_dim , key= lambda dim:_get_distance(dim[0],rebar.arrow_coor[0]))
-                    if abs(rebar.length - min_dim[1]) > 1 and abs(min_dim[0][1] - rebar.arrow_coor[0][1]) < min_diff:
-                        print(f'{rebar.start_pt} :{rebar.length} <> {min_dim[0]}:{min_dim[1]}')
-                        if abs(rebar.length - min_dim[1]) < 50:continue 
-                        if (min_dim[2][0][0] - rebar.arrow_coor[0][0]) * (min_dim[2][1][0] - rebar.arrow_coor[0][0]) > 0:
-                            rebar.length -= min_dim[1]
-                            if abs(rebar.end_pt.x - min_dim[0][0]) < abs(rebar.start_pt.x - min_dim[0][0]):
-                                rebar.end_pt.x = rebar.start_pt.x + rebar.length
-                            else:
-                                rebar.start_pt.x = rebar.end_pt.x - rebar.length
+                    try:
+                        rebar_dim = [dim for dim in dim_list if (rebar.start_pt.x - dim[0][0]) * (rebar.end_pt.x - dim[0][0]) <= 0]
+                        ## 下層筋
+                        if rebar.arrow_coor[0][1] <= rebar.arrow_coor[1][1]:
+                            rebar_dim =[dim for dim in rebar_dim if (dim[0][1] > rebar.arrow_coor[0][1])]
                         else:
-                            rebar.length = min_dim[1]    
-                            if abs(rebar.end_pt.x - min_dim[0][0]) > abs(rebar.start_pt.x - min_dim[0][0]):
-                                rebar.end_pt.x = rebar.start_pt.x + rebar.length
+                            rebar_dim =[dim for dim in rebar_dim if (dim[0][1] < rebar.arrow_coor[0][1])]
+
+                        if not rebar_dim:continue
+
+                        min_dim = min(rebar_dim , key= lambda dim:_get_distance(dim[0],rebar.arrow_coor[0]))
+                        if abs(rebar.length - min_dim[1]) > 1 and abs(min_dim[0][1] - rebar.arrow_coor[0][1]) < min_diff:
+                            print(f'{rebar.start_pt} :{rebar.length} <> {min_dim[0]}:{min_dim[1]}')
+                            if abs(rebar.length - min_dim[1]) < 50:continue 
+                            if (min_dim[2][0][0] - rebar.arrow_coor[0][0]) * (min_dim[2][1][0] - rebar.arrow_coor[0][0]) > 0:
+                                rebar.length -= min_dim[1]
+                                if abs(rebar.end_pt.x - min_dim[0][0]) < abs(rebar.start_pt.x - min_dim[0][0]):
+                                    rebar.end_pt.x = rebar.start_pt.x + rebar.length
+                                else:
+                                    rebar.start_pt.x = rebar.end_pt.x - rebar.length
                             else:
-                                rebar.start_pt.x = rebar.end_pt.x - rebar.length
+                                rebar.length = min_dim[1]    
+                                if abs(rebar.end_pt.x - min_dim[0][0]) > abs(rebar.start_pt.x - min_dim[0][0]):
+                                    rebar.end_pt.x = rebar.start_pt.x + rebar.length
+                                else:
+                                    rebar.start_pt.x = rebar.end_pt.x - rebar.length
+                    except:
+                        print(rebar.arrow_coor)
+                        pass
                         # new_rebar_arrow,_ = sort_arrow_line(coor_to_rebar_list=[((origin_start_pt_x,rebar.start_pt.y),
                         #                                     (origin_end_pt_x,rebar.end_pt.y),
                         #                                     abs(origin_length - rebar.length))],
@@ -1628,9 +1632,9 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0503'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0509'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0505\中德楠梓-2023-05-02-14-38-floor.xlsx'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0509\淡海撿料-2023-05-09-16-11-temp.xlsx'
     project_name = '0505-test'
     # 在beam裡面自訂圖層
     layer_config = {
@@ -1708,7 +1712,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0503\0503-sb-2.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0509\淡海撿料-2023-05-09-16-11-temp-0.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
