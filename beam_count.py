@@ -1568,31 +1568,35 @@ def compare_line_with_dim(coor_to_dim_list:list[tuple[tuple[float,float],float,t
             beam_list = [beam for beam in class_beam_list if inblock(block[0],beam.get_coor())]
             for beam in beam_list:
                 for rebar in beam.rebar_list:
-                    rebar_dim = [dim for dim in dim_list if (rebar.start_pt.x - dim[0][0]) * (rebar.end_pt.x - dim[0][0]) <= 0]
-                    ## 下層筋
-                    if rebar.arrow_coor[0][1] <= rebar.arrow_coor[1][1]:
-                        rebar_dim =[dim for dim in rebar_dim if (dim[0][1] > rebar.arrow_coor[0][1])]
-                    else:
-                        rebar_dim =[dim for dim in rebar_dim if (dim[0][1] < rebar.arrow_coor[0][1])]
-
-                    if not rebar_dim:continue
-
-                    min_dim = min(rebar_dim , key= lambda dim:_get_distance(dim[0],rebar.arrow_coor[0]))
-                    if abs(rebar.length - min_dim[1]) > 1 and abs(min_dim[0][1] - rebar.arrow_coor[0][1]) < min_diff:
-                        print(f'{rebar.start_pt} :{rebar.length} <> {min_dim[0]}:{min_dim[1]}')
-                        if abs(rebar.length - min_dim[1]) < 50:continue 
-                        if (min_dim[2][0][0] - rebar.arrow_coor[0][0]) * (min_dim[2][1][0] - rebar.arrow_coor[0][0]) > 0:
-                            rebar.length -= min_dim[1]
-                            if abs(rebar.end_pt.x - min_dim[0][0]) < abs(rebar.start_pt.x - min_dim[0][0]):
-                                rebar.end_pt.x = rebar.start_pt.x + rebar.length
-                            else:
-                                rebar.start_pt.x = rebar.end_pt.x - rebar.length
+                    try:
+                        rebar_dim = [dim for dim in dim_list if (rebar.start_pt.x - dim[0][0]) * (rebar.end_pt.x - dim[0][0]) <= 0]
+                        ## 下層筋
+                        if rebar.arrow_coor[0][1] <= rebar.arrow_coor[1][1]:
+                            rebar_dim =[dim for dim in rebar_dim if (dim[0][1] > rebar.arrow_coor[0][1])]
                         else:
-                            rebar.length = min_dim[1]    
-                            if abs(rebar.end_pt.x - min_dim[0][0]) > abs(rebar.start_pt.x - min_dim[0][0]):
-                                rebar.end_pt.x = rebar.start_pt.x + rebar.length
+                            rebar_dim =[dim for dim in rebar_dim if (dim[0][1] < rebar.arrow_coor[0][1])]
+
+                        if not rebar_dim:continue
+
+                        min_dim = min(rebar_dim , key= lambda dim:_get_distance(dim[0],rebar.arrow_coor[0]))
+                        if abs(rebar.length - min_dim[1]) > 1 and abs(min_dim[0][1] - rebar.arrow_coor[0][1]) < min_diff:
+                            print(f'{rebar.start_pt} :{rebar.length} <> {min_dim[0]}:{min_dim[1]}')
+                            if abs(rebar.length - min_dim[1]) < 50:continue 
+                            if (min_dim[2][0][0] - rebar.arrow_coor[0][0]) * (min_dim[2][1][0] - rebar.arrow_coor[0][0]) > 0:
+                                rebar.length -= min_dim[1]
+                                if abs(rebar.end_pt.x - min_dim[0][0]) < abs(rebar.start_pt.x - min_dim[0][0]):
+                                    rebar.end_pt.x = rebar.start_pt.x + rebar.length
+                                else:
+                                    rebar.start_pt.x = rebar.end_pt.x - rebar.length
                             else:
-                                rebar.start_pt.x = rebar.end_pt.x - rebar.length
+                                rebar.length = min_dim[1]    
+                                if abs(rebar.end_pt.x - min_dim[0][0]) > abs(rebar.start_pt.x - min_dim[0][0]):
+                                    rebar.end_pt.x = rebar.start_pt.x + rebar.length
+                                else:
+                                    rebar.start_pt.x = rebar.end_pt.x - rebar.length
+                    except:
+                        print(rebar.arrow_coor)
+                        pass
                         # new_rebar_arrow,_ = sort_arrow_line(coor_to_rebar_list=[((origin_start_pt_x,rebar.start_pt.y),
                         #                                     (origin_end_pt_x,rebar.end_pt.y),
                         #                                     abs(origin_length - rebar.length))],
