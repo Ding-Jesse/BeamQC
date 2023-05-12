@@ -327,17 +327,24 @@ def create_report(output_column_list:list[Column],floor_parameter_xlsx='',output
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'Count.xlsx'
     )
-    floor_list = floor_parameter(column_list=output_column_list,floor_parameter_xlsx=floor_parameter_xlsx)
+    floor_list = floor_parameter(column_list=output_column_list,
+                                 floor_parameter_xlsx=floor_parameter_xlsx)
     sort_floor_column(floor_list=floor_list,column_list=output_column_list)
     rebar_df,concrete_df,coupler_df,formwork_df = summary_floor_rebar(floor_list=floor_list,item_type='column')
     cs_list = create_column_scan()
     scan_df = column_check(column_list=output_column_list,column_scan_list=cs_list)
 
 
-    column_df = output_col_excel(column_list=output_column_list,output_folder=output_folder,project_name=project_name)
+    column_df = output_col_excel(column_list=output_column_list,
+                                 output_folder=output_folder,
+                                 project_name=project_name)
     ng_df = output_detail_scan_report(column_list=output_column_list)
-    OutputExcel(df_list=[scan_df],file_path=excel_filename,sheet_name='柱檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-            columns_list=range(2,len(scan_df.columns)+2),rows_list=range(2,len(scan_df.index)+2))
+    OutputExcel(df_list=[scan_df],
+                file_path=excel_filename,
+                sheet_name='柱檢核表',
+                auto_fit_columns=[1],
+                auto_fit_rows=[1],
+                columns_list=range(2,len(scan_df.columns)+2),rows_list=range(2,len(scan_df.index)+2))
     OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
     OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
     OutputExcel(df_list=[coupler_df],file_path=excel_filename,sheet_name='續接器統計表')
@@ -514,6 +521,7 @@ def combine_col_rebar(column_list:list[Column],coor_to_rebar_list:list,coor_to_r
             column[0].add_rebar_coor(rebar)
     for column in column_list:
         column.sort_rebar()
+        
         # print(f'{column.floor}:{column.serial} x:{column.x_row} y:{column.y_row}')
 
 def combine_col_tie(column_list:list[Column],coor_to_tie_text_list:list,coor_to_tie_list:list):
@@ -647,8 +655,8 @@ if __name__ == '__main__':
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0505\中德楠梓-2023-05-02-14-38-floor.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0505'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0512\五股登林-2023-05-11-08-41-floor_1.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0512'
     project_name = 'test_column'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
@@ -691,17 +699,17 @@ if __name__ == '__main__':
     }
     msp_column = None
     doc_column = None
-    msp_column,doc_column = read_column_cad(col_filename)
+    # msp_column,doc_column = read_column_cad(col_filename)
     # sort_col_cad(msp_column=msp_column,
     #              doc_column=doc_column,
     #              layer_config=layer_config,
     #              temp_file=r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl')
 
-    output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl'),
-                    msp_column=msp_column,
-                    doc_column=doc_column)
+    # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl'),
+    #                 msp_column=msp_column,
+    #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0505\0505-column.pkl'),
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0512\五股登林-2023-05-11-08-41-temp-0.pkl'),
                                    rebar_excel_path=floor_parameter_xlsx)
     create_report(output_column_list=column_list,
                   output_folder=output_folder,

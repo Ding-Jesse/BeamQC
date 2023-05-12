@@ -108,6 +108,7 @@ class Column:
         pt = Point(((coor[0][0] + coor[1][0])/2,(coor[0][1] + coor[1][1])/2))
         self.tie_text_list.append((pt,text))
     def sort_rebar(self):
+
         # self.total_rebar = Rebar(self.rebar_text)
         if not self.rebar_coor:return
         if not self.multi_rebar_text:return
@@ -118,9 +119,21 @@ class Column:
             self.total_rebar.append((Rebar(rebar_text),target_rebar[1]))
         self.total_As = sum([r[0].As for r in self.total_rebar])
         self.total_mass = sum([r[0].mass for r in self.total_rebar])
-
-        self.x_row = set(map(lambda r:(r[0][0],r[1]),self.rebar_coor))
-        self.y_row = set(map(lambda r:(r[0][1],r[1]),self.rebar_coor))
+        try:
+            assert (self.serial != "C5" or self.floor != "1F"), 'check'
+        except:
+            pass
+        for coor in self.rebar_coor:
+            if not self.x_row:self.x_row.add((coor[0][0],coor[1]))
+            if not self.y_row:self.y_row.add((coor[0][1],coor[1]))
+            if abs(min(self.x_row, key= lambda x :abs(x[0] - coor[0][0]))[0] - coor[0][0]) > 1:
+                self.x_row.add((coor[0][0],coor[1]))
+            if abs(min(self.y_row,key=lambda x : abs(x[0] - coor[0][1]))[0] - coor[0][1]) > 1:
+                self.y_row.add((coor[0][1],coor[1]))
+        self.y_row = set(self.y_row)
+        self.x_row = set(self.x_row)
+        # self.x_row = set(map(lambda r:(round(r[0][0]),r[1]),self.rebar_coor))
+        # self.y_row = set(map(lambda r:(round(r[0][1]),r[1]),self.rebar_coor))
         for total_rebar in self.total_rebar:
             self.x_dict.update({total_rebar[0].size:len([x for x in self.x_row if x[1] == total_rebar[1]])})
             self.y_dict.update({total_rebar[0].size:len([y for y in self.y_row if y[1] == total_rebar[1]])})
