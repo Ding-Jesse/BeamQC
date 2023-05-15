@@ -1479,7 +1479,7 @@ def output_beam(class_beam_list:list[Beam]):
             beam.at[row,('模板', 'cm2')]=b.get_formwork()
             beam.at[row,('混凝土', 'cm3')]=b.get_concrete()
         except Exception as e:
-            raise
+            # raise
             print(e)
             pass
         row += 4
@@ -1695,9 +1695,9 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0512'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0515'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0512\P2023-03B 岡山大鵬九村社宅(撿料)-2023-05-15-09-02-floor1.xlsx'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0515\淡海撿料-2023-05-15-11-36-temp.xlsx'
     project_name = '0515-test'
     # 在beam裡面自訂圖層
     layer_config = {
@@ -1775,7 +1775,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0512\0515.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0515\淡海撿料-2023-05-15-11-36-temp-0.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
