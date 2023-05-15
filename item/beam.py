@@ -157,6 +157,8 @@ class Beam:
         self.serial = serial
         self.coor.x = x
         self.coor.y = y
+        self.fy = 0
+        self.fc = 0
         # self.get_beam_info()
 
     def add_rebar(self,**kwargs):
@@ -519,7 +521,7 @@ class Beam:
         fydb = RebarDiameter(rebar.size)
         fytdb = RebarDiameter(tie.size)
         spacing = tie.spacing
-        if self.beam_type == BeamType.Grider:
+        if self.beam_type == BeamType.Grider and self.floor_object.is_seismic:
             spacing = 10
         width_ = self.width
         fynum = rebar.number
@@ -543,7 +545,6 @@ class Beam:
         cs_ = ((width_ - fydb * fynum - fytdb*2 - cover * 2)/(fynum - 1) + fydb) / 2
         cc_ = cover + fytdb + fydb / 2
         if cs_ <= cc_ :
-            pass
             cb_ = cs_
             atr_ = 2 * avh
             ktr_ = atr_ * 40 / (spacing * fynum)
