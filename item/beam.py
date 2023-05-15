@@ -226,7 +226,7 @@ class Beam:
                     first_index = min(floor_list.index(first_floor),floor_list.index(second_floor))
                     second_index = max(floor_list.index(first_floor),floor_list.index(second_floor))
                     self.multi_floor.extend(floor_list[first_index:second_index + 1])
-                    self.floor = floor_list[0]
+                    self.floor = self.multi_floor[0]
             except:
                 pass
         if self.floor[-1] != 'F':
@@ -274,10 +274,11 @@ class Beam:
         self.end_pt.x = max(self.rebar_list,key=lambda rebar:rebar.end_pt.x).end_pt.x
         if self.end_pt.x - self.bounding_box[1].x > min_diff:
             self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
-        if self.start_pt.x - self.bounding_box[0].x > min_diff and self.rebar_add_list:
-            self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
+        # if self.start_pt.x - self.bounding_box[0].x > min_diff and self.rebar_add_list:
+        #     if min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x < self.start_pt.x :
+        #         self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
         self.length = abs(self.start_pt.x - self.end_pt.x)
-        self.rebar_list.sort(key=lambda rebar:(rebar.start_pt.y,rebar.start_pt.x))
+        self.rebar_list.sort(key=lambda rebar:(round(rebar.start_pt.y),round(rebar.start_pt.x)))
         
         top_y = self.rebar_list[-1].start_pt.y
         bot_y = self.rebar_list[0].start_pt.y
@@ -321,7 +322,7 @@ class Beam:
                 else:
                     print(f'{self.floor}{self.serial}right rebar error')
                     break
-            rebar.sort(key=lambda r:(r.start_pt.y,r.start_pt.x))
+            rebar.sort(key=lambda r:(round(r.start_pt.y),round(r.start_pt.x)))
             for i in range(0,len(rebar)-1):
                 if abs(rebar[i].end_pt.x - rebar[i+1].start_pt.x) > 50:
                     connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - rebar[i].end_pt.x) < 0.1 and r.start_pt.y == rebar[i].end_pt.y]
@@ -409,7 +410,7 @@ class Beam:
         return As
     ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
-        min_diff = 10
+        min_diff = 15
         for rebar in self.rebar['top_first']:
             if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
                 self.rebar_table['top']['left'].append(rebar)
@@ -462,11 +463,25 @@ class Beam:
                 self.rebar_table['top']['middle'].extend(self.rebar_table['top']['left'])
             else:
                 self.rebar_table['top']['middle'].extend(self.rebar_table['top']['right'])
+
+        if len(self.rebar_table['top']['right']) == 0:
+            self.rebar_table['top']['right'].extend(self.rebar_table['top']['middle'])
+
+        if len(self.rebar_table['top']['left']) == 0:
+            self.rebar_table['top']['left'].extend(self.rebar_table['top']['middle'])
+
         if len(self.rebar_table['bottom']['middle']) == 0:
             if self.rebar_table['bottom_length']['left'] > self.rebar_table['bottom_length']['right']:
                 self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['left'])
             else:
                 self.rebar_table['bottom']['middle'].extend(self.rebar_table['bottom']['right'])
+
+        if len(self.rebar_table['bottom']['right']) == 0:
+            self.rebar_table['bottom']['right'].extend(self.rebar_table['bottom']['middle'])
+
+        if len(self.rebar_table['bottom']['left']) == 0:
+            self.rebar_table['bottom']['left'].extend(self.rebar_table['bottom']['middle'])
+            
         self.cal_rebar_ratio()
         self.cal_ld_table()
     ##計算梁配筋比

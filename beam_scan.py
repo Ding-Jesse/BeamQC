@@ -249,7 +249,7 @@ def set_check_scan(beam_scan:BeamScan):
         if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
             if tie is None:continue
-            Vs = tie.Ash*2*tie.fy*(b.depth - protect_layer)/tie.spacing
+            Vs = tie.Ash * tie.fy*(b.depth - protect_layer)/tie.spacing
             if Vs > 2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer):
                 b.ng_message.append(f'0209:Vs:{Vs}  > 4Vc:{2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer)}')
                 return fail_syntax
