@@ -303,7 +303,7 @@ class Beam:
             #     continue
             if len(rebar) == 0: continue
             left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-            while left_rebar.start_pt.x > self.start_pt.x:
+            while abs(left_rebar.start_pt.x - self.start_pt.x) > 1 :
                 connect_rebar = [r for r in self.rebar_add_list if abs(r.end_pt.x - left_rebar.start_pt.x) < 0.1 and r.start_pt.y == left_rebar.start_pt.y]
                 if connect_rebar:
                     rebar.append(connect_rebar[0])
@@ -313,7 +313,7 @@ class Beam:
                     print(f'{self.floor}{self.serial}left rebar error')
                     break
             right_rebar = max(rebar,key=lambda r:r.end_pt.x)
-            while right_rebar.end_pt.x < self.end_pt.x:
+            while abs(right_rebar.end_pt.x - self.end_pt.x) > 1:
                 connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - right_rebar.end_pt.x) < 0.1 and r.start_pt.y == right_rebar.end_pt.y]
                 if connect_rebar:
                     rebar.append(connect_rebar[0])
@@ -410,6 +410,11 @@ class Beam:
         return As
     ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
+        try:
+            assert (self.serial != 'GA-12') or (self.floor != '1F')
+        except:
+            print('')
+            pass
         min_diff = 15
         for rebar in self.rebar['top_first']:
             if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
