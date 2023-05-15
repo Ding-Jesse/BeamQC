@@ -1679,7 +1679,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0509\test02.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0512\0515-01.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0413\0417-地梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-大梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-小梁.dwg"]
@@ -1695,10 +1695,10 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0509'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0512'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0509\淡海撿料-2023-05-09-16-11-temp.xlsx'
-    project_name = '0505-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0512\P2023-03B 岡山大鵬九村社宅(撿料)-2023-05-15-09-02-floor1.xlsx'
+    project_name = '0515-test'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
@@ -1767,7 +1767,7 @@ if __name__=='__main__':
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0509\0512-2.pkl')
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0512\0515-01.pkl')
     # # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='0417_MingXin.pkl',
@@ -1775,7 +1775,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0509\0512-2.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0512\0515.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
