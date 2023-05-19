@@ -22,7 +22,7 @@ class Rebar:
     fy = 0
     As = 0
     arrow_coor:tuple
-    def __init__(self,start_pt,end_pt,length,number,size,text,arrow_coor,add_up=''):
+    def __init__(self,start_pt,end_pt,length,number,size,text,arrow_coor,with_dim,add_up=''):
         self.start_pt = Point(start_pt)
         self.end_pt = Point(end_pt)
         self.number = int(number)
@@ -34,6 +34,7 @@ class Rebar:
         self.arrow_coor = arrow_coor
         self.As = RebarArea(self.size) * self.number
         self.fy = RebarFy(self.size)
+        self.dim = with_dim
     def __str__(self) -> str:
         return self.text
     def __repr__(self) -> str:
@@ -272,10 +273,28 @@ class Beam:
     def sort_beam_rebar(self):
         min_diff = 30
         if not self.rebar_list:return
+
         self.start_pt.x = min(self.rebar_list,key=lambda rebar:rebar.start_pt.x).start_pt.x
         self.end_pt.x = max(self.rebar_list,key=lambda rebar:rebar.end_pt.x).end_pt.x
-        if self.end_pt.x - self.bounding_box[1].x > min_diff:
-            self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
+
+        dim_start = self.start_pt.x
+        dim_end = self.end_pt.x
+        dim_pt = [r for r in self.rebar_list if r.dim]
+        if dim_pt:
+            dim_start = min(dim_pt,key=lambda rebar:rebar.start_pt.x).start_pt.x
+            dim_end = max(dim_pt,key=lambda rebar:rebar.end_pt.x).end_pt.x
+
+        if abs(self.start_pt.x - dim_start) < 150:
+            self.start_pt.x = dim_start
+        if abs(self.end_pt.x - dim_end) < 150:
+            self.end_pt.x = dim_end
+        try:
+            assert self.floor != 'B2F' or self.serial != 'FB6-4'
+        except:
+            print('')
+            pass
+        # if self.end_pt.x - self.bounding_box[1].x > min_diff:
+        #     self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
         # if self.start_pt.x - self.bounding_box[0].x > min_diff and self.rebar_add_list:
         #     if min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x < self.start_pt.x :
         #         self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
@@ -297,41 +316,41 @@ class Beam:
             elif abs(rebar.start_pt.y - bot_y) >= self.depth/2:
                 self.rebar['top_second'].append(rebar)
 
-        for pos,rebar in self.rebar.items():
-            # if 'second' in pos:
-            #     if len(rebar):
-            #         left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-            #         while left_rebar.start_pt.x > self.start_pt.x:
-            #     continue
-            if len(rebar) == 0: continue
-            left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-            while abs(left_rebar.start_pt.x - self.start_pt.x) > 1 :
-                connect_rebar = [r for r in self.rebar_add_list if abs(r.end_pt.x - left_rebar.start_pt.x) < 0.1 and r.start_pt.y == left_rebar.start_pt.y]
-                if connect_rebar:
-                    rebar.append(connect_rebar[0])
-                    self.rebar_add_list.remove(connect_rebar[0])
-                    left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-                else:
-                    print(f'{self.floor}{self.serial}left rebar error')
-                    break
-            right_rebar = max(rebar,key=lambda r:r.end_pt.x)
-            while abs(right_rebar.end_pt.x - self.end_pt.x) > 1:
-                connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - right_rebar.end_pt.x) < 0.1 and r.start_pt.y == right_rebar.end_pt.y]
-                if connect_rebar:
-                    rebar.append(connect_rebar[0])
-                    self.rebar_add_list.remove(connect_rebar[0])
-                    right_rebar = max(rebar,key=lambda r:r.end_pt.x)
-                else:
-                    print(f'{self.floor}{self.serial}right rebar error')
-                    break
-            rebar.sort(key=lambda r:(round(r.start_pt.y),round(r.start_pt.x)))
-            for i in range(0,len(rebar)-1):
-                if abs(rebar[i].end_pt.x - rebar[i+1].start_pt.x) > 50:
-                    connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - rebar[i].end_pt.x) < 0.1 and r.start_pt.y == rebar[i].end_pt.y]
-                    if connect_rebar:
-                        rebar.insert(i+1,connect_rebar[0])
-                    else:
-                        print(f'{self.serial}')
+        # for pos,rebar in self.rebar.items():
+        #     # if 'second' in pos:
+        #     #     if len(rebar):
+        #     #         left_rebar = min(rebar,key=lambda r:r.start_pt.x)
+        #     #         while left_rebar.start_pt.x > self.start_pt.x:
+        #     #     continue
+        #     if len(rebar) == 0: continue
+        #     left_rebar = min(rebar,key=lambda r:r.start_pt.x)
+        #     while abs(left_rebar.start_pt.x - self.start_pt.x) > min_diff :
+        #         connect_rebar = [r for r in self.rebar_add_list if abs(r.end_pt.x - left_rebar.start_pt.x) < 0.1 and r.start_pt.y == left_rebar.start_pt.y]
+        #         if connect_rebar:
+        #             rebar.append(connect_rebar[0])
+        #             self.rebar_add_list.remove(connect_rebar[0])
+        #             left_rebar = min(rebar,key=lambda r:r.start_pt.x)
+        #         else:
+        #             print(f'{self.floor}{self.serial}left rebar error')
+        #             break
+        #     right_rebar = max(rebar,key=lambda r:r.end_pt.x)
+        #     while abs(right_rebar.end_pt.x - self.end_pt.x) > min_diff:
+        #         connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - right_rebar.end_pt.x) < 0.1 and r.start_pt.y == right_rebar.end_pt.y]
+        #         if connect_rebar:
+        #             rebar.append(connect_rebar[0])
+        #             self.rebar_add_list.remove(connect_rebar[0])
+        #             right_rebar = max(rebar,key=lambda r:r.end_pt.x)
+        #         else:
+        #             print(f'{self.floor}{self.serial}right rebar error')
+        #             break
+        #     rebar.sort(key=lambda r:(round(r.start_pt.y),round(r.start_pt.x)))
+        #     for i in range(0,len(rebar)-1):
+        #         if abs(rebar[i].end_pt.x - rebar[i+1].start_pt.x) > 50:
+        #             connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - rebar[i].end_pt.x) < 0.1 and r.start_pt.y == rebar[i].end_pt.y]
+        #             if connect_rebar:
+        #                 rebar.insert(i+1,connect_rebar[0])
+        #             else:
+        #                 print(f'{self.serial}')
     def sort_beam_tie(self):
         if not self.tie_list:return
         self.tie_list.sort(key=lambda tie:tie.start_pt.x)
@@ -413,11 +432,21 @@ class Beam:
     ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
         try:
-            assert (self.serial != 'GA-12') or (self.floor != '1F')
+            assert self.floor != 'B1F' or self.serial != 'b8-1'
         except:
             print('')
-            pass
-        min_diff = 15
+        min_diff = 30
+        self.rebar['top_first'].sort(key=lambda r : r.arrow_coor[0][0])
+        # for i,rebar in enumerate(self.rebar['top_first']):
+        #     if i == 0:
+        #         self.rebar_table['top']['left'].append(rebar)
+        #         self.rebar_table['top_length']['left'].append(rebar.length)
+        #     if i == 1:
+        #         self.rebar_table['top']['middle'].append(rebar)
+        #         self.rebar_table['top_length']['middle'].append(rebar.length)
+        #     if i == 2:
+        #         self.rebar_table['top']['right'].append(rebar)
+        #         self.rebar_table['top_length']['right'].append(rebar.length)
         for rebar in self.rebar['top_first']:
             if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
                 self.rebar_table['top']['left'].append(rebar)
@@ -441,30 +470,50 @@ class Beam:
                 self.rebar_table['top']['right'].append(rebar)
             if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
                 self.rebar_table['top']['middle'].append(rebar) 
-
-        for rebar in self.rebar['bot_first']:
-            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
-                self.rebar_table['bottom']['left'].append(rebar)
-            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
-                self.rebar_table['bottom']['right'].append(rebar)
-            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
-                self.rebar_table['bottom']['middle'].append(rebar)
-            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
+        self.rebar['bot_first'].sort(key=lambda r : r.arrow_coor[0][0])
+        for i,rebar in enumerate(self.rebar['bot_first']):
+            if i == 0:
+                self.rebar_table['bottom']['left'] = [rebar]
+                self.rebar_table['bottom']['middle'] = [rebar]
+                self.rebar_table['bottom']['right'] = [rebar]
                 self.rebar_table['bottom_length']['left'].append(rebar.length)
-                continue
-            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
-                self.rebar_table['bottom_length']['right'].append(rebar.length)
-                continue
-            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff):
+            if i == 1:
+                self.rebar_table['bottom']['middle'] = [rebar]
+                self.rebar_table['bottom']['right'] = [rebar]
                 self.rebar_table['bottom_length']['middle'].append(rebar.length)
-                continue
+            if i == 2:
+                self.rebar_table['bottom']['right'] = [rebar]
+                self.rebar_table['bottom_length']['right'].append(rebar.length)
+        # for rebar in self.rebar['bot_first']:
+        #     if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
+        #         self.rebar_table['bottom']['left'].append(rebar)
+        #     if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+        #         self.rebar_table['bottom']['right'].append(rebar)
+        #     if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+        #         self.rebar_table['bottom']['middle'].append(rebar)
+        #     if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
+        #         self.rebar_table['bottom_length']['left'].append(rebar.length)
+        #         continue
+        #     if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+        #         self.rebar_table['bottom_length']['right'].append(rebar.length)
+        #         continue
+        #     if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff):
+        #         self.rebar_table['bottom_length']['middle'].append(rebar.length)
+        #         continue
+
         for rebar in self.rebar['bot_second']:
-            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
-                self.rebar_table['bottom']['left'].append(rebar)
-            if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
-                self.rebar_table['bottom']['right'].append(rebar)
-            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
-                self.rebar_table['bottom']['middle'].append(rebar)
+            temp = min(self.rebar_table['bottom'].items(),key=lambda r_table:abs(rebar.arrow_coor[0][0] - r_table[1][0].arrow_coor[0][0]))[1]
+            diff_dis = abs(rebar.arrow_coor[0][0] - temp[0].arrow_coor[0][0])
+            for r_list in [v for k,v in self.rebar_table['bottom'].items() if abs(rebar.arrow_coor[0][0] - v[0].arrow_coor[0][0]) == diff_dis]:
+                r_list.append(rebar)
+            # temp.append(rebar)
+        # for rebar in self.rebar['bot_second']:
+        #     if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
+        #         self.rebar_table['bottom']['left'].append(rebar)
+        #     if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
+        #         self.rebar_table['bottom']['right'].append(rebar)
+        #     if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+        #         self.rebar_table['bottom']['middle'].append(rebar)
         if len(self.rebar_table['top']['middle']) == 0:
             if self.rebar_table['top_length']['left'] > self.rebar_table['top_length']['right']:
                 self.rebar_table['top']['middle'].extend(self.rebar_table['top']['left'])
