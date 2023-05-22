@@ -197,13 +197,17 @@ class Beam:
                 l.append(floor2)
                 return l
         ## get beam floor
-        if floor_serial_spacing_char not in self.serial:
+        if self.serial.count(floor_serial_spacing_char) <= 1:
+            # temp = self.serial.split(floor_serial_spacing_char)[0]
             temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))',self.serial)
             if temp_matchobj:
                 self.floor = temp_matchobj.group(1)
                 self.serial = temp_matchobj.group(2)
             else:
-                raise BeamFloorNameError
+                temp_matchobj = re.search(r'(.*)([G|B].*)',self.serial)
+                self.floor = temp_matchobj.group(1)
+                self.serial = temp_matchobj.group(2)
+                # raise BeamFloorNameError
         else:
             self.floor = self.serial.split(' ')[0]
             if self.floor == '':
@@ -431,10 +435,10 @@ class Beam:
         return As
     ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
-        try:
-            assert self.floor != 'B1F' or self.serial != 'b8-1'
-        except:
-            print('')
+        # try:
+        #     assert self.floor != 'B1F' or self.serial != 'b8-1'
+        # except:
+        #     print('')
         min_diff = 30
         self.rebar['top_first'].sort(key=lambda r : r.arrow_coor[0][0])
         # for i,rebar in enumerate(self.rebar['top_first']):
