@@ -387,7 +387,7 @@ def count_beam():
             'beam_text_layer' :request.form['beam_text_layer'].split('\r\n'), # 梁的字串圖層
             'bounding_block_layer':request.form['bounding_block_layer'].split('\r\n'),
             'rc_block_layer':request.form['rc_block_layer'].split('\r\n'),
-            's_dim_layer':['S-DIM']
+            's_dim_layer':request.form['beam_dim_layer'].split('\r\n')
             }
         print(layer_config)
         if beam_filename != '' and temp_file != '' and beam_ok:

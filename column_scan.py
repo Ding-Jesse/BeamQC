@@ -106,7 +106,8 @@ def set_check_scan(column_scan:ColumnScan):
         code15_3_X = 0.3 * (c.y_size - 8)* c.confine_tie.spacing * c.fc/c.fy * (Ag/Ach - 1)
         code15_4_X = 0.09 * (c.y_size - 8) * c.confine_tie.spacing * c.fc/c.fy
         if not c.floor_object.is_seismic: code15_4_X = 0
-        if x_Ash < code15_3_X or x_Ash <code15_4_X:
+        # if x_Ash < code15_3_X or x_Ash <code15_4_X:
+        if True:
             c.ng_message.append(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.3Code = 0.3 * ({c.y_size} - 8)* {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1)={code15_3_X}')
             c.ng_message.append(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.4Code = 0.09 * ({c.y_size} - 8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} ={code15_4_X}')
             return fail_syntax
@@ -120,7 +121,8 @@ def set_check_scan(column_scan:ColumnScan):
         code15_3_Y = 0.3 * (c.x_size-8) * c.confine_tie.spacing * c.fc/c.fy * (Ag/Ach - 1)
         code15_4_Y = 0.09 * (c.x_size-8) * c.confine_tie.spacing * c.fc/c.fy
         if not c.floor_object.is_seismic: code15_4_Y = 0
-        if y_Ash < code15_3_Y or y_Ash <code15_4_Y:
+        # if y_Ash < code15_3_Y or y_Ash <code15_4_Y:
+        if True:
             c.ng_message.append(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.3Code = 0.3 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1) ={code15_3_Y}')
             c.ng_message.append(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.4Code = 0.09 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} = {code15_4_Y}')
             return fail_syntax

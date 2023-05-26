@@ -84,6 +84,7 @@
             <!-- <label>梁邊框圖層(選填)</label>
             <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH"> -->
             <p><strong>梁支承圖層</strong><textarea type="text" id="rc_block_layer" name="rc_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-RC" required ></textarea></p>
+            <p><strong>標註線圖層</strong><textarea type="text" id="beam_dim_layer" name="beam_dim_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-DIM" required ></textarea></p>
             <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-ARCH" required ></textarea></p>
             <div class="btn-block">
             <button id="count_beam">完成</button>
@@ -210,6 +211,7 @@
                 $('#tie_text_layer').val("S-TEXT" );
                 $('#block_layer').val("S-GRID");
                 $('#beam_text_layer').val("S-RC");
+                $('#beam_dim_layer').val("S-DIM");
             }
             
         });

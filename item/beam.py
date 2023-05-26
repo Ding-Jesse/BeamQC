@@ -12,7 +12,7 @@ from enum import Enum
 commom_pattern = r'(,)|(、)'
 stash_pattern = r'(\w+)[-|~](\w+)'
 class Rebar:
-    
+    arrow_coor:Tuple[Tuple[float,float],Tuple[float,float]]
     start_pt = Point
     end_pt = Point
     length = 0
@@ -197,7 +197,7 @@ class Beam:
                 l.append(floor2)
                 return l
         ## get beam floor
-        if self.serial.count(floor_serial_spacing_char) <= 1:
+        if self.serial.count(floor_serial_spacing_char) <= 0:
             # temp = self.serial.split(floor_serial_spacing_char)[0]
             temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))',self.serial)
             if temp_matchobj:
@@ -275,6 +275,21 @@ class Beam:
         return self.floor_object.loading['SDL']* 0.1 * band_width + self.floor_object.loading['LL'] * 0.1* band_width + self.width * self.depth * 2.4 /1000 # t/m
 
     def sort_beam_rebar(self):
+        def check_rebar_dim(pos_list:list[Rebar],rebar:Rebar):
+            if len(pos_list) > 0:
+                prev_rebar = pos_list[-1]
+            else:
+                return
+            if rebar.dim and not prev_rebar.dim:
+                if rebar.start_pt.x != prev_rebar.end_pt.x:
+                    prev_rebar.end_pt.x = rebar.start_pt.x
+                    prev_rebar.length = abs(prev_rebar.start_pt.x - prev_rebar.end_pt.x)
+            elif not rebar.dim and prev_rebar.dim:
+                if rebar.start_pt.x != prev_rebar.end_pt.x:
+                    rebar.start_pt.x = prev_rebar.end_pt.x
+                    rebar.length = abs(rebar.start_pt.x - rebar.end_pt.x)
+            return
+                
         min_diff = 30
         if not self.rebar_list:return
 
@@ -303,7 +318,7 @@ class Beam:
         #     if min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x < self.start_pt.x :
         #         self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
         self.length = abs(self.start_pt.x - self.end_pt.x)
-        self.rebar_list.sort(key=lambda rebar:(round(rebar.start_pt.y),round(rebar.start_pt.x)))
+        self.rebar_list.sort(key=lambda rebar:(round(rebar.arrow_coor[0][1]),round(rebar.arrow_coor[0][0])))
         
         top_y = self.rebar_list[-1].start_pt.y
         bot_y = self.rebar_list[0].start_pt.y
@@ -312,12 +327,16 @@ class Beam:
                 rebar.end_pt.x = self.end_pt.x
                 rebar.length -= abs(rebar.end_pt.x - self.end_pt.x)
             if bot_y == rebar.start_pt.y:
+                check_rebar_dim(self.rebar['bot_first'],rebar=rebar)
                 self.rebar['bot_first'].append(rebar)
             elif top_y == rebar.start_pt.y:
+                check_rebar_dim(self.rebar['top_first'],rebar=rebar)
                 self.rebar['top_first'].append(rebar)
             elif abs(rebar.start_pt.y - bot_y) < self.depth/2:
+                check_rebar_dim(self.rebar['bot_second'],rebar=rebar)
                 self.rebar['bot_second'].append(rebar)
             elif abs(rebar.start_pt.y - bot_y) >= self.depth/2:
+                check_rebar_dim(self.rebar['top_second'],rebar=rebar)
                 self.rebar['top_second'].append(rebar)
 
         # for pos,rebar in self.rebar.items():
