@@ -308,7 +308,7 @@ class Beam:
         if abs(self.end_pt.x - dim_end) < 150:
             self.end_pt.x = dim_end
         try:
-            assert self.floor != 'B2F' or self.serial != 'FB6-4'
+            assert self.floor != 'B1F' or self.serial != 'B2-4'
         except:
             print('')
             pass
