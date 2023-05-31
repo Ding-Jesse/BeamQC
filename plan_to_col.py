@@ -12,6 +12,7 @@ import multiprocessing
 import os
 import pandas as pd
 import sys
+import save_temp_file
 from functools import cmp_to_key
 
 from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, mycmp, progress
@@ -19,11 +20,16 @@ from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_t
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡']
 
-def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
+# def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
+def read_plan(plan_filename:str,layer_config:dict,progress_file:str):
     def _cal_ratio(pt1,pt2):
         if abs(pt1[1]-pt2[1]) == 0:
             return 1000
         return abs(pt1[0]-pt2[0])/abs(pt1[1]-pt2[1])
+    floor_layer = layer_config['floor_layer']
+    col_layer = layer_config['col_layer']
+    block_layer = layer_config['block_layer']
+
     error_count = 0
     progress('開始讀取平面圖(核對項目: 柱配筋對應)', progress_file)
     # Step 1. 打開應用程式
@@ -67,7 +73,6 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
     while not flag and error_count <= 10:
         try:
             layer_count = doc_plan.Layers.count
-
             for x in range(layer_count):
                 layer = doc_plan.Layers.Item(x)
                 layer.Lock = False
@@ -148,7 +153,10 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
                     progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 待補
-                if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString and object.InsertionPoint[1] >= 0:
+                # if object.Layer == floor_layer and object.ObjectName == "AcDbText":
+                #     print(object.TextString)
+                #  and object.InsertionPoint[1] >= 0
+                if object.Layer == floor_layer and object.ObjectName == "AcDbText" and '(' in object.TextString:
                     floor = object.TextString
                     floor = re.search('\(([^)]+)', floor).group(1) #取括號內的樓層數
                     coor = (round(object.InsertionPoint[0], 2), round(object.InsertionPoint[1], 2)) #不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
@@ -205,10 +213,21 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             doc_plan.Close(SaveChanges=False)
         except:
             pass
-        return False
-    
+        # return False
+    return {
+        'coor_to_floor_set':coor_to_floor_set,
+        'coor_to_col_set':coor_to_col_set,
+        'coor_to_size_set':coor_to_size_set,
+        'block_coor_list':block_coor_list
+    }
+def sort_plan(plan_data:dict,result_filename:str,progress_file:str):
     # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
+    block_coor_list = plan_data['block_coor_list']
+    coor_to_floor_set = plan_data['coor_to_floor_set']
+    coor_to_col_set = plan_data['coor_to_col_set']
+    coor_to_size_set = plan_data['coor_to_size_set']
+
     floor_to_coor_set = set()
     for x in coor_to_floor_set: # set (字串的coor, floor)
         string_coor = x[0]
@@ -370,10 +389,10 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
             
     progress('平面圖讀取進度 11/11', progress_file)
     progress('平面圖讀取完畢。', progress_file)
-    try:
-        doc_plan.Close(SaveChanges=False)
-    except:
-        error('read_plan error in step 12: cannot close.')
+    # try:
+    #     doc_plan.Close(SaveChanges=False)
+    # except:
+    #     error('read_plan error in step 12: cannot close.')
 
     # plan.txt單純debug用，不想多新增檔案可以註解掉
     f = open(result_filename, "w", encoding = 'utf-8')
@@ -386,7 +405,14 @@ def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filenam
 
     return (set_plan, dic_plan)
 
-def read_col(col_filename, text_layer, line_layer, result_filename, progress_file):
+# def read_col(col_filename, text_layer, line_layer, result_filename, progress_file):
+def read_col(col_filename:str,layer_config:dict,result_filename, progress_file):
+    '''
+    Read AutoCAD XS-COL info.
+    '''
+    text_layer = layer_config['text_layer']
+    line_layer = layer_config['line_layer']
+
     error_count = 0
     progress('開始讀取柱配筋圖', progress_file)
     # Step 1. 打開應用程式
@@ -541,9 +567,25 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
             doc_col.Close(SaveChanges=False)
         except:
             pass
-        return False
-
+        # return False
+    return {
+        'coor_to_col_set':coor_to_col_set,
+        'coor_to_col_line_list':coor_to_col_line_list,
+        'coor_to_floor_set':coor_to_floor_set,
+        'coor_to_floor_line_list':coor_to_floor_line_list,
+        'coor_to_size_set':coor_to_size_set
+    }
+def sort_col(col_data:dict,result_filename:str,progress_file:str):
     # Step 8. 完成col_to_line_set 格式:(col, left, right, up)
+    '''
+    
+    '''
+    coor_to_col_set = col_data['coor_to_col_set']
+    coor_to_col_line_list = col_data['coor_to_col_line_list']
+    coor_to_floor_set = col_data['coor_to_floor_set']
+    coor_to_floor_line_list = col_data['coor_to_floor_line_list']
+    coor_to_size_set = col_data['coor_to_size_set']
+
     col_to_line_set = set()
     for x in coor_to_col_set:
         coor = x[0]
@@ -623,7 +665,7 @@ def read_col(col_filename, text_layer, line_layer, result_filename, progress_fil
                 set_col.add((min_floor, min_col, size))
                 dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0]) # (left, right, up, down)
     
-    doc_col.Close(SaveChanges=False)
+    # doc_col.Close(SaveChanges=False)
     progress('柱配筋圖讀取進度 10/10', progress_file)
     progress('柱配筋圖讀取完成。', progress_file)
     # col.txt單純debug用，不想多新增檔案可以註解掉
@@ -905,6 +947,32 @@ def write_result_log(excel_file, task_name, plan_not_col, col_not_plan,date, run
     writer.save()    
     return
 
+def run_plan(plan_filename:str,layer_config:dict,result_filename:str,progress_file:str):
+    if False:
+        plan_col_set = read_plan(plan_filename=plan_filename,
+                                 layer_config = layer_config,
+                                 progress_file=progress_file)
+        save_temp_file.save_pkl(data=plan_col_set,tmp_file='plan_to_col.pkl')
+    else:
+        plan_col_set = save_temp_file.read_temp(tmp_file='plan_to_col.pkl')
+    set_plan,dic_plan = sort_plan(plan_data=plan_col_set,
+                               result_filename=result_filename,
+                               progress_file=progress_file)
+    # output_txt = f'{os.path.splitext(plan_new_filename)[0]}_result.txt'
+    return (set_plan,dic_plan)
+def run_col(col_filename:str,layer_config:dict,result_filename:str,progress_file:str):
+    if False:
+        floor_col_set = read_col(col_filename=col_filename,
+                           layer_config = layer_config,
+                           result_filename=result_filename,
+                           progress_file=progress_file)
+        save_temp_file.save_pkl(data=floor_col_set,tmp_file='col_set.pkl')
+    else:
+        floor_col_set = save_temp_file.read_temp(tmp_file='col_set.pkl')
+    set_col,dic_col = sort_col(col_data=floor_col_set,
+                               result_filename=result_filename,
+                               progress_file=progress_file)
+    return(set_col,dic_col)
 error_file = './result/error_log.txt' # error_log.txt的路徑
 
 if __name__=='__main__':
@@ -913,27 +981,33 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
-    col_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-11-37三重永德-2023-0502_.dwg']
+    col_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0529\2023-0529 SRC柱配筋(鋼骨) XS col.dwg']
     #print(col_filename.split(',')) 
     # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-11-37三重永德-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0503\XS-PLAN_new.dwg'#sys.argv[3] # XS-COL_new的路徑
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0503\XS-PLAN_col_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
-    result_file = r'D:\Desktop\BeamQC\TEST\2023-0503\column.txt'#sys.argv[5] # 柱配筋結果
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0529\2023-0529 柱尺寸檢核 XS plan(柱鋼骨).dwg']#sys.argv[2] # XS-PLAN的路徑
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0529\XS-ss_new.dwg'#sys.argv[3] # XS-COL_new的路徑
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0529\XS-PLAN_ss_new.dwg'#sys.argv[4] # XS-PLAN_new的路徑
+    result_file = r'D:\Desktop\BeamQC\TEST\2023-0529\column_ss.txt'#sys.argv[5] # 柱配筋結果
 
     # 在col裡面自訂圖層
-    text_layer = 'S-TEXT'#sys.argv[6] # 文字的圖層
-    line_layer = 'S-STUD'#sys.argv[7] # 線的圖層
+    layer_config = {
+        'text_layer':'SS',
+        'line_layer':'S-TABLE',
+        'block_layer':'ss-dwfm',
+        'floor_layer':'S-TITLE',
+        'col_layer':'ss-dim'
+    }
+    # text_layer = 'SS'#sys.argv[6] # 文字的圖層
+    # line_layer = 'S-TABLE'#sys.argv[7] # 線的圖層
 
     # 在plan裡面自訂圖層
-    block_layer = 'DwFm'#sys.argv[8] # 圖框的圖層
-    floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
-    col_layer = 'S-TEXTC'#sys.argv[10] # col的圖層
+    # block_layer = 'ss-dwfm'#sys.argv[8] # 圖框的圖層
+    # floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
+    # col_layer = 'ss-dim'#sys.argv[10] # col的圖層
 
     task_name = 'tmp'#sys.argv[11]
 
     progress_file = './result/tmp'#sys.argv[12]
-
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
@@ -960,10 +1034,10 @@ if __name__=='__main__':
     #          progress_file = progress_file)
     
     for plan_dwg_file in plan_filenames:
-        res_plan.append(pool.apply_async(read_plan, (plan_dwg_file, floor_layer, col_layer, block_layer, plan_file, progress_file)))
+        res_plan.append(pool.apply_async(run_plan, (plan_dwg_file, layer_config, plan_file, progress_file)))
 
     for col_dwg_file in col_filenames:
-        res_col.append(pool.apply_async(read_col, (col_dwg_file, text_layer, line_layer, col_file, progress_file)))
+        res_col.append(pool.apply_async(run_col, (col_dwg_file, layer_config, col_file, progress_file)))
     
     plan_drawing = 0
     if len(plan_filenames) == 1:

@@ -232,7 +232,6 @@ def read_plan(plan_filename, layer_config:dict, progress_file, sizing, mline_sca
     while not flag and error_count <= 10:
         try:
             layer_count = doc_plan.Layers.count
-
             for x in range(layer_count):
                 layer = doc_plan.Layers.Item(x)
                 layer.Lock = False
