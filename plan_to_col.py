@@ -948,7 +948,7 @@ def write_result_log(excel_file, task_name, plan_not_col, col_not_plan,date, run
     return
 
 def run_plan(plan_filename:str,layer_config:dict,result_filename:str,progress_file:str):
-    if False:
+    if True:
         plan_col_set = read_plan(plan_filename=plan_filename,
                                  layer_config = layer_config,
                                  progress_file=progress_file)
@@ -961,7 +961,7 @@ def run_plan(plan_filename:str,layer_config:dict,result_filename:str,progress_fi
     # output_txt = f'{os.path.splitext(plan_new_filename)[0]}_result.txt'
     return (set_plan,dic_plan)
 def run_col(col_filename:str,layer_config:dict,result_filename:str,progress_file:str):
-    if False:
+    if True:
         floor_col_set = read_col(col_filename=col_filename,
                            layer_config = layer_config,
                            result_filename=result_filename,

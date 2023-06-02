@@ -21,10 +21,15 @@ def beam_check(beam_list:list[Beam],beam_scan_list:list[BeamScan]):
             code_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
     return enoc_df,code_df
 def output_detail_scan_report(beam_list:list[Beam]):
-    ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
+    ng_df = pd.DataFrame(columns = ['樓層','編號','檢核項目','備註'],index=[])
     for b in beam_list:
         for ng_message in b.ng_message:
-            temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'備註':ng_message},index=[0])
+            ng_serial = '0000'
+            try:
+                ng_serial = ng_message.split(':')[0]
+            except:
+                pass
+            temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'檢核項目':ng_serial,'備註':ng_message},index=[0])
             ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
     return ng_df
 def create_beam_scan():
@@ -86,14 +91,14 @@ def set_check_scan(beam_scan:BeamScan):
         clear_depth = (b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < b.depth * 4 and b.middle_tie:
             if 0.0015 * b.width * clear_depth > b.middle_tie[0].As*2:
-                b.ng_message.append(f'102:0.0015 * {b.width} * {clear_depth} > {b.middle_tie[0].As} => {0.0015 * b.width * clear_depth} > {b.middle_tie[0].As}')
+                b.ng_message.append(f'102:0.0015 * {b.width} * {clear_depth} > 2 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} > {round(b.middle_tie[0].As*2)}')
                 return fail_syntax
         return pass_syntax
     def index_0103(b:Beam):
         clear_depth = (b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < b.depth * 4 and b.middle_tie:
             if 0.0015 * b.width * clear_depth * 1.5 < b.middle_tie[0].As:
-                b.ng_message.append(f'103:0.0015 *{b.width} * {clear_depth} < 1.5 * {b.middle_tie[0].As} => {0.0015 * b.width * clear_depth} < {1.5*b.middle_tie[0].As}')
+                b.ng_message.append(f'103:0.0015 *{b.width} * {clear_depth} < 1.5 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} < {round(1.5*b.middle_tie[0].As,2)}')
                 return fail_syntax
         return pass_syntax
     def index_0104(b:Beam):
@@ -113,7 +118,7 @@ def set_check_scan(beam_scan:BeamScan):
             for pos2, rebar_list in rebar_dict.items():
                     if rebar_list:
                         rebar = rebar_list[0]
-                        spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
+                        spacing = round((b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1),2)
                         if spacing > 25 :
                             b.ng_message.append(f'0106:({b.width}- 4*2 - 1.27*2 -{RebarDiameter(rebar.size)})/{rebar.number - 1} = {spacing}cm > 25 cm')
                             return fail_syntax
@@ -238,7 +243,7 @@ def set_check_scan(beam_scan:BeamScan):
     def index_0207(b:Beam):
         if b.depth >= 90:
             if len(b.middle_tie) < ceil((b.depth - b.floor_object.slab_height['top'] - 10)/30 - 1):
-                b.ng_message.append(f'0207:腰筋支數:{len(b.middle_tie)} < (梁深{b.depth} - 上版厚{b.floor_object.slab_height["top"]} - 鋼筋中心至邊緣距離{10})/30 - 1 = {ceil((b.depth - b.floor_object.slab_height["top"] - 10)/30 - 1)}')
+                b.ng_message.append(f'0207:腰筋支數:{len(b.middle_tie)} < (梁深{b.depth} - 上版厚{b.floor_object.slab_height["top"]} - 鋼筋中心至邊緣距離{10})/30 - 1 = {round(ceil((b.depth - b.floor_object.slab_height["top"] - 10)/30 - 1),2)}')
                 return fail_syntax
         return pass_syntax
     def index_0208(b:Beam):
@@ -249,16 +254,16 @@ def set_check_scan(beam_scan:BeamScan):
         if all([tie is None for pos,tie in b.tie.items()]): return '無箍筋資料'
         for pos,tie in b.tie.items():
             if tie is None:continue
-            Vs = tie.Ash * tie.fy*(b.depth - protect_layer)/tie.spacing
+            Vs = round(tie.Ash * tie.fy*(b.depth - protect_layer)/tie.spacing,2)
             if Vs > 2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer):
-                b.ng_message.append(f'0209:Vs:{Vs}  > 4Vc:{2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer)}')
+                b.ng_message.append(f'0209:Vs:{Vs}  > 4Vc:{round(2.12*sqrt(b.fc)*b.width*(b.depth - protect_layer),2)}')
                 return fail_syntax
         return pass_syntax
     def index_0210(b:Beam):
         for pos,rebar_list in b.rebar.items():
             for rebar in rebar_list:
                 if rebar.number <= 1 : continue
-                spacing = (b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1)
+                spacing = round((b.width - 4*2 - 1.27*2 - RebarDiameter(rebar.size))/(rebar.number - 1),2)
                 if spacing < RebarDiameter(rebar.size) or spacing < 2.5:
                     return fail_syntax
         return pass_syntax

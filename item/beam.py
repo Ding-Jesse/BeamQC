@@ -451,7 +451,7 @@ class Beam:
         As = 0
         for rebar in self.rebar_table[rebar_type1.value][rebar_type2.value]:
             As += rebar.As
-        return As
+        return round(As,2)
     ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
         # try:

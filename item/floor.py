@@ -94,7 +94,7 @@ class Floor:
                 self.beam_rebar_count[size] += round(count/1000/1000,2)
             self.concrete_count[b.fc] +=   b.concrete
             self.formwork_count += b.formwork
-        self.beam_rebar_count['total'] = sum(self.rebar_count.values())
+        self.beam_rebar_count['total'] = sum(self.beam_rebar_count.values())
 def read_parameter_df(read_file,sheet_name,header_list=[0]):
     return pd.read_excel(
         read_file, sheet_name=sheet_name,header=header_list)

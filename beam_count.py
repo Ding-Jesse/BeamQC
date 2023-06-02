@@ -19,6 +19,7 @@ from main import OutputExcel,Add_Row_Title
 from multiprocessing.pool import ThreadPool as Pool
 from collections import Counter
 from item.rebar import isRebarSize,readRebarExcel
+from item.pdf import create_scan_pdf
 error_file = './result/error_log.txt' # error_log.txt的路徑
 def vtFloat(l): #要把點座標組成的list轉成autocad看得懂的樣子？
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
@@ -1288,6 +1289,12 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'Rcad.xlsx'
     )
+    pdf_report = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'report.pdf'
+    )
     cad_df = pd.DataFrame.from_dict(data=cad_data, orient='index',columns=['數量'])
     floor_list = floor_parameter(beam_list=class_beam_list,floor_parameter_xlsx=floor_parameter_xlsx)
     beam_df = output_beam(class_beam_list=class_beam_list)
@@ -1304,6 +1311,14 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     ng_df = output_detail_scan_report(beam_list=beam_list + sbeam_list + fbeam_list)
     # ng_df = output_detail_scan_report(beam_list=fbeam_list)
     rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
+    create_scan_pdf(scan_list=bs_list + sb_bs_list + fb_bs_list,
+                scan_df=ng_df.copy(),
+                rebar_df=rebar_df,
+                project_prop={
+                    "專案名稱:":project_name,
+                    "測試日期:":time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
+                },
+                pdf_filename=pdf_report)
     OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
         columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
     OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
@@ -1340,6 +1355,7 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
                     step_col= 3)
     OutputExcel(df_list=[cad_df],file_path=excel_filename,sheet_name='CAD統計表')
     OutputExcel(df_list=[rcad_df],file_path=excel_filename_rcad,sheet_name='RCAD撿料')
+
     # Step 15. 印出每個框框的結果然後加在一起
     
     # Step 16. 把箍筋跟beam字串綁在一起
@@ -1791,7 +1807,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0526\P2022-03A 五股區登林段9FB3-2023-05-26-11-47-XS-BEAM.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0526\1F GD-1.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0413\0417-地梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-大梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-小梁.dwg"]
@@ -1810,7 +1826,7 @@ if __name__=='__main__':
     output_folder = r'D:\Desktop\BeamQC\TEST\2023-0526'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
     floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0526\P2022-03A 五股區登林段9FB3-2023-05-26-11-49-temp.xlsx'
-    project_name = '0526-test'
+    project_name = '0602-test'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
@@ -1893,12 +1909,12 @@ if __name__=='__main__':
     # test(l)
     # print(l)
     start = time.time()
-    msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
+    # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
     # sort_beam_cad(msp_beam=msp_beam,
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0526\0526-01.pkl')
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0526\0602-GD-1.pkl')
     # # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='0417_MingXin.pkl',
@@ -1906,7 +1922,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0526\P2022-03A 五股區登林段9FB3-2023-05-26-11-47-temp-0.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0526\0526-B.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
@@ -1914,11 +1930,11 @@ if __name__=='__main__':
                   project_name=project_name,
                   floor_parameter_xlsx=floor_parameter_xlsx,
                   cad_data=cad_data)
-    draw_rebar_line(class_beam_list=class_beam_list,
-                    msp_beam=msp_beam,
-                    doc_beam=doc_beam,
-                    output_folder=output_folder,
-                    project_name=project_name)
+    # draw_rebar_line(class_beam_list=class_beam_list,
+    #                 msp_beam=msp_beam,
+    #                 doc_beam=doc_beam,
+    #                 output_folder=output_folder,
+    #                 project_name=project_name)
     # print(f'Total Time:{time.time() - start}')
     # output_beam([Beam('1F B1-1',0,0)])
     # data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\temp_0222_sb_fb_b-1.pkl')

@@ -136,9 +136,14 @@ def main_functionV3(beam_filenames,plan_filenames,beam_new_filename,plan_new_fil
                      date = time.strftime("%Y-%m-%d %H:%M", time.localtime()),
                      other =  'none')
     return [os.path.basename(big_file),os.path.basename(sml_file),os.path.basename(fbeam_file)]
-def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_filename,result_file,text_layer,line_layer,block_layer,floor_layer,col_layer,task_name,progress_file):
+def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_filename,result_file,layer_config,task_name,progress_file):
+    '''
+    Args:
+        layer_config:{text_layer,line_layer,block_layer,floor_layer,col_layer}
+    '''
     start = time.time()
-
+    # text_layer,line_layer,block_layer,floor_layer,col_layer,
+    
     plan_file = './result/col_plan.txt' # plan.txt的路徑
     col_file = './result/col.txt' # col.txt的路徑
     excel_file = './result/result_log_col.xlsx' # result_log.xlsx的路徑
@@ -153,10 +158,11 @@ def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_fil
     dic_plan = {}
     set_col = set()
     dic_col = {}
-    for plan_filename in plan_filenames:
-        res_plan.append(pool.apply_async(plan_to_col.read_plan, (plan_filename, floor_layer, col_layer, block_layer, plan_file, progress_file)))
-    for col_filename in col_filenames:
-        res_col.append(pool.apply_async(plan_to_col.read_col, (col_filename, text_layer, line_layer, col_file, progress_file)))
+    for plan_dwg_file in plan_filenames:
+        res_plan.append(pool.apply_async(plan_to_col.run_plan, (plan_dwg_file, layer_config, plan_file, progress_file)))
+
+    for col_dwg_file in col_filenames:
+        res_col.append(pool.apply_async(plan_to_col.run_col, (col_dwg_file, layer_config, col_file, progress_file)))
 
     plan_drawing = 0
     if len(plan_filenames) == 1:
@@ -187,8 +193,8 @@ def main_col_function(col_filenames,plan_filenames,col_new_filename,plan_new_fil
             plan_to_col.write_result_log(excel_file,task_name,'','', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
             return 
                 
-    plan_result = plan_to_col.write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, plan_drawing, progress_file)
-    col_result = plan_to_col.write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_file, date,col_drawing, progress_file)
+    plan_result = plan_to_col.write_plan(plan_dwg_file, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, plan_drawing, progress_file)
+    col_result = plan_to_col.write_col(col_dwg_file, col_new_filename, set_plan, set_col, dic_col, result_file, date,col_drawing, progress_file)
 
     end = time.time()
     plan_to_col.write_result_log(excel_file,task_name,plan_result,col_result, f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
