@@ -1241,8 +1241,11 @@ def sort_beam(floor_to_beam_set:set,result_filename:str,progress_file:str,sizing
 
         for floor in floor_list:
             if sizing:
-                set_beam.add((floor, beam, size))
-                dic_beam[(floor, beam, size)] = coor
+                if (floor, beam, size) in set_beam:
+                    set_beam.add((floor, beam, 'replicate'))
+                else:
+                    set_beam.add((floor, beam, size))
+                    dic_beam[(floor, beam, size)] = coor
             else:
                 set_beam.add((floor, beam))
                 dic_beam[(floor, beam)] = coor
@@ -1426,10 +1429,12 @@ def output_error_list(error_list:list,f_big:TextIOWrapper,f_sml:TextIOWrapper,f_
     error_size = [e for e in error_list if e[1] == 'error_size']
     no_size = [e for e in error_list if e[1] == 'no_size']
     no_beam = [e for e in error_list if e[1] == 'no_beam']
+    replicate_beam = [e for e in error_list if e[1] == 'replicate']
 
     error_size = sorted(error_size,key = cmp_to_key(mycmp))
     no_size = sorted(no_size,key = cmp_to_key(mycmp))
     no_beam = sorted(no_beam,key = cmp_to_key(mycmp))
+    replicate_beam = sorted(replicate_beam,key = cmp_to_key(mycmp))
 
     beam_list = [b for b in set_item if b[1][0] == 'B' or b[1][0] == 'C' or b[1][0] == 'G']
     fbeam_list = [b for b in set_item if b[1][0] == 'F']
@@ -1507,6 +1512,22 @@ def output_error_list(error_list:list,f_big:TextIOWrapper,f_sml:TextIOWrapper,f_
             f_fbeam.write(f'{beam}: 找不到尺寸\n')
         else:
             f_sml.write(f'{beam}: 找不到尺寸\n')
+
+    for f in [f_big,f_sml,f_fbeam]:
+        f.write(f'========================\n')
+
+    for f in [f_big,f_sml,f_fbeam]:
+        f.write(f'備註: (重複配筋)\n')
+
+    for e in replicate_beam:
+        beam = e[0]
+        beam_name = e[0][1]
+        if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G' :
+            f_big.write(f'{beam}: 重複配筋\n')
+        elif beam_name[0] == 'F':
+            f_fbeam.write(f'{beam}: 重複配筋\n')
+        else:
+            f_sml.write(f'{beam}: 重複配筋\n')
 
     for f in [f_big,f_sml,f_fbeam]:
         f.write(f'========================\n')
@@ -1664,6 +1685,9 @@ def write_beam(beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, b
         error_beam = [plan_beam for plan_beam in list_in_plan if plan_beam[0] == beam_beam[0] and plan_beam[1] == beam_beam[1]]
         beam_floor,beam_name,beam_size = beam_beam
         beam_drawing = 0
+        if beam_size == 'replicate':
+            error_list.append((beam_beam, 'replicate', 'replicate'))
+            continue
         if error_beam:
             if beam_size != '': 
                 error_list.append((beam_beam, 'error_size', error_beam[0][2]))
@@ -1794,15 +1818,15 @@ def write_result_log(excel_file, task_name, plan_result, beam_result, date, runt
     return
 def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:dict, result_filename, progress_file, sizing, mline_scaling, date,fbeam_file):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    if True:
+    if False:
         plan_data = read_plan(plan_filename=plan_filename,
                 layer_config=layer_config,
                 progress_file=progress_file,
                 sizing=sizing,
                 mline_scaling=mline_scaling)
-        save_temp_file.save_pkl(data=plan_data,tmp_file='plan_to_beam_0307-2.pkl')
+        save_temp_file.save_pkl(data=plan_data,tmp_file='plan_set.pkl')
     else:
-        plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
+        plan_data = save_temp_file.read_temp('plan_set.pkl')
     set_plan, dic_plan,warning_list = sort_plan(plan_filename=plan_filename,
               plan_new_filename=plan_new_filename,
               plan_data=plan_data,
@@ -1827,8 +1851,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
                            plan_data=plan_data)
     return (set_plan,dic_plan)
 def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
-    pass
-    if True: 
+    if False: 
         floor_to_beam_set = read_beam(beam_filename=beam_filename,text_layer=text_layer,progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,tmp_file='beam_set.pkl')
     else:
@@ -1874,7 +1897,7 @@ if __name__=='__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-10-26三重永德-2023-0502_ALL.dwg']
+    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-06-07三重永德-test.dwg']
     plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-10-26三重永德-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑

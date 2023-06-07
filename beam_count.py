@@ -173,7 +173,7 @@ def sort_beam_cad(msp_beam,layer_config:dict,entity_config:dict, progress_file='
         error_count = 0
         while error_count < 10:
             try:
-                print(f'{object.ObjectName}:{object.Layer}')
+                # print(f'{object.ObjectName}:{object.Layer}')
                 count += 1
                 if count % 1000 == 0:
                     progress(f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
@@ -269,7 +269,8 @@ def sort_beam_cad(msp_beam,layer_config:dict,entity_config:dict, progress_file='
 def sort_arrow_line(coor_to_arrow_dic:dict,
                     coor_to_rebar_list:list,
                     coor_to_dim_list:list[tuple[tuple[float,float],float,tuple[tuple[float,float],tuple[float,float]]]],
-                    coor_to_bend_rebar_list:list[tuple[tuple[float,float],tuple[float,float],float]]):
+                    coor_to_bend_rebar_list:list[tuple[tuple[float,float],tuple[float,float],float]],
+                    progress_file:str):
     start = time.time() 
     # #method 1
     # new_coor_to_arrow_dic = {}
@@ -401,6 +402,7 @@ def sort_arrow_line(coor_to_arrow_dic:dict,
                         with_dim = True
                         mid_coor = ((line_1_point[0] + line_2_point[0])/2,line_coor[1])
                 new_coor_to_arrow_dic.update({rebar_coor1:(rebar_coor2,length,mid_coor,with_dim)})
+    progress(f'sort arrow to line:{time.time() - start}', progress_file)
     return new_coor_to_arrow_dic,no_arrow_line_list
     #         # new_coor_to_arrow_dic.update({value_pair[0]:(value_pair[1],length,mid_coor)})
     # print(f'Method 2:{time.time() - start}')
@@ -409,7 +411,9 @@ def sort_arrow_line(coor_to_arrow_dic:dict,
     # print(set(new_coor_to_arrow_dic.items()) - set(new_coor_to_arrow_dic_2.items()))
 
 #整理箭頭與鋼筋文字對應
-def sort_arrow_to_word(coor_to_arrow_dic:dict,coor_to_data_list:list):
+def sort_arrow_to_word(coor_to_arrow_dic:dict,
+                       coor_to_data_list:list,
+                       progress_file:str):
     def _get_distance(pt1,pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
@@ -464,39 +468,42 @@ def sort_arrow_to_word(coor_to_arrow_dic:dict,coor_to_data_list:list):
             ## 箭頭朝下
             rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0] and r[1][1] >= arrow_head[1]]
         if not rebar_data_temp:
-            print(f'arrow head:{arrow_head} has no rebar data')
+            progress(f'arrow head:{arrow_head} has no rebar data', progress_file)
+            # print(f'arrow head:{arrow_head} has no rebar data')
             rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0]]
         if not rebar_data_temp:
             raise NoRebarDataError
         
         text,coor = min(rebar_data_temp,key=lambda rebar_text:_get_distance(arrow_data[0],rebar_text[1]))
         if(abs(arrow_tail[1] - coor[1])> min_diff):
-            print(f'{arrow_head} / {arrow_data} cant find pair arrow')
+            progress(f'{arrow_head} / {arrow_data} cant find pair arrow', progress_file)
+            # print(f'{arrow_head} / {arrow_data} cant find pair arrow')
             continue
         rebar_data = list(arrow_data)
         if '-' not in text:
-            print(f'{text} not satisfied rule')
+            progress(f'{text} not satisfied  rebar rule', progress_file)
+            # print(f'{text} not satisfied rule')
             continue
         if '@' in text:
-            print(f'{text} not satisfied rule')
+            progress(f'{text} not satisfied tie rule', progress_file)
+            # print(f'{text} not satisfied rule')
             continue
         number = text.split('-')[0]
         size =  text.split('-')[1]  
         if not isRebarSize(size):
-            print(size)
+            progress(f'{size} not satisfied rebar rule', progress_file)
+            # print(size)
             continue
         if not number.isdigit():
-            print(text)
+            progress(f'{text} not satisfied rebar rule', progress_file)
+            # print(text)
             continue
         rebar_data.extend([number,size ,coor])
         new_coor_to_arrow_dic.update({arrow_head:(*rebar_data  ,)})
         head_to_data_dic.update({(line_coor[0] - rebar_length/2,line_coor[1]):{'number':number,'size':size , 'dim':with_dim}})
         tail_to_data_dic.update({(line_coor[0] + rebar_length/2,line_coor[1]):{'number':number,'size':size , 'dim':with_dim}})
-
-    print(f'Method 2:{time.time() - start}')
-    # print(new_coor_to_arrow_dic_2 == new_coor_to_arrow_dic)
-    # print(set(new_coor_to_arrow_dic_2.items()) - set(new_coor_to_arrow_dic.items()))
-    # print(set(new_coor_to_arrow_dic.items()) - set(new_coor_to_arrow_dic_2.items()))
+    
+    progress(f'sort arrow to word:{time.time() - start}', progress_file)
     return new_coor_to_arrow_dic,head_to_data_dic,tail_to_data_dic
 
 def sort_noconcat_line(no_concat_line_list,head_to_data_dic:dict,tail_to_data_dic:dict):
@@ -525,7 +532,7 @@ def sort_noconcat_line(no_concat_line_list,head_to_data_dic:dict,tail_to_data_di
                 head_coor =value_key
                 head_rebar = value_items
             if (not head_rebar) and (not tail_rebar):
-                print(f'{head_coor},{tail_coor} norebar')
+                # print(f'{head_coor},{tail_coor} norebar')
                 continue
             elif head_rebar==tail_rebar:
                 coor_to_rebar_list_straight.append((head_coor, tail_coor,
@@ -543,7 +550,7 @@ def sort_noconcat_line(no_concat_line_list,head_to_data_dic:dict,tail_to_data_di
                                                             _cal_length(head_coor,tail_coor),
                                                             head_rebar['number'],
                                                             head_rebar['size'],False))
-                    print(f'{head_coor},{tail_coor} head_rebar:{head_rebar} tail_rebar:{tail_rebar}')
+                    # print(f'{head_coor},{tail_coor} head_rebar:{head_rebar} tail_rebar:{tail_rebar}')
                 elif head_rebar:
                     coor_to_rebar_list_straight.append((head_coor, 
                                                         tail_coor,
@@ -563,14 +570,14 @@ def sort_noconcat_line(no_concat_line_list,head_to_data_dic:dict,tail_to_data_di
                                                 'size':coor_to_rebar_list_straight[-1][4],
                                                 'dim':coor_to_rebar_list_straight[-1][5]}})
             line_list.remove(line)
-            print(f'{head_coor},{tail_coor} rebar:{coor_to_rebar_list_straight[-1][3]}-{coor_to_rebar_list_straight[-1][4]}')
+            # print(f'{head_coor},{tail_coor} rebar:{coor_to_rebar_list_straight[-1][3]}-{coor_to_rebar_list_straight[-1][4]}')
         
     while True:
         temp_count = len(no_concat_line_list)
         _concat_line(no_concat_line_list)
         if temp_count == len(no_concat_line_list) or len(no_concat_line_list) == 0:
             break
-    print(f'Method 1:{time.time() - start}')
+    # print(f'Method 1:{time.time() - start}')
     return coor_to_rebar_list_straight
 
 def sort_noconcat_bend(no_concat_bend_list:list,head_to_data_dic:dict,tail_to_data_dic:dict):
@@ -584,15 +591,15 @@ def sort_noconcat_bend(no_concat_bend_list:list,head_to_data_dic:dict,tail_to_da
         if len(overlap_line.keys()) > 0:
             value_key,value_items = min(overlap_line.items(),key=lambda x:abs(x[0][0]-horz_coor[0]))
             coor_to_bend_rebar_list.append((vert_coor, value_key,line_length - abs(value_key[0] - horz_coor[0]),value_items['number'],value_items['size']))
-            print(f'{horz_coor},{vert_coor} rebar:{coor_to_bend_rebar_list[-1][3]}-{coor_to_bend_rebar_list[-1][4]}')
+            # print(f'{horz_coor},{vert_coor} rebar:{coor_to_bend_rebar_list[-1][3]}-{coor_to_bend_rebar_list[-1][4]}')
             continue
         overlap_line = {k: v for k, v in tail_to_data_dic.items() if (k[0] >= horz_coor[0]) and (k[1] == horz_coor[1]) and (k[0] <= vert_coor[0]) }
         if len(overlap_line.keys()) > 0:
             value_key,value_items = max(overlap_line.items(),key=lambda x:abs(x[0][0]-horz_coor[0]))
             coor_to_bend_rebar_list.append((vert_coor, value_key,line_length - abs(value_key[0] - horz_coor[0]),value_items['number'],value_items['size']))
-            print(f'{horz_coor},{vert_coor} rebar:{coor_to_bend_rebar_list[-1][3]}-{coor_to_bend_rebar_list[-1][4]}')
+            # print(f'{horz_coor},{vert_coor} rebar:{coor_to_bend_rebar_list[-1][3]}-{coor_to_bend_rebar_list[-1][4]}')
             continue
-    print(f'Method 1:{time.time() - start}')
+    # print(f'Method 1:{time.time() - start}')
     return coor_to_bend_rebar_list
 
 def sort_rebar_bend_line(rebar_bend_list:list,rebar_line_list:list):
@@ -625,7 +632,7 @@ def sort_rebar_bend_line(rebar_bend_list:list,rebar_line_list:list):
             if new_number > 0:
                 rebar_bend_list.remove(bend)
                 rebar_bend_list.append((vert_coor,horz_coor,bend_length,str(new_number),rebar_size))
-                print(f'{horz_coor} {rebar_number}-{rebar_size} => {new_number}-{rebar_size}')
+                # print(f'{horz_coor} {rebar_number}-{rebar_size} => {new_number}-{rebar_size}')
 
 def count_tie(coor_to_tie_text_list:list,coor_to_block_list:list,coor_to_tie_list):
     def extract_tie(tie:str):
@@ -806,10 +813,10 @@ def break_down_rebar(coor_to_arrow_dic:dict,class_beam_list:list[Beam]):
     
     for arrow_head in list(coor_to_arrow_dic.keys()):
         nearest_beam =None
-        try:
-            assert arrow_head != (7439.0, 2504.36) 
-        except:
-            print('')
+        # try:
+        #     assert arrow_head != (7439.0, 2504.36) 
+        # except:
+        #     print('')
         right_nearest_beam = None
         left_nearest_beam = None
         arrow_item = coor_to_arrow_dic[arrow_head]
@@ -900,8 +907,8 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
             nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b.get_coor(),arrow_head))
         else:
             nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b.get_coor(),arrow_head))
-        if nearest_beam.serial == 'B2-4':
-            print(f'b8-1:{arrow_head} {arrow_item}')
+        # if nearest_beam.serial == 'B2-4':
+        #     print(f'b8-1:{arrow_head} {arrow_item}')
         nearest_beam.add_rebar(start_pt = line_mid_coor, end_pt = line_mid_coor,
                                 length = length, number = number, 
                                 size = size,text=f'{number}-{size}',arrow_coor= (arrow_head,text_coor),with_dim=with_dim)
@@ -1220,20 +1227,22 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     coor_to_arrow_dic,no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,
                                                            coor_to_rebar_list,
                                                            coor_to_dim_list=coor_to_dim_list,
-                                                           coor_to_bend_rebar_list=coor_to_bend_rebar_list)
-    progress('梁配筋圖讀取進度 8/15', progress_file)
+                                                           coor_to_bend_rebar_list=coor_to_bend_rebar_list,
+                                                           progress_file=progress_file)
+    progress('整理線段與鋼筋標示箭頭', progress_file)
         
     # Step 9. 對應箭頭跟文字，並完成head_to_data_dic, tail_to_data_dic
     try:
         coor_to_arrow_dic,head_to_data_dic,tail_to_data_dic = sort_arrow_to_word(coor_to_arrow_dic=coor_to_arrow_dic,
-                                                                            coor_to_data_list=coor_to_data_list)
+                                                                                 coor_to_data_list=coor_to_data_list,
+                                                                                 progress_file=progress_file)
     except NoRebarDataError:
         print('NoRebarData')
-    progress('梁配筋圖讀取進度 9/15', progress_file)
+    progress('整理鋼筋文字與鋼筋標示箭頭', progress_file)
     
     # Step 10. 統計目前的type跟size
     
-    progress('梁配筋圖讀取進度 10/15', progress_file)
+    # progress('梁配筋圖讀取進度 10/15', progress_file)
     # coor_to_rebar_list_straight_left,coor_to_rebar_list_straight_right, coor_to_bend_rebar_list,no_concat_line_list,no_concat_bend_list=concat_no_arrow_line(no_arrow_line_list=no_arrow_line_list,
     #                                                                                                                 head_to_data_dic=head_to_data_dic,
     #                                                                                                                 tail_to_data_dic=tail_to_data_dic,
@@ -1247,7 +1256,7 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
                                                  tail_to_data_dic=tail_to_data_dic)
     sort_rebar_bend_line(rebar_bend_list=coor_to_bend_rebar_list,rebar_line_list=coor_to_rebar_list_straight)
     #截斷處重複計算
-    progress('梁配筋圖讀取進度 12/15', progress_file)
+    progress('整理彎折鋼筋與直線鋼筋', progress_file)
 
     # Step 14-15 和 16 為箍筋部分，14-15在算框框內的數量，16在算每個梁的總長度，兩者獨立
     # count_rebar_in_block(coor_to_arrow_dic,coor_to_block_list,coor_to_rebar_list_straight=coor_to_rebar_list_straight,coor_to_bend_rebar_list=coor_to_bend_rebar_list)
@@ -1256,12 +1265,15 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     add_beam_to_list(coor_to_beam_list=coor_to_beam_list,
                      class_beam_list=class_beam_list,
                      floor_list=floor_list)
+    progress('新增梁', progress_file)
     combine_beam_boundingbox(coor_to_block_list=coor_to_block_list,
                              coor_to_bounding_block_list=coor_to_bounding_block_list,
                              class_beam_list=class_beam_list,
                              coor_to_rc_block_list=coor_to_rc_block_list)
+    progress('整理梁邊界與邊框', progress_file)
     break_down_rebar(coor_to_arrow_dic=coor_to_arrow_dic,
                      class_beam_list=class_beam_list)
+    progress('截斷直線鋼筋', progress_file)
     combine_beam_tie(coor_sorted_tie_list=coor_sorted_tie_list,
                      coor_to_beam_list=coor_to_beam_list,
                      class_beam_list=class_beam_list)
@@ -1270,10 +1282,13 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
                        coor_to_bend_rebar_list=coor_to_bend_rebar_list,
                        coor_to_beam_list=coor_to_beam_list,
                        class_beam_list=class_beam_list)
+    progress('配對梁與主筋、箍筋', progress_file)
     compare_line_with_dim(class_beam_list=class_beam_list,
                         coor_to_dim_list=coor_to_dim_list,
                         coor_to_block_list=coor_to_block_list)
+    progress('配對梁主筋與標註線', progress_file)
     sort_beam(class_beam_list=class_beam_list)
+    progress('整理梁配筋', progress_file)
     return class_beam_list,cad_data
 def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,floor_parameter_xlsx:str,cad_data:Counter):
 
@@ -1786,7 +1801,7 @@ def compare_line_with_dim(coor_to_dim_list:list[tuple[tuple[float,float],float,t
                                 else:
                                     rebar.start_pt.x = rebar.end_pt.x - rebar.length
                     except:
-                        print(rebar.arrow_coor)
+                        print(f'{beam.floor}:{beam.serial} compare_line_with_dim error')
                         pass
                         # new_rebar_arrow,_ = sort_arrow_line(coor_to_rebar_list=[((origin_start_pt_x,rebar.start_pt.y),
                         #                                     (origin_end_pt_x,rebar.end_pt.y),
@@ -1807,7 +1822,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0526\1F GD-1.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0607\XS-BEAM-大梁.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0413\0417-地梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-大梁.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0413\0417-小梁.dwg"]
@@ -1823,16 +1838,16 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0526'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0607'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0526\P2022-03A 五股區登林段9FB3-2023-05-26-11-49-temp.xlsx'
-    project_name = '0602-test'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0607\P2021-12C 淡海安居.xlsx'
+    project_name = '0607-sb'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
         'rebar_layer':['S-REINF'], # 鋼筋和箍筋的線的塗層
         'tie_text_layer':['S-TEXT'], # 箍筋文字圖層
-        'block_layer':['0'], # 框框的圖層
+        'block_layer':['DEFPOINTS'], # 框框的圖層
         'beam_text_layer' :['S-RC'], # 梁的字串圖層
         'bounding_block_layer':['S-ARCH'],
         'rc_block_layer':['S-RC'], # 支承端圖層
@@ -1914,7 +1929,7 @@ if __name__=='__main__':
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0526\0602-GD-1.pkl')
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB.pkl')
     # # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='0417_MingXin.pkl',
@@ -1922,7 +1937,7 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0526\0526-B.pkl'),
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB.pkl'),
                                               progress_file=progress_file,
                                               rebar_parameter_excel= floor_parameter_xlsx)
     create_report(class_beam_list=class_beam_list,
