@@ -655,16 +655,16 @@ def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',
     print(f'Total Time:{time.time() - start}')
     return os.path.basename(output_excel)
 if __name__ == '__main__':
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0524\XS-COL-2.dwg'#sys.argv[1] # XS-COL的路徑
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0607\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
     column_filenames = [
         r'D:\Desktop\BeamQC\TEST\2023-0324\中德楠梓\中德楠梓-2023-03-28-11-01-XS-COL-2.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0524\P2021-12C 淡海安居.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0524'
-    project_name = 'test_column'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0607\P2021-12C 淡海安居.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0607'
+    project_name = '0607-column'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
     #     'line_layer':['TABLE'],
@@ -676,12 +676,12 @@ if __name__ == '__main__':
     #     'column_rc_layer':['OLINE'] #斷面圖層
     # }
     #DrawRC
-    entity_type ={
-        'rebar_layer':['AcDbPolyline'],
-        'rebar_data_layer':['AcDbMText'],
-        'rebar_data_leader_layer':['AcDbLeader'],
-        'tie_text_layer':['AcDbText']
-    }
+    # entity_type ={
+    #     'rebar_layer':['AcDbPolyline'],
+    #     'rebar_data_layer':['AcDbMText'],
+    #     'rebar_data_leader_layer':['AcDbLeader'],
+    #     'tie_text_layer':['AcDbText']
+    # }
     # RCAD
     # layer_config = {
     #     'text_layer':['文字-柱線名稱','文字-樓群名稱','文字-斷面尺寸'],
@@ -706,17 +706,17 @@ if __name__ == '__main__':
     }
     msp_column = None
     doc_column = None
-    # msp_column,doc_column = read_column_cad(col_filename)
-    # sort_col_cad(msp_column=msp_column,
-    #              doc_column=doc_column,
-    #              layer_config=layer_config,
-    #              temp_file=r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column-2.pkl')
+    msp_column,doc_column = read_column_cad(col_filename)
+    sort_col_cad(msp_column=msp_column,
+                 doc_column=doc_column,
+                 layer_config=layer_config,
+                 temp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-column.pkl')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column.pkl'),
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column-2.pkl'),
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-column.pkl'),
                                    rebar_excel_path=floor_parameter_xlsx)
     create_report(output_column_list=column_list,
                   output_folder=output_folder,

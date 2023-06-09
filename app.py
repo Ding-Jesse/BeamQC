@@ -122,7 +122,13 @@ def upload_file():
                 'size_layer':size_layer,
                 'sml_beam_text_layer':sml_beam_text_layer
             }
-
+            col_layer_config = {
+                'text_layer':text_col_layer,
+                'line_layer':line_layer,
+                'block_layer':block_layer,
+                'floor_layer':floor_layer,
+                'col_layer':col_layer
+            }
             xs_col = request.form.get('xs-col')
             xs_beam = request.form.get('xs-beam')
             sizing = request.form.get('sizing')
@@ -189,7 +195,14 @@ def upload_file():
             if column_ok and plan_ok:
                 # main function
                 txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-column.txt')
-                main_col_function(column_file,plan_file,column_new_file,col_plan_new_file,txt_file,text_col_layer,line_layer,block_layer,floor_layer,col_layer,project_name,progress_file)
+                main_col_function(col_filenames = column_file,
+                                  plan_filenames = plan_file,
+                                  col_new_filename = column_new_file,
+                                  plan_new_filename = col_plan_new_file,
+                                  result_file=txt_file,
+                                  layer_config=col_layer_config,
+                                  task_name = project_name,
+                                  progress_file= progress_file)
                 filenames_column = [f'{project_name}-column.txt']
                 filenames.extend(filenames_column)
             if column_ok or beam_ok:

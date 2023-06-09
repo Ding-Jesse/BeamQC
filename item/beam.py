@@ -212,6 +212,9 @@ class Beam:
             self.floor = self.serial.split(' ')[0]
             if self.floor == '':
                 raise BeamFloorNameError
+            if "(" in self.floor and ")" in self.floor :
+                temp_matchobj = re.search(r'\((.*)\)',self.floor)
+                self.floor = temp_matchobj.group(1)
             self.serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
         if re.search(commom_pattern,self.floor):
             sep = re.search(commom_pattern,self.floor).group(0)
@@ -451,7 +454,7 @@ class Beam:
         As = 0
         for rebar in self.rebar_table[rebar_type1.value][rebar_type2.value]:
             As += rebar.As
-        return As
+        return round(As,2)
     ## 整理梁配筋成常用表格
     def sort_rebar_table(self):
         # try:
