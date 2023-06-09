@@ -87,18 +87,22 @@ def turn_floor_to_list(floor, Bmax, Fmax, Rmax):
             to_char = char
             start = floor.split(to_char)[0]
             end = floor.split(to_char)[1]
-            try:
-                start = int(turn_floor_to_float(start))
-                end = int(turn_floor_to_float(end))
-                if start > end:
-                    tmp = start
-                    start = end
-                    end = tmp
-                for i in range(start, end + 1):
-                    if floor_exist(i, Bmax, Fmax, Rmax):
-                        floor_list.append(turn_floor_to_string(i))
-            except:
-                error(f'turn_floor_to_list error: {floor} cannot be turned to list.')
+            if not turn_floor_to_float(start) or not turn_floor_to_float(end):
+                for temp in re.split(r'\W+',floor):
+                    floor_list.append(temp)
+            else:
+                try:
+                    start = int(turn_floor_to_float(start))
+                    end = int(turn_floor_to_float(end))
+                    if start > end:
+                        tmp = start
+                        start = end
+                        end = tmp
+                    for i in range(start, end + 1):
+                        if floor_exist(i, Bmax, Fmax, Rmax):
+                            floor_list.append(turn_floor_to_string(i))
+                except:
+                    error(f'turn_floor_to_list error: {floor} cannot be turned to list.')
             to_bool = True
             break
 
@@ -645,7 +649,10 @@ def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_da
                 end = floor.split(to_char)[1]
                 if not (turn_floor_to_float(start)) or not turn_floor_to_float(end):
                     for temp in re.split(r'\W+',floor):
-                        tmp_floor_list.append(temp)
+                        if turn_floor_to_float(temp):
+                            tmp_floor_list.append(turn_floor_to_float(temp))
+                        else:
+                            tmp_floor_list.append(temp)
                 else:   
                     tmp_floor_list.append(turn_floor_to_float(start))
                     tmp_floor_list.append(turn_floor_to_float(end))
@@ -1272,6 +1279,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_beam, dic_plan, b
     list_in_plan.sort()
     set_in_beam = set_beam - set_plan
     list_in_beam = list(set_in_beam)
+    list_in_beam = [beam for beam in list_in_beam if beam[2] != 'replicate']
     list_in_beam.sort()
 
     f_fbeam = open(fbeam_file, "a", encoding = 'utf-8')
@@ -1897,18 +1905,18 @@ if __name__=='__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-06-07三重永德-test.dwg']
-    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0503\2023-05-02-10-26三重永德-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
-    beam_new_filename = r"D:\Desktop\BeamQC\TEST\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
-    plan_new_filename = r"D:\Desktop\BeamQC\TEST\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
-    big_file = r"D:\Desktop\BeamQC\TEST\2023-0503\big-4.txt"#sys.argv[5] # 大梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\2023-0503\sml-4.txt"#sys.argv[6] # 小梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-0503\fb-4.txt"#sys.argv[6] # 地梁結果
+    beam_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0609\2023-06-09-08-52P2022-04B 豐譽雲林東仁安居社宅14FB2-XS-BEAM.dwg']
+    plan_filenames = [r'D:\Desktop\BeamQC\TEST\2023-0609\2023-06-09-08-52P2022-04B 豐譽雲林東仁安居社宅14FB2-XS-PLAN.dwg']#sys.argv[2] # XS-PLAN的路徑
+    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-0609\XS-BEAM_new.dwg"#sys.argv[3] # XS-BEAM_new的路徑
+    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-0609\XS-PLAN_new.dwg"#sys.argv[4] # XS-PLAN_new的路徑
+    big_file = r"D:\Desktop\BeamQC\TEST\2023-0609\big-4.txt"#sys.argv[5] # 大梁結果
+    sml_file = r"D:\Desktop\BeamQC\TEST\2023-0609\sml-4.txt"#sys.argv[6] # 小梁結果
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-0609\fb-4.txt"#sys.argv[6] # 地梁結果
     # 在beam裡面自訂圖層
     text_layer = 'S-RC'#sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = 'DwFm'#sys.argv[8] # 框框的圖層
+    block_layer = '0'#sys.argv[8] # 框框的圖層
     floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
     size_layer = 'S-TEXT'#sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = 'S-RCBMG'#大樑複線圖層
@@ -1949,8 +1957,19 @@ if __name__=='__main__':
     dic_plan = {}
     set_beam = set()
     dic_beam = {}
-
+    
     for plan_filename in plan_filenames:
+        # run_plan(plan_filename=plan_filename,
+        #          plan_new_filename=plan_new_filename,
+        #          big_file=big_file,
+        #          sml_file=sml_file,
+        #          layer_config=layer_config,
+        #          result_filename=plan_file, 
+        #          progress_file= progress_file, 
+        #          sizing= sizing, 
+        #          mline_scaling= mline_scaling, 
+        #          date = date,
+        #          fbeam_file= fbeam_file)
     #     # res_plan.append(pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
         res_plan.append(pool.apply_async(run_plan,(plan_filename, plan_new_filename, big_file, sml_file,layer_config , plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
     for beam_filename in beam_filenames:
