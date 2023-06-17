@@ -94,6 +94,10 @@ class Column:
         if match_obj:
             self.x_size = float(match_obj.group(1))
             self.y_size = float(match_obj.group(2))
+        else:
+            self.x_size = 0
+            self.y_size = 0
+            print(f'{self.floor}:{self.serial} with wrong size {self.size}')
     def set_prop(self,floor:floor.Floor):
         self.height = floor.height
         self.fc = floor.material_list['fc']
@@ -256,8 +260,7 @@ class Column:
         self.cal_rebar()
         self.cal_tie()
         self.cal_material()
-        self.summary_count()
-        pass        
+        self.summary_count()  
     def create_rebar_table():
         pass
         

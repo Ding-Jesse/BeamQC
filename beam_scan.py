@@ -6,19 +6,20 @@ from item.rebar import RebarDiameter
 from item.floor import read_parameter_df
 from column_scan import rename_unnamed
 import pandas as pd
+import numpy as np
 class BeamScan(ColumnScan):
     pass
 def beam_check(beam_list:list[Beam],beam_scan_list:list[BeamScan]):
     df:pd.DataFrame
     enoc_list = [bs for bs in beam_scan_list if bs.index_score[('Index2','經濟性')]== 1]
     code_list = [bs for bs in beam_scan_list if bs not in enoc_list]
-    enoc_df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in enoc_list])
-    code_df = pd.DataFrame(columns=[str(b.floor)+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in code_list])
+    enoc_df = pd.DataFrame(columns=[str(b.floor)+':'+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in enoc_list])
+    code_df = pd.DataFrame(columns=[str(b.floor)+':'+str(b.serial) for b in beam_list],index=[bs.ng_message for bs in code_list])
     for b in beam_list:
         for bs in enoc_list:
-            enoc_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
+            enoc_df.loc[bs.ng_message,str(b.floor)+':'+str(b.serial)] = bs.check(b)
         for bs in code_list:
-            code_df.loc[bs.ng_message,str(b.floor)+str(b.serial)] = bs.check(b)
+            code_df.loc[bs.ng_message,str(b.floor)+':'+str(b.serial)] = bs.check(b)
     return enoc_df,code_df
 def output_detail_scan_report(beam_list:list[Beam]):
     ng_df = pd.DataFrame(columns = ['樓層','編號','檢核項目','備註'],index=[])
@@ -32,6 +33,29 @@ def output_detail_scan_report(beam_list:list[Beam]):
             temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'檢核項目':ng_serial,'備註':ng_message},index=[0])
             ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
     return ng_df
+def output_ng_ratio(df:pd.DataFrame):
+    ng_df = pd.DataFrame(columns = ['樓層','編號','NG項目','NG率(NG項目/總檢核項目)'],index=[])
+    df = df.loc[:, ~df.columns.duplicated()]
+    for column in df:
+        ng_item = list(df.loc[df[column] == "NG."].index)
+        serial = column.split(":")
+        temp_df = pd.DataFrame(data={'樓層':serial[0],'編號':serial[1],'NG項目':'\n'.join(ng_item),'NG率(NG項目/總檢核項目)':f'{len(ng_item)}/{len(df.index)}'},index=[0])
+        ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
+    #     count_df = df[column].value_counts()
+    #     if "NG." in count_df.index:
+    #         df[column].loc['Total_NG'] = count_df.loc["NG."]
+    #     else:
+    #         df[column].loc['Total_NG'] = 0
+    #     if "OK" in count_df.index:
+    #         df[column].loc['Total_Ok'] = count_df.loc["OK"]
+    #     else:
+    #         df[column].loc['Total_Ok'] = 0
+    # new_df = df.apply(lambda s: s.value_counts(),axis=1).fillna(0)
+    # new_df = df.apply(pd.value_counts).fillna(0).astype(int)
+    sum_df = df.apply(pd.Series.value_counts, axis=1).fillna(0).astype(int)
+    # print(new_df)
+    # print(ng_df)
+    return ng_df,sum_df
 def create_beam_scan():
     beam_scan_list:list[BeamScan]
     beam_scan_list = []
@@ -40,6 +64,7 @@ def create_beam_scan():
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
     for index in df.index:
+        if np.isnan(index): continue
         beam_scan = BeamScan(df.loc[index].to_dict(),scan_index=index)
         set_check_scan(beam_scan=beam_scan)
         beam_scan_list.append(beam_scan)
@@ -53,7 +78,7 @@ def create_sbeam_scan():
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
     for index in df.index:
-        if df.loc[index][('Type','小梁')] == 'X': continue
+        if df.loc[index][('Type','小梁')] == 'X' and np.isnan(index): continue
         beam_scan = BeamScan(df.loc[index].to_dict(),scan_index=index)
         set_check_scan(beam_scan=beam_scan)
         beam_scan_list.append(beam_scan)
@@ -67,7 +92,7 @@ def create_fbeam_scan():
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
     for index in df.index:
-        if df.loc[index][('Type','地梁')] == 'X': continue
+        if df.loc[index][('Type','地梁')] == 'X' or np.isnan(index): continue
         beam_scan = BeamScan(df.loc[index].to_dict(),scan_index=index)
         set_check_scan(beam_scan=beam_scan)
         beam_scan_list.append(beam_scan)
@@ -81,24 +106,26 @@ def set_check_scan(beam_scan:BeamScan):
     fail_syntax = 'NG.'
     protect_layer = 7
     def index_0101(b:Beam):
-        for pos,tie in b.tie.items():
-            if tie is None:continue
-            if 0.0025 * b.width > tie.Ash/tie.spacing:
-                b.ng_message.append(f'101:0.0025 * {b.width} > {tie.Ash}/{tie.spacing} => {0.0025 * b.width} > {tie.Ash/tie.spacing}')
-                return fail_syntax
+        clear_depth = (b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
+        if b.length < clear_depth * 4 and b.middle_tie:
+            for pos,tie in b.tie.items():
+                if tie is None:continue
+                if 0.0025 * b.width > tie.Ash/tie.spacing:
+                    b.ng_message.append(f'0101:0.0025 * {b.width} > {tie.Ash}/{tie.spacing} => {round(0.0025 * b.width,2)} > {round(tie.Ash/tie.spacing,2)}')
+                    return fail_syntax
         return pass_syntax
     def index_0102(b:Beam):
         clear_depth = (b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < clear_depth * 4 and b.middle_tie:
             if 0.0015 * b.width * clear_depth > b.middle_tie[0].As*2:
-                b.ng_message.append(f'102:0.0015 * {b.width} * {clear_depth} > 2 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} > {round(b.middle_tie[0].As*2)}')
+                b.ng_message.append(f'0102:0.0015 * {b.width} * {clear_depth} > 2 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} > {round(b.middle_tie[0].As*2)}')
                 return fail_syntax
         return pass_syntax
     def index_0103(b:Beam):
         clear_depth = (b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
-        if b.length < b.depth * 4 and b.middle_tie:
+        if b.length < clear_depth * 4 and b.middle_tie:
             if 0.0015 * b.width * clear_depth * 1.5 < b.middle_tie[0].As:
-                b.ng_message.append(f'103:0.0015 *{b.width} * {clear_depth} < 1.5 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} < {round(1.5*b.middle_tie[0].As,2)}')
+                b.ng_message.append(f'0103:0.0015 *{b.width} * {clear_depth} < 1.5 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} < {round(1.5*b.middle_tie[0].As,2)}')
                 return fail_syntax
         return pass_syntax
     def index_0104(b:Beam):
@@ -333,10 +360,13 @@ def set_check_scan(beam_scan:BeamScan):
             temp = [r for r in rebarAs if r < 0.25*max(rebarAs)]
             b.ng_message.append(f'0218:{temp}cm2 < code15_4_2_2:{0.25*max(rebarAs)}cm2')
             return fail_syntax
-        for i in [0,2]:
+        for i,pos in enumerate(['左','右']):
             if rebarAs[i+3] == 0:return "無鋼筋資料"
-            if not 0.5 <= rebarAs[i]/rebarAs[i+3] <= 2:
-                b.ng_message.append(f'0218:位置:{i} => {rebarAs[i]/rebarAs[i+3]}')
+            if 0.5 > rebarAs[i]/rebarAs[i+3]:
+                b.ng_message.append(f'0218:位置:{pos}端上層/{pos}端下層 = {round(rebarAs[i]/rebarAs[i+3],2)}')
+                return fail_syntax
+            if rebarAs[i]/rebarAs[i+3] > 2:
+                b.ng_message.append(f'0218:位置:{pos}端下層/{pos}端上層 = {round(rebarAs[i+3]/rebarAs[i],2)}')
                 return fail_syntax
         return pass_syntax
     def index_0219(b:Beam):

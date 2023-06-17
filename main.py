@@ -225,16 +225,16 @@ def OutputExcel(df_list:list[pd.DataFrame],file_path,sheet_name,auto_fit_columns
     for df in df_list: 
         df.to_excel(writer,sheet_name=sheet_name,startrow=row)
         row += len(df.index) + df_spacing
-    writer.save()
+    writer.close()
 
-    book = load_workbook(file_path)
-    writer = pd.ExcelWriter(file_path, engine='openpyxl') 
-    writer.book = book
+    # book = load_workbook(file_path)
+    writer = pd.ExcelWriter(file_path, engine='openpyxl',mode="a",if_sheet_exists="overlay") 
+    # writer.book = book
     if os.path.exists(file_path) and len(auto_fit_columns) >0:
-        AutoFit_Columns(book[sheet_name],auto_fit_columns,auto_fit_rows)
+        AutoFit_Columns(writer.book[sheet_name],auto_fit_columns,auto_fit_rows)
     if os.path.exists(file_path) and len(columns_list) >0:
-        Decorate_Worksheet(book[sheet_name],columns_list,rows_list)
-    writer.save()
+        Decorate_Worksheet(writer.book[sheet_name],columns_list,rows_list)
+    writer.close()
     return file_path
 
 def Decorate_Worksheet(sheet:Worksheet,columns_list:list,rows_list:list):
@@ -261,7 +261,7 @@ def Add_Row_Title(file_path:str,sheet_name:str,i:int,j:int,title_text:str,font_s
     sheet.cell(i,j).value = title_text
     sheet.cell(i,j).alignment = Alignment(vertical='center',wrap_text=True,horizontal='center')
     sheet.cell(i,j).font = Font(name='Calibri',size= font_size)
-    writer.save()
+    writer.close()
 def Output_Config(project_name:str,layer_config:dict,file_new_directory:str):
     with open(os.path.join(file_new_directory, f'{project_name}_layer_config.txt'),'w') as f:
         f.write(str(layer_config))

@@ -14,7 +14,7 @@ from item.rebar import RebarInfo
 from item.floor import Floor,read_parameter_df,summary_floor_rebar,summary_floor_rebar_ratio
 from item.excel import AddExcelDataBar,AddBorderLine
 from item.excepteions import NoRebarDataError,BeamFloorNameError
-from beam_scan import create_beam_scan,beam_check,create_sbeam_scan,create_fbeam_scan,output_detail_scan_report
+from beam_scan import create_beam_scan,beam_check,create_sbeam_scan,create_fbeam_scan,output_detail_scan_report,output_ng_ratio
 from main import OutputExcel,Add_Row_Title
 from multiprocessing.pool import ThreadPool as Pool
 from collections import Counter
@@ -31,13 +31,13 @@ def error(error_message): # 把錯誤訊息印到error.log裡面
     f = open(error_file, 'a', encoding = 'utf-8')
     localtime = time.asctime(time.localtime(time.time()))
     f.write(f'{localtime} | {error_message}\n')
-    f.close
+    f.close()
     return
 
 def progress(message, progress_file): # 把進度印到progress裡面，在app.py會對這個檔案做事
     f = open(progress_file, 'a', encoding = 'utf-8')
     f.write(f'{message}\n')
-    f.close
+    f.close()
     return
 
 def read_beam_cad(beam_filename, progress_file):
@@ -507,7 +507,7 @@ def sort_arrow_to_word(coor_to_arrow_dic:dict,
     return new_coor_to_arrow_dic,head_to_data_dic,tail_to_data_dic
 
 def sort_noconcat_line(no_concat_line_list,head_to_data_dic:dict,tail_to_data_dic:dict):
-    start = time.time()
+    # start = time.time()
     coor_to_rebar_list_straight = [] # (頭座標，尾座標，長度，number，size)
     def _overlap(l1,l2):
         if l1[1] == l2[0][1]:
@@ -581,7 +581,7 @@ def sort_noconcat_line(no_concat_line_list,head_to_data_dic:dict,tail_to_data_di
     return coor_to_rebar_list_straight
 
 def sort_noconcat_bend(no_concat_bend_list:list,head_to_data_dic:dict,tail_to_data_dic:dict):
-    start = time.time()
+    # start = time.time()
     coor_to_bend_rebar_list = []
     for bend in no_concat_bend_list:
         horz_coor = bend[1]
@@ -675,8 +675,8 @@ def count_tie(coor_to_tie_text_list:list,coor_to_block_list:list,coor_to_tie_lis
             size = tie.split('@')[0] # 用'@'來切
             try:
                 spacing = int(tie.split('@')[1])
-            except Exception as ex:
-                continue 
+            except Exception:
+                continue
             assert spacing != 0,f'{coor} spacing is zero'
 
             tie_left_list = [(bottom,top,length) for bottom,top,length in coor_to_tie_list if ( bottom[0] < coor[0]) and (min(bottom[1],top[1]) < coor[1]) and (max(bottom[1],top[1]) > coor[1])]
@@ -986,127 +986,127 @@ def combine_beam_rebar(coor_to_arrow_dic:dict,coor_to_rebar_list_straight:list,c
                                 add_up='bend',arrow_coor= (arrow_head,tail_coor),with_dim=with_dim)
 
 ## 輸出每隻梁的結果    
-def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
-    # (string, midpoint, list of tie, tie_count_dic,(左下，右上),list of rebar,rebar count dict)
-    lines=[]
-    total_tie = {}
-    # total_tie_count = {}
-    total_rebar = {}
-    floor_rebar = {}
-    floor_concrete = {}
-    floor_formwork = {}
-    total_concrete = {}
-    total_formwork={}
-    def _add_total(size,number,total):
-        if size in total:
-            total[size] += number
-        else:
-            total[size] = number
+# def count_each_beam_rebar_tie(coor_to_beam_list:list,output_txt='test.txt'):
+#     # (string, midpoint, list of tie, tie_count_dic,(左下，右上),list of rebar,rebar count dict)
+#     lines=[]
+#     total_tie = {}
+#     # total_tie_count = {}
+#     total_rebar = {}
+#     floor_rebar = {}
+#     floor_concrete = {}
+#     floor_formwork = {}
+#     total_concrete = {}
+#     total_formwork={}
+#     def _add_total(size,number,total):
+#         if size in total:
+#             total[size] += number
+#         else:
+#             total[size] = number
 
-    for beam in coor_to_beam_list:
-        count_floor = beam[0].split(' ')[0]
-        if count_floor not in floor_rebar:
-            floor_rebar.update({count_floor:{}})
-            floor_concrete.update({count_floor:0})
-            floor_formwork.update({count_floor:0})
-        # temp_dict = floor_rebar[count_floor]
-        matches= re.findall(r"\((.*?)\)",beam[0],re.MULTILINE)
-        # if len(matches) == 0 or 'X' not in matches[0]:return
-        if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE)) == 0:continue
-        split_char = re.findall(r"X|x",matches[0])[0]
-        tie=0
-        rebar=0
-        total_tie_count = 0
-        try:
-            depth = int(matches[0].split(split_char)[1])
-            width = int(matches[0].split(split_char)[0])
-        except:
-            depth = 0
-            width = 0 
-        tie_count = beam[3]
-        rebar_count = beam[6]
-        for size,count in tie_count.items():
-            tie += count * RebarInfo(size) * ((depth - 10)+(width-10))*2
-            total_tie_count += count
-            _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=total_tie)
-            _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=floor_rebar[count_floor])
-            # _add_total(size=size,number=count,total=total_tie_count)
-        for size,length in rebar_count.items():
-            rebar += RebarInfo(size) * length
-            _add_total(size=size,number=RebarInfo(size) * length,total=total_rebar)
-            _add_total(size=size,number=RebarInfo(size) * length,total=floor_rebar[count_floor])
-        lines.append('\n梁{}:'.format(beam[0]))
-        lines.append('\n寬度:{}、高度:{}'.format(width,depth))
-        lines.append('\n主筋為:{}'.format(beam[5]))
-        lines.append('\n箍筋為:{}'.format(beam[2]))
-        lines.append('\n箍筋個數為:{}'.format(total_tie_count))
-        lines.append('\n主筋量為:{}'.format(rebar))
-        lines.append('\n箍筋量為:{}'.format(tie))
-        lines.append(f'==================================')
-    with open(output_txt, 'w',encoding= 'utf-8') as f:
-        for floor,item in floor_rebar.items():
-            lines.append('\n{0} 鋼筋量 :{1}'.format(floor,item))
-        lines.append('\n箍筋總量{}:'.format(total_tie))
-        lines.append('\n主筋總量{}'.format(total_rebar))
-        lines.append('\n混凝土體積已扣除與版共構區域')
-        lines.append('\n模板已扣除與版共構區域')
-        f.write('\n'.join(lines))
-    pass
-def count_floor_total_beam_rebar_tie(class_to_beam_list:list[Beam],output_txt='test.txt'):
-    lines=[]
-    total_tie = {}
-    # total_tie_count = {}
-    total_rebar = {}
-    floor_rebar = {}
-    floor_concrete = {}
-    floor_formwork = {}
-    total_concrete = 0
-    total_formwork = 0
-    def _add_total(size,number,total):
-        if size in total:
-            total[size] += number
-        else:
-            total[size] = number
-    for beam in class_to_beam_list:
-        matches= re.findall(r"\((.*?)\)",beam.serial,re.MULTILINE)
-        if len(matches) == 0 or len(re.findall(r"X|x",beam.serial,re.MULTILINE)) == 0:continue
-        count_floor = beam.floor
-        if count_floor not in floor_rebar:
-            floor_rebar.update({count_floor:{}})
-            floor_concrete.update({count_floor:0})
-            floor_formwork.update({count_floor:0})
-        floor_concrete[count_floor] += beam.concrete
-        floor_formwork[count_floor] += beam.formwork
-        lines.append('\n梁{}:'.format(beam.serial))
-        lines.append('\n寬度:{}、深度:{}'.format(beam.width,beam.depth))
-        lines.append('\n主筋為:{}'.format(beam.get_rebar_list()))
-        lines.append('\n箍筋為:{}'.format(beam.get_tie_list()))
-        lines.append('\n主筋量(g)為:{}'.format(beam.get_rebar_weight()))
-        lines.append('\n箍筋量(g)為:{}'.format(beam.get_tie_weight()))
-        lines.append(f'==================================')
-        for size,weight in beam.rebar_count.items():
-            _add_total(size=size,number=weight,total=total_rebar)
-            _add_total(size=size,number=weight,total=floor_rebar[count_floor])
-        for size,weight in beam.tie_count.items():
-            _add_total(size=size,number=weight,total=total_tie)
-            _add_total(size=size,number=weight,total=floor_rebar[count_floor])
+#     for beam in coor_to_beam_list:
+#         count_floor = beam[0].split(' ')[0]
+#         if count_floor not in floor_rebar:
+#             floor_rebar.update({count_floor:{}})
+#             floor_concrete.update({count_floor:0})
+#             floor_formwork.update({count_floor:0})
+#         # temp_dict = floor_rebar[count_floor]
+#         matches= re.findall(r"\((.*?)\)",beam[0],re.MULTILINE)
+#         # if len(matches) == 0 or 'X' not in matches[0]:return
+#         if len(matches) == 0 or len(re.findall(r"X|x",matches[0],re.MULTILINE)) == 0:continue
+#         split_char = re.findall(r"X|x",matches[0])[0]
+#         tie=0
+#         rebar=0
+#         total_tie_count = 0
+#         try:
+#             depth = int(matches[0].split(split_char)[1])
+#             width = int(matches[0].split(split_char)[0])
+#         except:
+#             depth = 0
+#             width = 0 
+#         tie_count = beam[3]
+#         rebar_count = beam[6]
+#         for size,count in tie_count.items():
+#             tie += count * RebarInfo(size) * ((depth - 10)+(width-10))*2
+#             total_tie_count += count
+#             _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=total_tie)
+#             _add_total(size=size,number=count * RebarInfo(size) * ((depth - 10)+(width-10))*2,total=floor_rebar[count_floor])
+#             # _add_total(size=size,number=count,total=total_tie_count)
+#         for size,length in rebar_count.items():
+#             rebar += RebarInfo(size) * length
+#             _add_total(size=size,number=RebarInfo(size) * length,total=total_rebar)
+#             _add_total(size=size,number=RebarInfo(size) * length,total=floor_rebar[count_floor])
+#         lines.append('\n梁{}:'.format(beam[0]))
+#         lines.append('\n寬度:{}、高度:{}'.format(width,depth))
+#         lines.append('\n主筋為:{}'.format(beam[5]))
+#         lines.append('\n箍筋為:{}'.format(beam[2]))
+#         lines.append('\n箍筋個數為:{}'.format(total_tie_count))
+#         lines.append('\n主筋量為:{}'.format(rebar))
+#         lines.append('\n箍筋量為:{}'.format(tie))
+#         lines.append(f'==================================')
+#     with open(output_txt, 'w',encoding= 'utf-8') as f:
+#         for floor,item in floor_rebar.items():
+#             lines.append('\n{0} 鋼筋量 :{1}'.format(floor,item))
+#         lines.append('\n箍筋總量{}:'.format(total_tie))
+#         lines.append('\n主筋總量{}'.format(total_rebar))
+#         lines.append('\n混凝土體積已扣除與版共構區域')
+#         lines.append('\n模板已扣除與版共構區域')
+#         f.write('\n'.join(lines))
 
-    with open(output_txt, 'w',encoding= 'utf-8') as f:
-        for floor,item in floor_rebar.items():
-            total_concrete +=floor_concrete[count_floor]
-            total_formwork +=floor_formwork[count_floor]
-            lines.append('\n{0} 鋼筋量(g) :{1}'.format(floor,item))
-            lines.append('\n{0} 混凝土體積(cm3) :{1}'.format(floor,floor_concrete[count_floor]))
-            lines.append('\n{0} 模板量(cm2) :{1}'.format(floor,floor_formwork[count_floor]))
-            lines.append(f'==================================')
-        lines.append('\n箍筋總量(g):{}'.format(total_tie))
-        lines.append('\n主筋總量(g):{}'.format(total_rebar))
-        lines.append('\n混凝土總體積(cm3):{}'.format(total_concrete))
-        lines.append('\n模板總量(cm2):{}'.format(total_formwork))
-        lines.append('\n混凝土體積已扣除與版共構區域')
-        lines.append('\n模板僅考慮梁兩側及底面')
-        f.write('\n'.join(lines))
-    pass
+# def count_floor_total_beam_rebar_tie(class_to_beam_list:list[Beam],output_txt='test.txt'):
+#     lines=[]
+#     total_tie = {}
+#     # total_tie_count = {}
+#     total_rebar = {}
+#     floor_rebar = {}
+#     floor_concrete = {}
+#     floor_formwork = {}
+#     total_concrete = 0
+#     total_formwork = 0
+#     def _add_total(size,number,total):
+#         if size in total:
+#             total[size] += number
+#         else:
+#             total[size] = number
+#     for beam in class_to_beam_list:
+#         matches= re.findall(r"\((.*?)\)",beam.serial,re.MULTILINE)
+#         if len(matches) == 0 or len(re.findall(r"X|x",beam.serial,re.MULTILINE)) == 0:continue
+#         count_floor = beam.floor
+#         if count_floor not in floor_rebar:
+#             floor_rebar.update({count_floor:{}})
+#             floor_concrete.update({count_floor:0})
+#             floor_formwork.update({count_floor:0})
+#         floor_concrete[count_floor] += beam.concrete
+#         floor_formwork[count_floor] += beam.formwork
+#         lines.append('\n梁{}:'.format(beam.serial))
+#         lines.append('\n寬度:{}、深度:{}'.format(beam.width,beam.depth))
+#         lines.append('\n主筋為:{}'.format(beam.get_rebar_list()))
+#         lines.append('\n箍筋為:{}'.format(beam.get_tie_list()))
+#         lines.append('\n主筋量(g)為:{}'.format(beam.get_rebar_weight()))
+#         lines.append('\n箍筋量(g)為:{}'.format(beam.get_tie_weight()))
+#         lines.append(f'==================================')
+#         for size,weight in beam.rebar_count.items():
+#             _add_total(size=size,number=weight,total=total_rebar)
+#             _add_total(size=size,number=weight,total=floor_rebar[count_floor])
+#         for size,weight in beam.tie_count.items():
+#             _add_total(size=size,number=weight,total=total_tie)
+#             _add_total(size=size,number=weight,total=floor_rebar[count_floor])
+
+#     with open(output_txt, 'w',encoding= 'utf-8') as f:
+#         for floor,item in floor_rebar.items():
+#             total_concrete +=floor_concrete[count_floor]
+#             total_formwork +=floor_formwork[count_floor]
+#             lines.append('\n{0} 鋼筋量(g) :{1}'.format(floor,item))
+#             lines.append('\n{0} 混凝土體積(cm3) :{1}'.format(floor,floor_concrete[count_floor]))
+#             lines.append('\n{0} 模板量(cm2) :{1}'.format(floor,floor_formwork[count_floor]))
+#             lines.append(f'==================================')
+#         lines.append('\n箍筋總量(g):{}'.format(total_tie))
+#         lines.append('\n主筋總量(g):{}'.format(total_rebar))
+#         lines.append('\n混凝土總體積(cm3):{}'.format(total_concrete))
+#         lines.append('\n模板總量(cm2):{}'.format(total_formwork))
+#         lines.append('\n混凝土體積已扣除與版共構區域')
+#         lines.append('\n模板僅考慮梁兩側及底面')
+#         f.write('\n'.join(lines))
+#     pass
 def count_rebar_in_block(coor_to_arrow_dic:dict,coor_to_block_list:list,coor_to_rebar_list_straight,coor_to_bend_rebar_list):
     for x in coor_to_arrow_dic: # 新的coor_to_arrow_dic為尖點座標 -> (箭頭文字端坐標，鋼筋長度，鋼筋中點座標，數量，尺寸，文字座標)
     # 先找在哪個block裡面
@@ -1184,6 +1184,7 @@ def inblock(block:tuple,pt:tuple):
 
 def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     # output_txt = f'{output_folder}{project_name}'
+    progress(f'================start cal_beam_rebar================', progress_file)
     if not data:
         return
     cad_data = {}
@@ -1224,21 +1225,23 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
 
     # parameter_df.set_index(['樓層'],inplace=True)
     # Step 8. 對應箭頭跟鋼筋
+    start = time.time()
     coor_to_arrow_dic,no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,
                                                            coor_to_rebar_list,
                                                            coor_to_dim_list=coor_to_dim_list,
                                                            coor_to_bend_rebar_list=coor_to_bend_rebar_list,
                                                            progress_file=progress_file)
-    progress('整理線段與鋼筋標示箭頭', progress_file)
+    progress(f'整理線段與鋼筋標示箭頭:{time.time() - start}s', progress_file)
         
     # Step 9. 對應箭頭跟文字，並完成head_to_data_dic, tail_to_data_dic
+    start = time.time()
     try:
         coor_to_arrow_dic,head_to_data_dic,tail_to_data_dic = sort_arrow_to_word(coor_to_arrow_dic=coor_to_arrow_dic,
                                                                                  coor_to_data_list=coor_to_data_list,
                                                                                  progress_file=progress_file)
     except NoRebarDataError:
         print('NoRebarData')
-    progress('整理鋼筋文字與鋼筋標示箭頭', progress_file)
+    progress(f'整理鋼筋文字與鋼筋標示箭頭:{time.time() - start}s', progress_file)
     
     # Step 10. 統計目前的type跟size
     
@@ -1248,6 +1251,7 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
     #                                                                                                                 tail_to_data_dic=tail_to_data_dic,
     #                                                                                                                 coor_to_bend_rebar_list=coor_to_bend_rebar_list)
     # Step 12. 拿彎的去找跟誰接在一起
+    start = time.time()
     coor_to_rebar_list_straight = sort_noconcat_line(no_concat_line_list=no_arrow_line_list,
                                                      head_to_data_dic=head_to_data_dic,
                                                      tail_to_data_dic=tail_to_data_dic)
@@ -1256,24 +1260,28 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
                                                  tail_to_data_dic=tail_to_data_dic)
     sort_rebar_bend_line(rebar_bend_list=coor_to_bend_rebar_list,rebar_line_list=coor_to_rebar_list_straight)
     #截斷處重複計算
-    progress('整理彎折鋼筋與直線鋼筋', progress_file)
+    progress(f'整理彎折鋼筋與直線鋼筋:{time.time() - start}s', progress_file)
 
     # Step 14-15 和 16 為箍筋部分，14-15在算框框內的數量，16在算每個梁的總長度，兩者獨立
     # count_rebar_in_block(coor_to_arrow_dic,coor_to_block_list,coor_to_rebar_list_straight=coor_to_rebar_list_straight,coor_to_bend_rebar_list=coor_to_bend_rebar_list)
     # Step 14. 算箍筋
+    start = time.time()
     coor_sorted_tie_list = count_tie(coor_to_tie_text_list=coor_to_tie_text_list,coor_to_block_list=coor_to_block_list,coor_to_tie_list=coor_to_tie_list)
     add_beam_to_list(coor_to_beam_list=coor_to_beam_list,
                      class_beam_list=class_beam_list,
                      floor_list=floor_list)
-    progress('新增梁', progress_file)
+    progress(f'新增梁:{time.time() - start}s', progress_file)
+    start = time.time()
     combine_beam_boundingbox(coor_to_block_list=coor_to_block_list,
                              coor_to_bounding_block_list=coor_to_bounding_block_list,
                              class_beam_list=class_beam_list,
                              coor_to_rc_block_list=coor_to_rc_block_list)
-    progress('整理梁邊界與邊框', progress_file)
+    progress(f'整理梁邊界與邊框:{time.time() - start}s', progress_file)
+    start = time.time()
     break_down_rebar(coor_to_arrow_dic=coor_to_arrow_dic,
                      class_beam_list=class_beam_list)
-    progress('截斷直線鋼筋', progress_file)
+    progress(f'截斷直線鋼筋:{time.time() - start}s', progress_file)
+    start = time.time()
     combine_beam_tie(coor_sorted_tie_list=coor_sorted_tie_list,
                      coor_to_beam_list=coor_to_beam_list,
                      class_beam_list=class_beam_list)
@@ -1282,13 +1290,15 @@ def cal_beam_rebar(data={},progress_file='',rebar_parameter_excel=''):
                        coor_to_bend_rebar_list=coor_to_bend_rebar_list,
                        coor_to_beam_list=coor_to_beam_list,
                        class_beam_list=class_beam_list)
-    progress('配對梁與主筋、箍筋', progress_file)
+    progress(f'配對梁與主筋、箍筋:{time.time() - start}s', progress_file)
+    start = time.time()
     compare_line_with_dim(class_beam_list=class_beam_list,
                         coor_to_dim_list=coor_to_dim_list,
                         coor_to_block_list=coor_to_block_list)
-    progress('配對梁主筋與標註線', progress_file)
+    progress(f'配對梁主筋與標註線:{time.time() - start}s', progress_file)
+    start = time.time()
     sort_beam(class_beam_list=class_beam_list)
-    progress('整理梁配筋', progress_file)
+    progress(f'整理梁配筋:{time.time() - start}s', progress_file)
     return class_beam_list,cad_data
 def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,floor_parameter_xlsx:str,cad_data:Counter):
 
@@ -1304,79 +1314,176 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'Rcad.xlsx'
     )
-    pdf_report = (
-        f'{output_folder}/'
-        f'{project_name}_'
-        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
-        f'report.pdf'
-    )
+    pdf_GB_file = ''
+    pdf_FB_file = ''
+    pdf_SB_file = ''
+
     cad_df = pd.DataFrame.from_dict(data=cad_data, orient='index',columns=['數量'])
     floor_list = floor_parameter(beam_list=class_beam_list,floor_parameter_xlsx=floor_parameter_xlsx)
     beam_df = output_beam(class_beam_list=class_beam_list)
     fbeam_list,sbeam_list,beam_list = seperate_beam(class_beam_list=class_beam_list)
 
-    rebar_df,concrete_df,coupler_df,formwork_df  = summary_floor_rebar(floor_list=floor_list,item_type='beam')
-    ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
     bs_list = create_beam_scan()
     sb_bs_list = create_sbeam_scan()
     fb_bs_list = create_fbeam_scan()
-    enoc_df,code_df = beam_check(beam_list=beam_list,beam_scan_list=bs_list)
-    sb_enoc_df, sb_code_df= beam_check(beam_list=sbeam_list,beam_scan_list=sb_bs_list)
-    fb_enoc_df, fb_code_df= beam_check(beam_list=fbeam_list,beam_scan_list=fb_bs_list)
+    if beam_list:
+        pdf_GB_file = create_scan_report(floor_list=floor_list,
+                           beam_list=beam_list,
+                           bs_list=bs_list,
+                           excel_filename=excel_filename,
+                           beam_type=BeamType.Grider,
+                           project_name=project_name,
+                           output_folder=output_folder)
+    if fbeam_list:
+        pdf_FB_file = create_scan_report(floor_list=floor_list,
+                           beam_list=fbeam_list,
+                           bs_list=fb_bs_list,
+                           excel_filename=excel_filename,
+                           beam_type=BeamType.FB,
+                           project_name=project_name,
+                           output_folder=output_folder)
+    if sbeam_list:
+        pdf_SB_file = create_scan_report(floor_list=floor_list,
+                           beam_list=sbeam_list,
+                           bs_list=sb_bs_list,
+                           excel_filename=excel_filename,
+                           beam_type=BeamType.SB,
+                           project_name=project_name,
+                           output_folder=output_folder)
+    rebar_df,concrete_df,coupler_df,formwork_df  = summary_floor_rebar(floor_list=floor_list,item_type='beam')
+    # header_list,ratio_dict,ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
+
+    # enoc_df,code_df = beam_check(beam_list=beam_list,beam_scan_list=bs_list)
+    # sb_enoc_df, sb_code_df= beam_check(beam_list=sbeam_list,beam_scan_list=sb_bs_list)
+    # fb_enoc_df, fb_code_df= beam_check(beam_list=fbeam_list,beam_scan_list=fb_bs_list)
     ng_df = output_detail_scan_report(beam_list=beam_list + sbeam_list + fbeam_list)
-    # ng_df = output_detail_scan_report(beam_list=fbeam_list)
-    rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
-    create_scan_pdf(scan_list=bs_list + sb_bs_list + fb_bs_list,
-                scan_df=ng_df.copy(),
-                rebar_df=rebar_df,
-                project_prop={
-                    "專案名稱:":project_name,
-                    "測試日期:":time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
-                },
-                pdf_filename=pdf_report)
-    OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-        columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
-    OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-        columns_list=range(2,len(sb_code_df.columns)+2),rows_list=range(2,len(sb_code_df.index)+ 10 + len(sb_enoc_df.index)),df_spacing= 3)
-    OutputExcel(df_list=[fb_code_df,fb_enoc_df],file_path=excel_filename,sheet_name='地梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
-        columns_list=range(2,len(fb_code_df.columns)+2),rows_list=range(2,len(fb_code_df.index)+ 10 + len(fb_enoc_df.index)),df_spacing= 3)
+    
+    # rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
+    # beam_ng_df,sum_df = output_ng_ratio(code_df)
+    # sbeam_ng_df,sb_sum_df = output_ng_ratio(sb_code_df)
+    # fbeam_ng_df,fb_sum_df = output_ng_ratio(fb_code_df)
+    # OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,sheet_name='梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    #     columns_list=range(2,len(code_df.columns)+2),rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),df_spacing= 3)
+    # OutputExcel(df_list=[sb_code_df,sb_enoc_df],file_path=excel_filename,sheet_name='小梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    #     columns_list=range(2,len(sb_code_df.columns)+2),rows_list=range(2,len(sb_code_df.index)+ 10 + len(sb_enoc_df.index)),df_spacing= 3)
+    # OutputExcel(df_list=[fb_code_df,fb_enoc_df],file_path=excel_filename,sheet_name='地梁檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+    #     columns_list=range(2,len(fb_code_df.columns)+2),rows_list=range(2,len(fb_code_df.index)+ 10 + len(fb_enoc_df.index)),df_spacing= 3)
     OutputExcel(df_list=[beam_df],file_path=excel_filename,sheet_name='梁統整表')
-    Add_Row_Title(file_path=excel_filename,sheet_name='梁檢核表',i=len(code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    Add_Row_Title(file_path=excel_filename,sheet_name='小梁檢核表',i=len(sb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
-    Add_Row_Title(file_path=excel_filename,sheet_name='地梁檢核表',i=len(fb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    # Add_Row_Title(file_path=excel_filename,sheet_name='梁檢核表',i=len(code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    # Add_Row_Title(file_path=excel_filename,sheet_name='小梁檢核表',i=len(sb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
+    # Add_Row_Title(file_path=excel_filename,sheet_name='地梁檢核表',i=len(fb_code_df.index) + 4,j=1,title_text='經濟性檢核',font_size= 20)
     OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name='鋼筋統計表')
     OutputExcel(df_list=[concrete_df],file_path=excel_filename,sheet_name='混凝土統計表')
     OutputExcel(df_list=[formwork_df],file_path=excel_filename,sheet_name='模板統計表')
-    OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
+    # OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name='詳細檢核表')
+    # OutputExcel(df_list=[ratio_df],
+    #             file_path=excel_filename,
+    #             sheet_name='鋼筋比統計表',
+    #             columns_list=range(2,len(ratio_df.columns) + 2),
+    #             rows_list=range(2,len(ratio_df.index) + 2)
+    #             )
+    # AddExcelDataBar(workbook_path=excel_filename,
+    #                 sheet_name='鋼筋比統計表',
+    #                 start_col=4,
+    #                 start_row=4,
+    #                 end_col=len(ratio_df.columns) + 4,
+    #                 end_row=len(ratio_df.index) + 4)
+    # AddBorderLine(workbook_path=excel_filename,
+    #                 sheet_name='鋼筋比統計表',
+    #                 start_col=4,
+    #                 start_row=4,
+    #                 end_col=len(ratio_df.columns) + 4,
+    #                 end_row=len(ratio_df.index) + 4,
+    #                 step_row= 2,
+    #                 step_col= 3)
+    OutputExcel(df_list=[cad_df],file_path=excel_filename,sheet_name='CAD統計表')
+    # OutputExcel(df_list=[rcad_df],file_path=excel_filename_rcad,sheet_name='RCAD撿料')
+
+    return excel_filename,excel_filename_rcad,pdf_FB_file,pdf_GB_file,pdf_SB_file
+def create_scan_report(floor_list:list[Floor],
+                       beam_list:list[Beam],
+                       bs_list:list,
+                       excel_filename:str,
+                       beam_type:BeamType,
+                       project_name:str,
+                       output_folder:str):
+    '''
+    Create scan pdf report with beam list \n
+    Args:
+        floor_list:list of Floor Object
+        beam_list:list of Beam object
+        bs_list:list of BeamScan Object
+    '''
+    if beam_type == BeamType.FB:
+        item_name = '地梁'
+    if beam_type == BeamType.Grider:
+        item_name = '大梁'
+    if beam_type == BeamType.SB:
+        item_name = '小梁'
+
+    pdf_report = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'{item_name}_report.pdf'
+    )
+
+    enoc_df,code_df = beam_check(beam_list=beam_list,beam_scan_list=bs_list)
+    header_list,ratio_dict,ratio_df = summary_floor_rebar_ratio(floor_list=floor_list,
+                                                                beam_type=beam_type)
+    rebar_df,concrete_df,coupler_df,formwork_df  = summary_floor_rebar(floor_list=floor_list,
+                                                                       item_type='beam',
+                                                                       beam_type=beam_type)
+    ng_df = output_detail_scan_report(beam_list=beam_list)
+    beam_ng_df,sum_df = output_ng_ratio(code_df)
+    create_scan_pdf(scan_list=bs_list,
+            scan_df=ng_df.copy(),
+            rebar_df=rebar_df,
+            ng_sum_df=sum_df,
+            beam_ng_df=beam_ng_df,
+            project_prop={
+                "專案名稱:":f'{project_name}_{item_name}',
+                "測試日期:":time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
+            },
+            pdf_filename=pdf_report,
+            header_list = header_list,
+            ratio_dict = ratio_dict,
+            report_type = 'beam')
+    OutputExcel(df_list=[code_df,enoc_df],file_path=excel_filename,
+                sheet_name=f'{item_name}檢核表',auto_fit_columns=[1],auto_fit_rows=[1],
+                columns_list=range(2,len(code_df.columns)+2),
+                rows_list=range(2,len(code_df.index)+ 10 + len(enoc_df.index)),
+                df_spacing= 3)
+    Add_Row_Title(file_path=excel_filename,sheet_name=f'{item_name}檢核表',
+                  i=len(code_df.index) + 4,j=1,
+                  title_text='經濟性檢核',font_size= 20)
+    OutputExcel(df_list=[ng_df],file_path=excel_filename,sheet_name=f'{item_name}詳細檢核表')
+    OutputExcel(df_list=[rebar_df],file_path=excel_filename,sheet_name=f'{item_name}鋼筋統計表')
     OutputExcel(df_list=[ratio_df],
-                file_path=excel_filename,
-                sheet_name='鋼筋比統計表',
-                columns_list=range(2,len(ratio_df.columns) + 2),
-                rows_list=range(2,len(ratio_df.index) + 2)
-                )
+            file_path=excel_filename,
+            sheet_name=f'{item_name}鋼筋比統計表',
+            columns_list=range(2,len(ratio_df.columns) + 2),
+            rows_list=range(2,len(ratio_df.index) + 2)
+            )
     AddExcelDataBar(workbook_path=excel_filename,
-                    sheet_name='鋼筋比統計表',
+                    sheet_name=f'{item_name}鋼筋比統計表',
                     start_col=4,
                     start_row=4,
                     end_col=len(ratio_df.columns) + 4,
                     end_row=len(ratio_df.index) + 4)
     AddBorderLine(workbook_path=excel_filename,
-                    sheet_name='鋼筋比統計表',
+                    sheet_name=f'{item_name}鋼筋比統計表',
                     start_col=4,
                     start_row=4,
                     end_col=len(ratio_df.columns) + 4,
                     end_row=len(ratio_df.index) + 4,
                     step_row= 2,
                     step_col= 3)
-    OutputExcel(df_list=[cad_df],file_path=excel_filename,sheet_name='CAD統計表')
-    OutputExcel(df_list=[rcad_df],file_path=excel_filename_rcad,sheet_name='RCAD撿料')
-
-    # Step 15. 印出每個框框的結果然後加在一起
-    
-    # Step 16. 把箍筋跟beam字串綁在一起
-    return excel_filename,excel_filename_rcad
+    return pdf_report
 def seperate_beam(class_beam_list:list[Beam]):
-    
+    '''
+    Seperate Beam into GB,SB,FB
+    '''
     return [b for b in class_beam_list if b.beam_type == BeamType.FB],\
             [b for b in class_beam_list if b.beam_type == BeamType.SB],\
             [b for b in class_beam_list if b.beam_type == BeamType.Grider]
@@ -1396,7 +1503,6 @@ def add_beam_to_list(coor_to_beam_list:list,class_beam_list:list,floor_list:list
         else:
             pass
             # print(b.floor)
-    pass
     # DEBUG # 畫線把文字跟左右的線連在一起
     # coor_list1 = [min_left_coor[0], min_left_coor[1], 0, x[1][0], x[1][1], 0]
     # coor_list2 = [min_right_coor[0], min_right_coor[1], 0, x[1][0], x[1][1], 0]
@@ -1695,7 +1801,11 @@ def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='
     output_dwg = ''
     def read_beam_multi(beam_filename,temp_file):
         msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
-        sort_beam_cad(msp_beam=msp_beam,layer_config=layer_config,entity_config=get_template(template_name),temp_file=temp_file,progress_file=progress_file)
+        sort_beam_cad(msp_beam=msp_beam,
+                      layer_config=layer_config,
+                      entity_config=get_template(template_name),
+                      temp_file=temp_file,
+                      progress_file=progress_file)
         output_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(temp_file),
                                                    progress_file=progress_file,
                                                    rebar_parameter_excel=floor_parameter_xlsx)
@@ -1718,7 +1828,11 @@ def count_beam_multiprocessing(beam_filenames:list,layer_config:dict,temp_file='
             cad_counter.update(cad_data)
             output_dwg_list.append(output_dwg)
             beam_list.extend(output_beam_list)
-    excel_filename,excel_filename_rcad = create_report(class_beam_list=beam_list,floor_parameter_xlsx=floor_parameter_xlsx,output_folder=output_folder,project_name=project_name,cad_data=cad_counter)
+    excel_filename,excel_filename_rcad = create_report(class_beam_list=beam_list,
+                                                       floor_parameter_xlsx=floor_parameter_xlsx,
+                                                       output_folder=output_folder,
+                                                       project_name=project_name,
+                                                       cad_data=cad_counter)
     end = time.time()
     print("執行時間：%f 秒" % (end - start))
     return os.path.basename(excel_filename),os.path.basename(excel_filename_rcad),output_dwg_list
@@ -1802,7 +1916,6 @@ def compare_line_with_dim(coor_to_dim_list:list[tuple[tuple[float,float],float,t
                                     rebar.start_pt.x = rebar.end_pt.x - rebar.length
                     except:
                         print(f'{beam.floor}:{beam.serial} compare_line_with_dim error')
-                        pass
                         # new_rebar_arrow,_ = sort_arrow_line(coor_to_rebar_list=[((origin_start_pt_x,rebar.start_pt.y),
                         #                                     (origin_end_pt_x,rebar.end_pt.y),
                         #                                     abs(origin_length - rebar.length))],
@@ -1937,9 +2050,14 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司3',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB.pkl'),
-                                              progress_file=progress_file,
-                                              rebar_parameter_excel= floor_parameter_xlsx)
+    # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB.pkl'),
+                                            #   progress_file=progress_file,
+                                            #   rebar_parameter_excel= floor_parameter_xlsx)
+    # save_temp_file.save_pkl(class_beam_list,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-list.pkl')
+    # save_temp_file.save_pkl(cad_data,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-cad.pkl')
+    class_beam_list = save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-list.pkl')
+    # class_beam_list.extend(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-FB-list.pkl'))
+    cad_data = save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-cad.pkl')
     create_report(class_beam_list=class_beam_list,
                   output_folder=output_folder,
                   project_name=project_name,

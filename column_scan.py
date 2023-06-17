@@ -1,7 +1,9 @@
 from __future__ import annotations
 from item.column import Column
 import pandas as pd
+import numpy as np
 import pprint
+import beam_scan
 from math import ceil
 from item.floor import read_parameter_df
 from item.rebar import RebarDiameter
@@ -64,23 +66,27 @@ def create_column_scan():
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
     for index in df.index:
+        if np.isnan(index): continue
         column_scan = ColumnScan(df.loc[index].to_dict(),scan_index=index)
         set_check_scan(column_scan=column_scan)
         column_scan_list.append(column_scan)
     return column_scan_list
 def output_detail_scan_report(column_list:list[Column]):
-    ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
-    for b in column_list:
-        for ng_message in b.ng_message:
-            temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'備註':ng_message},index=[0])
-            ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
-    return ng_df
+    return beam_scan.output_detail_scan_report(column_list)
+    # ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
+    # for b in column_list:
+    #     for ng_message in b.ng_message:
+    #         temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'備註':ng_message},index=[0])
+    #         ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
+    # return ng_df
+def output_ng_ratio(df:pd.DataFrame):
+    return beam_scan.output_ng_ratio(df)
 def column_check(column_list:list[Column],column_scan_list:list[ColumnScan]):
     df:pd.DataFrame
-    df = pd.DataFrame(columns=[str(c.floor)+str(c.serial) for c in column_list],index=[cs.ng_message for cs in column_scan_list])
+    df = pd.DataFrame(columns=[str(c.floor)+":"+str(c.serial) for c in column_list],index=[cs.ng_message for cs in column_scan_list])
     for c in column_list:
         for cs in column_scan_list:
-            df.loc[cs.ng_message,str(c.floor)+str(c.serial)] = cs.check(c)
+            df.loc[cs.ng_message,str(c.floor)+":"+str(c.serial)] = cs.check(c)
     return df
 def set_check_scan(column_scan:ColumnScan):
     pass_syntax = 'OK'
@@ -108,8 +114,8 @@ def set_check_scan(column_scan:ColumnScan):
         if not c.floor_object.is_seismic: code15_4_X = 0
         # if x_Ash < code15_3_X or x_Ash <code15_4_X:
         if True:
-            c.ng_message.append(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.3Code = 0.3 * ({c.y_size} - 8)* {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1)={code15_3_X}')
-            c.ng_message.append(f'X: {c.floor}{c.serial} => Ash = {x_Ash} / 15.4Code = 0.09 * ({c.y_size} - 8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} ={code15_4_X}')
+            c.ng_message.append(f'0403:X: {c.floor}{c.serial} => Ash = {round(x_Ash,2)} / 15.3Code = 0.3 * ({c.y_size} - 8)* {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1)={round(code15_3_X,2)}')
+            c.ng_message.append(f'0403:X: {c.floor}{c.serial} => Ash = {round(x_Ash,2)} / 15.4Code = 0.09 * ({c.y_size} - 8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} ={round(code15_4_X,2)}')
             return fail_syntax
         return pass_syntax
     def index_0404(c:Column):
@@ -121,10 +127,10 @@ def set_check_scan(column_scan:ColumnScan):
         code15_3_Y = 0.3 * (c.x_size-8) * c.confine_tie.spacing * c.fc/c.fy * (Ag/Ach - 1)
         code15_4_Y = 0.09 * (c.x_size-8) * c.confine_tie.spacing * c.fc/c.fy
         if not c.floor_object.is_seismic: code15_4_Y = 0
-        # if y_Ash < code15_3_Y or y_Ash <code15_4_Y:
-        if True:
-            c.ng_message.append(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.3Code = 0.3 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1) ={code15_3_Y}')
-            c.ng_message.append(f'Y: {c.floor}{c.serial} => Ash = {y_Ash} / 15.4Code = 0.09 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} = {code15_4_Y}')
+        if y_Ash < code15_3_Y or y_Ash <code15_4_Y:
+        # if True:
+            c.ng_message.append(f'0404:Y: {c.floor}{c.serial} => Ash = {round(y_Ash,2)} / 15.3Code = 0.3 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1) ={round(code15_3_Y,2)}')
+            c.ng_message.append(f'0404:Y: {c.floor}{c.serial} => Ash = {round(y_Ash,2)} / 15.4Code = 0.09 * ({c.x_size}-8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} = {round(code15_4_Y,2)}')
             return fail_syntax
         return pass_syntax
     def index_0405(c:Column):

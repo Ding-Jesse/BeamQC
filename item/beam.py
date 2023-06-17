@@ -73,7 +73,7 @@ class Tie:
             if match_obj.group(1):
                 self.Ash *= 2
         # self.spacing = float()
-class Beam:
+class Beam():
     
     middle_tie:list[Rebar]
     rebar_list:list[Rebar]

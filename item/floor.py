@@ -86,8 +86,13 @@ class Floor:
             self.concrete_count[c.fc] += c.concrete
             self.formwork_count += c.formwork
         self.rebar_count['total'] = sum(self.rebar_count.values())
-    def summary_beam(self):
-        for b in self.beam_list:
+    def summary_beam(self,beamtype=None):
+        self.beam_rebar_count = defaultdict(lambda:0)
+        if beamtype:
+            beam_list = [beam for beam in self.beam_list if beam.beam_type==beamtype]
+        else:
+            beam_list = self.beam_list
+        for b in beam_list:
             for size,count in b.rebar_count.items():
                 self.beam_rebar_count[size] += round(count/1000/1000,2)
             for size,count in b.tie_count.items():
@@ -99,7 +104,7 @@ def read_parameter_df(read_file,sheet_name,header_list=[0]):
     return pd.read_excel(
         read_file, sheet_name=sheet_name,header=header_list)
 
-def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
+def summary_floor_rebar(floor_list:list[Floor],item_type = '',beam_type = None):
     df = pd.DataFrame(columns=['#3','#4','#5','#6','#7','#8','#10','#11'],index=[])
     concrete_df = pd.DataFrame(columns=[],index=[])
     coupler_df = pd.DataFrame(columns=[],index=[])
@@ -123,7 +128,7 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
             pass
     if item_type == 'beam':
         for floor in floor_list:
-            floor.summary_beam()
+            floor.summary_beam(beam_type)
             new_row = pd.DataFrame(floor.beam_rebar_count,index=[floor.floor_name])
             new_row_concrete = pd.DataFrame(floor.concrete_count,index=[floor.floor_name])
             new_row_formwork = pd.DataFrame({'模板':floor.formwork_count},index=[floor.floor_name])
@@ -139,7 +144,7 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = ''):
     except:
         pass
     return df,concrete_df,coupler_df,formwork_df
-def summary_floor_rebar_ratio(floor_list:list[Floor]):
+def summary_floor_rebar_ratio(floor_list:list[Floor],beam_type:None):
     # df = pd.DataFrame(columns=["0-0.5%","0.5%-1.0%",'1.0%-1.5%','1.5%-2.0%','2.0%-2.5%','2.5%-'],index=[])
     def def_value():
         return [
@@ -171,17 +176,25 @@ def summary_floor_rebar_ratio(floor_list:list[Floor]):
         2:'右'
     }
 
-    ratio_interval_group = list(arange(0.005,0.03,0.005))
+    ratio_upper_bound_group = list(arange(0.005,0.03,0.005))
+    ratio_lower_bound_group = list(arange(0,0.025,0.005))
     temp_dict = defaultdict(def_value)
     floor_dict = defaultdict(def_value_count)
-    header_list = list(map(lambda r:f'< {r*100}%',ratio_interval_group))
-    header_list.append(f'>= {ratio_interval_group[-1]*100}%')
+    header_list = list(map(lambda r,p:f'{p*100}% ≤ 鋼筋比 < {r*100}%',ratio_upper_bound_group,ratio_lower_bound_group))
+    header_list.append(f'≥ {ratio_upper_bound_group[-1]*100}%')
     
     for floor in floor_list:
-        for beam in floor.beam_list:
+        if beam_type:
+            beam_list = [beam for beam in floor.beam_list if beam.beam_type==beam_type]
+        else:
+            beam_list = floor.beam_list
+        if beam_list:
+            for header in header_list:
+                floor_dict[floor.floor_name][header] = [0]*6
+        for beam in beam_list:
             for i,ratio in enumerate(beam.get_rebar_ratio()):
-                for j,ratio_interval in enumerate(ratio_interval_group):
-                    if ratio >= ratio_interval_group[-1]:
+                for j,ratio_interval in enumerate(ratio_upper_bound_group):
+                    if ratio >= ratio_upper_bound_group[-1]:
                         floor_dict[floor.floor_name][header_list[j]][i] += 1
                         break
                     if ratio < ratio_interval:
@@ -199,16 +212,53 @@ def summary_floor_rebar_ratio(floor_list:list[Floor]):
 
     df_header_list = pd.MultiIndex.from_tuples(df_header_list)
     ratio_beam = pd.DataFrame(empty([len(floor_list)*2,len(df_header_list)],dtype='<U16'),columns=df_header_list)
-    
+    # ratio_beam = pd.DataFrame(empty([len(floor_list)*2,len(df_header_list)],dtype='<U16'),columns=df_header_list)
     for floor,ratio_dict in floor_dict.items():
+        floor_object = [f for f in floor_list if f.floor_name == floor][0]
+        if len(floor_object.beam_list) == 0:continue
         ratio_beam.at[row,('樓層','')] = floor
         ratio_beam.at[row + 1,('樓層','')] = floor
         ratio_beam.at[row,('位置','')] = '上'
         ratio_beam.at[row + 1,('位置','')] = '下'
         for ratio,count_list in ratio_dict.items():
             for i,count in enumerate(count_list[:3]):
-                ratio_beam.at[row,(ratio,pos[i])] = count
+                ratio_beam.at[row,(ratio,pos[i])] = round(count / len(floor_object.beam_list),2)
             for i,count in enumerate(count_list[3:]):
-                ratio_beam.at[row + 1,(ratio,pos[i])] = count
+                ratio_beam.at[row + 1,(ratio,pos[i])] =  round(count / len(floor_object.beam_list),2)
         row += 2
-    return ratio_beam
+    return header_list,floor_dict,ratio_beam
+def summary_floor_column_rebar_ratio(floor_list:list[Floor]):
+    '''
+    Summary Column Ratio to 
+    {
+        'floor_name':{
+            'ratio < 0.5%':count,
+            '0.5% < ratio < 1%':count,
+        }
+    }
+    '''
+    temp_dict:dict[str,list[float]]
+    ratio_upper_bound_group = list(arange(0.005,0.05,0.005))
+    ratio_lower_bound_group = list(arange(0,0.045,0.005))
+    temp_dict = defaultdict(lambda : [])
+    floor_dict = defaultdict(lambda : defaultdict(lambda : []))
+    header_list = list(map(lambda r,p:f'{round(p*100,2)}% ≤ 鋼筋比 < {round(r*100,2)}%',ratio_upper_bound_group,ratio_lower_bound_group))
+    header_list.append(f'≥ {ratio_upper_bound_group[-1]*100}%')
+
+    for floor in floor_list:
+        if floor.column_list:
+            for header in header_list:
+                floor_dict[floor.floor_name][header] = [0]
+            temp_dict[floor.floor_name] = []
+        for column in floor.column_list:
+            if column.x_size * column.y_size == 0:continue
+            ratio = round(column.total_As/(column.x_size * column.y_size),3)
+            for j,ratio_interval in enumerate(ratio_upper_bound_group):
+                if ratio >= ratio_upper_bound_group[-1]:
+                    floor_dict[floor.floor_name][header_list[j]][0] += 1
+                    break
+                if ratio < ratio_interval:
+                    floor_dict[floor.floor_name][header_list[j]][0] += 1
+                    break
+                temp_dict[floor.floor_name].append(ratio)
+    return header_list,floor_dict

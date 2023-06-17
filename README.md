@@ -14,6 +14,14 @@ Clone this repo:
 ```
 git clone https://github.com/bamboochen92518/BeamQC
 ```
+### Require Package (Update in 2023/06/13)
+- using pip to install fpdf2 
+```
+conda install python=3.9 matplotlib=3.7.1 pandas=1.5.3 numpy=1.24.3 flask=2.2.2 waitress=2.0.0 openpyxl=3.0.10 flask-session requests xlsxwriter
+conda install -c conda-forge flask-mail
+conda install -c anaconda pywin32
+pip install fpdf2 greenlet 
+```
 
 ## File Structure
 ### `nginx`
