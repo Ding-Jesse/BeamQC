@@ -134,7 +134,7 @@ def floor_exist(i, Bmax, Fmax, Rmax): # 判斷是否為空號，例如B2F-PRF會
     elif i > 0 and i <= Fmax: 
         return True
     
-    elif i > 1000 and i <= Rmax: 
+    elif i > 1000 and i <= Rmax:
         return True
 
     return False
@@ -720,7 +720,7 @@ def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_da
                         min_floor.append(floor_list)
 
             if len(min_floor) != 0:
-                for i in range(len(min_floor)):
+                for i,_ in enumerate(min_floor):
                     floor_list = min_floor[i]
                     for floor in floor_list:
                         floor_beam_size_coor_set.add((floor, size_beam, size_string, size_coor))                            
@@ -779,7 +779,7 @@ def sort_plan(plan_filename:str, plan_new_filename:str,layer_config:dict,plan_da
         
         if floor_list != '':
             for floor in floor_list:
-                if sizing or mline_scaling: 
+                if sizing or mline_scaling:
                     if beam_size == '':
                         min_diff = inf
                         min_size = ''
