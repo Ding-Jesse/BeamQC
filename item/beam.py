@@ -412,8 +412,8 @@ class Beam():
                 self.tie_count[tie.size] += tie.count * RebarInfo(tie.size) * (self.depth - 10 + self.width - 10) * 2
             else:
                 self.tie_count[tie.size] = tie.count * RebarInfo(tie.size) * (self.depth - 10 + self.width - 10) * 2
-        self.concrete = (self.depth - 15)*self.width*self.length 
-        self.formwork = (self.width + (self.depth - 15)*2)*self.length 
+        self.concrete = (self.depth - 15)*self.width*self.length  / (100*100*100)
+        self.formwork = (self.width + (self.depth - 15)*2)*self.length /(100*100)
     def get_rebar_weight(self):
         temp = 0
         for size,rebar in self.rebar_count.items():
