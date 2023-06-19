@@ -1225,7 +1225,7 @@ def sort_beam(floor_to_beam_set:set,result_filename:str,progress_file:str,sizing
                     for i in range(start, end + 1):
                         if floor_exist(i, Bmax, Fmax, Rmax):
                             floor_list.append(turn_floor_to_string(i))
-                except:
+                except Exception:
                     error(f'read_beam error in step 9: The error above is from here.')
                 to_bool = True
                 break
@@ -1826,7 +1826,7 @@ def write_result_log(excel_file, task_name, plan_result, beam_result, date, runt
     return
 def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:dict, result_filename, progress_file, sizing, mline_scaling, date,fbeam_file):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    if False:
+    if True:
         plan_data = read_plan(plan_filename=plan_filename,
                 layer_config=layer_config,
                 progress_file=progress_file,
@@ -1859,7 +1859,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
                            plan_data=plan_data)
     return (set_plan,dic_plan)
 def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
-    if False: 
+    if True:
         floor_to_beam_set = read_beam(beam_filename=beam_filename,text_layer=text_layer,progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,tmp_file='beam_set.pkl')
     else:

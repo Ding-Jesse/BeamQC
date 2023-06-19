@@ -402,22 +402,22 @@ def count_beam():
         if beam_filename != '' and temp_file != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            excel_filename,excel_filename_rcad,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file=temp_file,
+            output_file_list,output_dwg_list =  count_beam_multiprocessing(beam_filenames=beam_filenames,layer_config=layer_config,temp_file=temp_file,
                                                             project_name=project_name,output_folder=app.config['OUTPUT_FOLDER'],
                                                             template_name=template_name,floor_parameter_xlsx=xlsx_filename)
             # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
-                session['count_filenames'].extend([excel_filename,excel_filename_rcad])
+                session['count_filenames'].extend(output_file_list)
                 session['count_filenames'].extend(output_dwg_list)
             else:
-                session['count_filenames'] = [excel_filename,excel_filename_rcad]
+                session['count_filenames'] = output_file_list
                 session['count_filenames'].extend(output_dwg_list)
         if(email_address):
             try:
-                sendResult(email_address,[excel_filename,excel_filename_rcad],"梁配筋圖數量計算結果")
+                sendResult(email_address,output_file_list,"梁配筋圖數量計算結果")
                 sendResult(email_address,output_dwg_list,"梁配筋圖數量計算結果")
                 print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
-            except:
+            except Exception:
                 pass
         response = Response()
         response.status_code = 200
@@ -475,18 +475,18 @@ def count_column():
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
             # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
             #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
-            column_excel =count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file=temp_file,
+            column_excel,column_report =count_column_multiprocessing(column_filenames=column_filenames,layer_config=layer_config,temp_file=temp_file,
                                                         output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,
                                                         template_name=template_name,floor_parameter_xlsx=xlsx_filename)
             if 'count_filenames' in session:
-                session['count_filenames'].extend([column_excel])
+                session['count_filenames'].extend([column_excel,column_report])
             else:
-                session['count_filenames'] = [column_excel]
+                session['count_filenames'] = [column_excel,column_report]
         if(email_address):
             try:
-                sendResult(email_address,[column_excel],"梁配筋圖數量計算結果")
+                sendResult(email_address,[column_excel,column_report],"梁配筋圖數量計算結果")
                 print(f'send_email:{email_address}, filenames:{session["count_filenames"]}')
-            except:
+            except Exception:
                 pass
         response = Response()
         response.status_code = 200

@@ -4,6 +4,7 @@ from collections import defaultdict
 from collections import Counter
 from numpy import arange,empty
 import pandas as pd
+import numpy as np
 class Floor:
     height:float
     material_list:dict[str,float]
@@ -138,9 +139,13 @@ def summary_floor_rebar(floor_list:list[Floor],item_type = '',beam_type = None):
             formwork_df = pd.concat([formwork_df,new_row_formwork],verify_integrity=True)
     df.fillna(value=0,inplace=True)
     df.loc['Sum'] = df.sum()
+    df.loc['含耗損5%'] = np.ceil(df.loc['Sum']*1.05)
     try:
+        concrete_df.fillna(value=0,inplace=True)
+        formwork_df.fillna(value=0,inplace=True)
         concrete_df.loc['Sum'] = concrete_df.sum()
         formwork_df.loc['Sum'] = formwork_df.sum()
+        
     except:
         pass
     return df,concrete_df,coupler_df,formwork_df
@@ -238,8 +243,8 @@ def summary_floor_column_rebar_ratio(floor_list:list[Floor]):
     }
     '''
     temp_dict:dict[str,list[float]]
-    ratio_upper_bound_group = list(arange(0.005,0.05,0.005))
-    ratio_lower_bound_group = list(arange(0,0.045,0.005))
+    ratio_upper_bound_group = list(arange(0.01,0.05,0.005))
+    ratio_lower_bound_group = list(arange(0.005,0.045,0.005))
     temp_dict = defaultdict(lambda : [])
     floor_dict = defaultdict(lambda : defaultdict(lambda : []))
     header_list = list(map(lambda r,p:f'{round(p*100,2)}% ≤ 鋼筋比 < {round(r*100,2)}%',ratio_upper_bound_group,ratio_lower_bound_group))
