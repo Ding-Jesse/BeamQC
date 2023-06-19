@@ -112,8 +112,8 @@ def set_check_scan(column_scan:ColumnScan):
         code15_3_X = 0.3 * (c.y_size - 8)* c.confine_tie.spacing * c.fc/c.fy * (Ag/Ach - 1)
         code15_4_X = 0.09 * (c.y_size - 8) * c.confine_tie.spacing * c.fc/c.fy
         if not c.floor_object.is_seismic: code15_4_X = 0
-        # if x_Ash < code15_3_X or x_Ash <code15_4_X:
-        if True:
+        if x_Ash < code15_3_X or x_Ash <code15_4_X:
+        # if True:
             c.ng_message.append(f'0403:X: {c.floor}{c.serial} => Ash = {round(x_Ash,2)} / 15.3Code = 0.3 * ({c.y_size} - 8)* {c.confine_tie.spacing} * {c.fc}/{c.fy} * ({Ag}/{Ach} - 1)={round(code15_3_X,2)}')
             c.ng_message.append(f'0403:X: {c.floor}{c.serial} => Ash = {round(x_Ash,2)} / 15.4Code = 0.09 * ({c.y_size} - 8) * {c.confine_tie.spacing} * {c.fc}/{c.fy} ={round(code15_4_X,2)}')
             return fail_syntax
@@ -158,14 +158,14 @@ def set_check_scan(column_scan:ColumnScan):
         rebar_dia = max(RebarDiameter(r.size) for r in c.rebar)
         spacing = (c.x_size - c.protect_layer * 2 - 1.27 * 2 - len(c.x_row)*rebar_dia)/(len(c.x_row) - 1)
         if spacing < 1.5*rebar_dia:
-            c.ng_message.append(f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{spacing} < 1.5db:{1.5*rebar_dia}')
+            c.ng_message.append(f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{round(spacing,2)} < 1.5db:{round(1.5*rebar_dia,2)}')
             return fail_syntax
         return pass_syntax
     def index_0410(c:Column):
         rebar_dia = max(RebarDiameter(r.size) for r in c.rebar)
         spacing = (c.y_size - c.protect_layer * 2 - 1.27 * 2 - len(c.y_row)*rebar_dia)/(len(c.y_row) - 1)
         if spacing < 1.5*rebar_dia:
-            c.ng_message.append(f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{spacing} < 1.5db:{1.5*rebar_dia}')
+            c.ng_message.append(f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{round(spacing,2)} < 1.5db:{round(1.5*rebar_dia,2)}')
             return fail_syntax
         return pass_syntax
     if column_scan.scan_index == 401:column_scan.set_check_function(index_0401)       

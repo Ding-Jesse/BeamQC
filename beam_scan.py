@@ -28,7 +28,7 @@ def output_detail_scan_report(beam_list:list[Beam]):
             ng_serial = '0000'
             try:
                 ng_serial = ng_message.split(':')[0]
-            except:
+            except Exception:
                 pass
             temp_df = pd.DataFrame(data={'樓層':b.floor,'編號':b.serial,'檢核項目':ng_serial,'備註':ng_message},index=[0])
             ng_df = pd.concat([ng_df,temp_df],verify_integrity=True,ignore_index=True)
@@ -78,7 +78,7 @@ def create_sbeam_scan():
     df.fillna('',inplace=True)
     df = rename_unnamed(df=df)
     for index in df.index:
-        if df.loc[index][('Type','小梁')] == 'X' and np.isnan(index): continue
+        if df.loc[index][('Type','小梁')] == 'X' or np.isnan(index): continue
         beam_scan = BeamScan(df.loc[index].to_dict(),scan_index=index)
         set_check_scan(beam_scan=beam_scan)
         beam_scan_list.append(beam_scan)

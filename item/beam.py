@@ -3,7 +3,6 @@ import re
 import pandas as pd
 from collections import defaultdict
 from item.excepteions import BeamFloorNameError
-from plan_to_beam import turn_floor_to_float,turn_floor_to_string
 from typing import Tuple
 from item.rebar import RebarInfo,RebarArea,RebarFy,RebarDiameter
 from item import floor

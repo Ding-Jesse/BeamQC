@@ -214,9 +214,9 @@ def storefile(file,file_directory,file_new_directory,project_name):
 
 def OutputExcel(df_list:list[pd.DataFrame],file_path,sheet_name,auto_fit_columns=[],auto_fit_rows=[],columns_list=[],rows_list=[],df_spacing = 0 ):
     if os.path.exists(file_path):
-        book = load_workbook(file_path)
-        writer = pd.ExcelWriter(file_path, engine='openpyxl') 
-        writer.book = book
+        # book = load_workbook(file_path)
+        writer = pd.ExcelWriter(file_path, engine='openpyxl',mode="a",if_sheet_exists="overlay") 
+        # writer.book = book
         # sheet = book[sheet_name]
         # sheet.column_dimensions['A'] =ColumnDimension(sheet,'L',bestFit=True)
     else:
@@ -228,13 +228,14 @@ def OutputExcel(df_list:list[pd.DataFrame],file_path,sheet_name,auto_fit_columns
     writer.close()
 
     # book = load_workbook(file_path)
-    writer = pd.ExcelWriter(file_path, engine='openpyxl',mode="a",if_sheet_exists="overlay") 
+    # writer = pd.ExcelWriter(file_path, engine='openpyxl',mode="a",if_sheet_exists="overlay") 
+    with pd.ExcelWriter(file_path, engine='openpyxl',mode="a",if_sheet_exists="overlay") as writer:
     # writer.book = book
-    if os.path.exists(file_path) and len(auto_fit_columns) >0:
-        AutoFit_Columns(writer.book[sheet_name],auto_fit_columns,auto_fit_rows)
-    if os.path.exists(file_path) and len(columns_list) >0:
-        Decorate_Worksheet(writer.book[sheet_name],columns_list,rows_list)
-    writer.close()
+        if os.path.exists(file_path) and len(auto_fit_columns) >0:
+            AutoFit_Columns(writer.book[sheet_name],auto_fit_columns,auto_fit_rows)
+        if os.path.exists(file_path) and len(columns_list) >0:
+            Decorate_Worksheet(writer.book[sheet_name],columns_list,rows_list)
+    # writer.close()
     return file_path
 
 def Decorate_Worksheet(sheet:Worksheet,columns_list:list,rows_list:list):
@@ -254,10 +255,10 @@ def AutoFit_Columns(sheet:Worksheet,auto_fit_columns:list,auto_fit_rows:list):
             sheet.cell(i,j).alignment = Alignment(wrap_text=True,vertical='center',horizontal='center')
 
 def Add_Row_Title(file_path:str,sheet_name:str,i:int,j:int,title_text:str,font_size = 12):
-    book = load_workbook(file_path)
-    writer = pd.ExcelWriter(file_path, engine='openpyxl') 
-    writer.book = book
-    sheet = book[sheet_name]
+    # book = load_workbook(file_path)
+    writer = pd.ExcelWriter(file_path, engine='openpyxl',mode="a",if_sheet_exists="overlay") 
+    # writer.book = book
+    sheet = writer.book[sheet_name]
     sheet.cell(i,j).value = title_text
     sheet.cell(i,j).alignment = Alignment(vertical='center',wrap_text=True,horizontal='center')
     sheet.cell(i,j).font = Font(name='Calibri',size= font_size)

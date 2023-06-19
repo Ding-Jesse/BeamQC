@@ -1,10 +1,11 @@
 import numpy as np
+import string
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.font_manager import FontProperties
 import matplotlib.pyplot as plt
-
+from matplotlib.axes import Axes
 # plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei'] 
 # plt.rcParams['axes.unicode_minus'] = False
 from fpdf import FPDF
@@ -20,7 +21,7 @@ class PDF(FPDF):
         # Create an `assets` folder and put any wide and short image inside
         # Name the image `logo.png`
         self.image('assets/logo.png', 10, 8, 33)
-        self.set_font('Arial', 'B', 16)
+        self.set_font('helvetica', 'B', 16)
         self.cell(self.WIDTH - 80)
         self.cell(60, 1, 'Test report', 0, 0, 'R')
         self.ln(20)
@@ -98,13 +99,16 @@ class PDF(FPDF):
                          y2=self.get_y())
         self.ln()
 
-def create_scan_pdf(rebar_df:tuple,
-                    scan_df:tuple,
+def create_scan_pdf(rebar_df:pd.DataFrame,
+                    concrete_df:pd.DataFrame,
+                    formwork_df:pd.DataFrame,
+                    scan_df:pd.DataFrame,
                     ng_sum_df:pd.DataFrame,
                     beam_ng_df:pd.DataFrame,
                     scan_list:list,
                     project_prop:dict,
                     pdf_filename:str,
+                    item_name:str,
                     **kwargs):
     '''
     Create scan pdf report \n
@@ -124,13 +128,17 @@ def create_scan_pdf(rebar_df:tuple,
             ("3F","B1-1",	"【0204】請確認左端下層筋下限，是否符合規範 3.6 規定","0204:max(code3_3:11.22cm2 ,code3_4:10.5cm2) > 鋼筋總面積:10.134"),\n
         )
     '''
-    item_name = ''
     pdf = PDF()
     pdf.add_page()
     pdf.add_font('標楷體','',r'assets\msjhbd.ttc',True)
     pdf.add_prop(prop_dict=project_prop,font="標楷體")
-    pdf.add_table(TABLE_DATA=trans_df_to_table(rebar_df,'Story'),table_title="鋼筋統計表",font="標楷體",bold_last=True)
-    pdf.add_dashed_line()
+    pdf.multi_cell(w = 80,h = 10,txt="數量統計不包含:\n-工作筋\n-穿孔補強\n-僅供參考")
+    pdf.ln()
+    pdf.add_table(TABLE_DATA=trans_df_to_table(rebar_df,'Story'),table_title=f"{item_name}鋼筋統計表(tf)",font="標楷體",bold_last=True)
+    pdf.add_page()
+    pdf.add_table(TABLE_DATA=trans_df_to_table(concrete_df,'Story'),table_title=f"{item_name}混凝土統計表(m3)",font="標楷體",bold_last=True)
+    pdf.add_page()
+    pdf.add_table(TABLE_DATA=trans_df_to_table(formwork_df,'Story'),table_title=f"{item_name}模板統計表(m2)",font="標楷體",bold_last=True)
     if 'header_list' in kwargs and 'ratio_dict' in kwargs:
         if kwargs['report_type'].casefold() == 'beam':
             item_name = '梁'
@@ -143,6 +151,7 @@ def create_scan_pdf(rebar_df:tuple,
             pdf.image(bot_png_file,h=pdf.eph - 35,w=pdf.epw,x='C')
         if kwargs['report_type'].casefold() == 'column':
             item_name = '柱'
+            pdf.add_page()
             pdf.add_text(texts= "鋼筋比層樓分布",align='C')
             png_file = column_survey(results=kwargs['ratio_dict'],category_names= kwargs['header_list'])
             pdf.image(png_file,h=pdf.eph - 35,w=pdf.epw,x='C')
@@ -150,8 +159,10 @@ def create_scan_pdf(rebar_df:tuple,
         pdf.add_page()
     pdf.add_table(TABLE_DATA=trans_df_to_table(ng_sum_df,'Scan Item'),table_title=f"{item_name}檢核表",font="標楷體",col_widths=[4,1,1])
     pdf.add_dashed_line()
+    pdf.add_page()
     pdf.add_table(TABLE_DATA=trans_df_to_table(beam_ng_df),table_title=f"{item_name}檢核表",font="標楷體",col_widths=[1,1,5,1])
     pdf.add_dashed_line()
+    pdf.add_page()
     match_index_with_serial(scan_df=scan_df,scan_list=scan_list)
     pdf.add_table(TABLE_DATA=trans_df_to_table(scan_df),table_title=f"{item_name}檢核表",font="標楷體",col_widths=[1,1,5,5])
     pdf.ln(10)
@@ -160,7 +171,7 @@ def create_scan_pdf(rebar_df:tuple,
     pdf.add_text(texts= "2. “混凝土結構設計規範”，內政部，100 年 7 月。",align='L')
     pdf.add_text(texts= "3. “結構混凝土施工規範”，內政部，110 年 9 月。",align='L')
     pdf.ln(10)
-    pdf.add_text(f'--------報告結束--------')
+    pdf.add_text('--------報告結束--------')
     pdf.output(pdf_filename)
 def trans_df_to_table(df:pd.DataFrame,reset_name=""):
     table = []
@@ -184,6 +195,7 @@ def survey(results:dict[str,dict], category_names:list):
         The category labels.
     return img file path
     '''
+    custom_text = [chr(i) for i in range(ord('A'),ord('A')+ len(category_names))]
     file_path_top = r'assets/top.png'
     file_path_bot = r'assets/bot.png'
     title = {
@@ -216,11 +228,12 @@ def survey(results:dict[str,dict], category_names:list):
         else:
             ax = ax0
         ax[y].invert_yaxis()
+        ax[y].tick_params(axis='y', labelsize=30)
         ax[y].xaxis.set_visible(True)
         ax[y].set_xlim(0, np.sum(data, axis=1).max())
-        ax[y].set_xlabel('percentage(%)', fontsize='x-large')
-        ax[y].set_title(f'{title[(x,y)]}', fontsize='x-large')
-
+        ax[y].set_xlabel('percentage(%)', fontsize='xx-large')
+        ax[y].set_title(f'{title[(x,y)]}', fontsize='xx-large')
+        
         for i, (colname, color) in enumerate(zip(category_names, category_colors)):
             widths = data[:, i]
             starts = data_cum[:, i] - widths
@@ -231,13 +244,25 @@ def survey(results:dict[str,dict], category_names:list):
             # r, g, b, _ = color
             # text_color = 'white' if r * g * b < 0.5 else 'darkgrey'
             # ax.bar_label(rects, label_type='center', color=text_color)
+        custom_plot(ax=ax[y],
+                    custom_text=custom_text,
+                    labels=labels)
     fig.tight_layout()
     fig2.tight_layout()
-    ax0[1].legend(ncols=len(category_names),bbox_to_anchor=(0.5, 1.05),
-            loc='lower center', fontsize='xx-large')
-    ax1[1].legend(ncols=len(category_names),bbox_to_anchor=(0.5, 1.05),
-            loc='lower center', fontsize='xx-large')
-        # ax[x][y].legend()
+    custom_legend(ax=ax0[1],
+                  custom_text=custom_text,
+                  ncols=len(category_names),
+                  bbox_to_anchor=(0.5, 1.05),
+                  loc='lower center',
+                  fontsize='xx-large'
+                  )
+    custom_legend(ax=ax1[1],
+                  custom_text=custom_text,
+                  ncols=len(category_names),
+                  bbox_to_anchor=(0.5, 1.05),
+                  loc='lower center',
+                  fontsize='xx-large'
+                  )
     fig.savefig(file_path_top,bbox_inches='tight')
     fig2.savefig(file_path_bot,bbox_inches='tight')
     # plt.savefig(file_path, bbox_inches='tight')
@@ -254,6 +279,8 @@ def column_survey(results:dict[str,dict], category_names:list):
         The category labels.
     return img file path
     '''
+    
+    custom_text = [chr(i) for i in range(ord('A'),ord('A')+ len(category_names))]
     labels = list(results.keys())
     file_path = r'assets/column.png'
     # fig = plt.figure(figsize=(29.7, 21))
@@ -271,9 +298,9 @@ def column_survey(results:dict[str,dict], category_names:list):
     fig, ax = plt.subplots(1,1,figsize=(21, 29.7))
     ax.invert_yaxis()
     ax.xaxis.set_visible(True)
-    ax.tick_params(axis='y', labelsize=20)
+    ax.tick_params(axis='y', labelsize=30)
     ax.set_xlim(0, 100)
-    ax.set_xlabel('percentage(%)', fontsize='x-large')
+    ax.set_xlabel('percentage(%)', fontsize=30)
     for i, (colname, color) in enumerate(zip(category_names, category_colors)):
         widths = data[:,i]
         starts = data_cum[:,i] - widths
@@ -281,11 +308,38 @@ def column_survey(results:dict[str,dict], category_names:list):
         ax.barh(labels, widths, left=starts, height=0.5,
                         label=colname, color=color)
     fig.tight_layout()
-    ax.legend(ncols=len(category_names)//2,bbox_to_anchor=(0.5, 1.05),
-            loc='lower center', fontsize='xx-large')
+    custom_plot(ax=ax,
+                custom_text=custom_text,
+                labels=labels)
+    custom_legend(ax=ax,
+                  custom_text=custom_text,
+                  ncols=len(category_names)//3,
+                  bbox_to_anchor=(0.5, 1.02),
+                  loc='lower center', 
+                  fontsize=30)
+    # ax.legend(ncols=len(category_names)//3,bbox_to_anchor=(0.5, 1.05),
+    #         loc='lower center', fontsize='xx-large')
     
     fig.savefig(file_path,bbox_inches='tight')
     return file_path
+
+def custom_plot(ax: Axes, custom_text: list ,labels:list):
+    for i, bar in enumerate(ax.patches):
+        if bar.get_width() > 0:
+            face_color = bar.get_facecolor()
+            r, g, b, _ = face_color
+            text_color = 'white' if sum(face_color) / 3 < 0.75 else 'black'
+            x = bar.get_width()/2+bar.get_x()
+            y = bar.get_height()/2+bar.get_y()
+            label = custom_text[i // len(labels)]
+            ax.text(x, y, label, ha='center', va='center',color = text_color,fontsize=20)
+    # custom_labels = [
+    #     f'{label} ({text})' for label, text in zip(ax.get_legend_handles_labels()[1], custom_text)]
+    # ax.legend(handles=ax.containers, labels=custom_labels,**kwargs)
+def custom_legend(ax:Axes,custom_text: list,**kwargs):
+    custom_labels = [
+        f'{label} ({text})' for label, text in zip(ax.get_legend_handles_labels()[1], custom_text)]
+    ax.legend(handles=ax.containers, labels=custom_labels,**kwargs)
 def match_index_with_serial(scan_list:list,scan_df:pd.DataFrame):
     item_df = scan_df['檢核項目'].drop_duplicates()
     scan_dict = {}

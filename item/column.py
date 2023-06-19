@@ -246,8 +246,8 @@ class Column:
         
     def cal_material(self):
         if self.floor:
-            self.concrete = self.x_size * self.y_size * self.floor_object.height
-            self.formwork = (self.x_size + self.y_size) * 2 * self.floor_object.height
+            self.concrete = self.x_size * self.y_size * self.floor_object.height /(100*100*100) #m3
+            self.formwork = (self.x_size + self.y_size) * 2 * self.floor_object.height /(100*100) #m2
     def summary_count(self):
         for rebar in self.rebar:
             if not rebar.size in self.rebar_count : self.rebar_count[rebar.size] = 0 
