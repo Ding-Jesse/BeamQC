@@ -512,11 +512,11 @@ def get_size_from_section(new_coor_to_col_line_list:list,new_coor_to_floor_line_
             new_column.set_size(size)
         if len(col) > 0:
             new_column.serial = col[0][0]
-            new_column.multi_column.extend(list(map(lambda c:c[0],col[0:])))
         if len(floor) > 0:
             new_column.floor = floor[0][0]
         if len(col) > 1:
             print(f'{size}:{coor1} => {list(map(lambda c:c[0],col))}')
+            new_column.multi_column.extend(list(map(lambda c:c[0],col[0:])))
         if len(floor) > 1:
             print(f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c:c[0],floor[1:])))
@@ -571,7 +571,7 @@ def output_col_excel(column_list:list[Column],output_folder:str,project_name:str
     column_df = pd.DataFrame(np.empty([len(column_list),len(header)],dtype='<U16'),columns=header)
     row = 0
     for c in column_list:
-        if c.serial == '': continue
+        if c.serial == '' or c.floor== '': continue
         column_df.at[row,('樓層', '')] = c.floor
         column_df.at[row,('柱編號', '')] = c.serial
         column_df.at[row,('X向 柱寬', 'cm')] = c.x_size
@@ -643,11 +643,11 @@ def sort_floor_column(floor_list:list[Floor],column_list:list[Column]):
 
 def count_column_multiprocessing(column_filenames:list[str],layer_config:dict,temp_file:list[str],output_folder='',project_name='',template_name='',floor_parameter_xlsx = ''):
     def read_col_multi(column_filename,temp_file):
-        msp_column,doc_column = read_column_cad(column_filename=column_filename)
-        sort_col_cad(msp_column=msp_column,
-                     doc_column=doc_column,
-                     layer_config=layer_config,
-                     temp_file=temp_file)
+        # msp_column,doc_column = read_column_cad(column_filename=column_filename)
+        # sort_col_cad(msp_column=msp_column,
+        #              doc_column=doc_column,
+        #              layer_config=layer_config,
+        #              temp_file=temp_file)
         output_column_list = cal_column_rebar(data=save_temp_file.read_temp(temp_file),
                                               rebar_excel_path=floor_parameter_xlsx)
         return output_column_list
@@ -681,14 +681,14 @@ def count_column_main(column_filename,layer_config,temp_file='temp_1221_1F.pkl',
 if __name__ == '__main__':
     col_filename = r'D:\Desktop\BeamQC\TEST\2023-0617\XS-COL.dwg'#sys.argv[1] # XS-COL的路徑
     column_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-0617\XS-COL.dwg',#sys.argv[1] # XS-COL的路徑
+        r'D:\Desktop\BeamQC\TEST\2023-0626\2023-0309.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0617\P2022-03A 五股區登林段9FB3-2023-05-26-11-49-temp.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0617'
-    project_name = '0617-column'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0706\P2021-11E 清豐安居14FB2-2023-07-06-14-20-floor.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0706'
+    project_name = '0706-column'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
     #     'line_layer':['TABLE'],
@@ -740,17 +740,17 @@ if __name__ == '__main__':
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0613\0613-column.pkl'),
-    #                                rebar_excel_path=floor_parameter_xlsx)
-    # create_report(output_column_list=column_list,
-    #               output_folder=output_folder,
-    #               project_name=project_name,
-    #               floor_parameter_xlsx=floor_parameter_xlsx)
-    count_column_multiprocessing(column_filenames=column_filenames,
-                                 layer_config=layer_config,
-                                 temp_file='temp_0617_COL_Wuku.pkl',
-                                 output_folder=output_folder,
-                                 project_name=project_name,
-                                 floor_parameter_xlsx=floor_parameter_xlsx)
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0706\P2021-11E 清豐安居14FB2-2023-07-06-14-20-temp-0.pkl'),
+                                   rebar_excel_path=floor_parameter_xlsx)
+    create_report(output_column_list=column_list,
+                  output_folder=output_folder,
+                  project_name=project_name,
+                  floor_parameter_xlsx=floor_parameter_xlsx)
+    # count_column_multiprocessing(column_filenames=column_filenames,
+    #                              layer_config=layer_config,
+    #                              temp_file='temp_0626_COL_Wuku.pkl',
+    #                              output_folder=output_folder,
+    #                              project_name=project_name,
+    #                              floor_parameter_xlsx=floor_parameter_xlsx)
 
         

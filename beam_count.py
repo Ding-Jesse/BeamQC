@@ -1362,7 +1362,7 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     # fb_enoc_df, fb_code_df= beam_check(beam_list=fbeam_list,beam_scan_list=fb_bs_list)
     # ng_df = output_detail_scan_report(beam_list=beam_list + sbeam_list + fbeam_list)
     
-    # rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
+    rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
     # beam_ng_df,sum_df = output_ng_ratio(code_df)
     # sbeam_ng_df,sb_sum_df = output_ng_ratio(sb_code_df)
     # fbeam_ng_df,fb_sum_df = output_ng_ratio(fb_code_df)
@@ -1401,7 +1401,7 @@ def create_report(class_beam_list:list[Beam],output_folder:str,project_name:str,
     #                 step_row= 2,
     #                 step_col= 3)
     OutputExcel(df_list=[cad_df],file_path=excel_filename,sheet_name='CAD統計表')
-    # OutputExcel(df_list=[rcad_df],file_path=excel_filename_rcad,sheet_name='RCAD撿料')
+    OutputExcel(df_list=[rcad_df],file_path=excel_filename_rcad,sheet_name='RCAD撿料')
     output_file_list.append(excel_filename)
     output_file_list.append(excel_filename_rcad)
     # return excel_filename,excel_filename_rcad,pdf_FB_file,pdf_GB_file,pdf_SB_file
@@ -1953,7 +1953,7 @@ if __name__=='__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0607\XS-BEAM-大梁.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0706\01.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0617\FB.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0617\GB.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-0617\GB2.dwg",
@@ -1970,10 +1970,10 @@ if __name__=='__main__':
     rebar_file = './result/0107-rebar_wu2.txt' # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt' # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0617'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0706'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
     floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0617\P2022-03A 五股區登林段9FB3-2023-05-26-11-49-temp.xlsx'
-    project_name = '0617-五股登林'
+    project_name = '0620-五股登林'
     # 在beam裡面自訂圖層
     layer_config = {
         'rebar_data_layer':['S-LEADER'], # 箭頭和鋼筋文字的塗層
@@ -2005,6 +2005,17 @@ if __name__=='__main__':
     #     'rc_block_layer':['MEMBER'],
     #     's_dim_layer':['S-DIM'] # 標註線圖層
     # }
+
+    layer_config = {
+        'rebar_data_layer':['7','5'], # 箭頭和鋼筋文字的塗層
+        'rebar_layer':['2','5'], # 鋼筋和箍筋的線的塗層
+        'tie_text_layer':['7'], # 箍筋文字圖層
+        'block_layer':['Frame'], # 框框的圖層
+        'beam_text_layer' :['7'], # 梁的字串圖層
+        'bounding_block_layer':['S-ARCH'],
+        'rc_block_layer':['7'],
+        's_dim_layer':['5'] # 標註線圖層
+    }
 
     # layer_config ={
     #     'rebar_data_layer': ['主筋文字引線','主筋文字','扭力筋文字','扭力筋文字引線'], 
@@ -2043,25 +2054,21 @@ if __name__=='__main__':
     #     'rebar_data_leader_layer':['AcDbPolyline'],
     #     'tie_text_layer':['AcDbMText']
     # }
-    # def test(l:list):
-    #     l2 = l
-    #     l2[0] = 9
-        # for a in l2:
-        #     if a <= 2 :
-        #         # print(a) 
-        #         l2.remove(a)
-        #         # print(l.pop())
-        #     # print(a,l)
-    # l = list(range(1,10))
-    # test(l)
-    # print(l)
+
+    entity_type ={
+        'rebar_layer':['AcDbLine'],
+        'rebar_data_layer':['AcDbText'],
+        'rebar_data_leader_layer':['AcDbLine'],
+        'tie_text_layer':['AcDbText']
+    }
+
     # start = time.time()
     # msp_beam,doc_beam = read_beam_cad(beam_filename=beam_filename,progress_file=progress_file)
     # sort_beam_cad(msp_beam=msp_beam,
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB.pkl')
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0706\0706-01.pkl')
     # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file='0617_Wuku.pkl',
@@ -2069,14 +2076,14 @@ if __name__=='__main__':
     #                            output_folder=output_folder,
     #                            template_name='公司2',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    # class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB.pkl'),
-                                            #   progress_file=progress_file,
-                                            #   rebar_parameter_excel= floor_parameter_xlsx)
+    class_beam_list,cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0706\0706-01.pkl'),
+                                              progress_file=progress_file,
+                                              rebar_parameter_excel= floor_parameter_xlsx)
     # save_temp_file.save_pkl(class_beam_list,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-list.pkl')
     # save_temp_file.save_pkl(cad_data,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-cad.pkl')
-    class_beam_list = save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\0617-temp-2023-06-17-14-12-temp-beam_list.pkl')
+    # class_beam_list = save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-beam_list.pkl')
     # class_beam_list.extend(save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-cad_data.pkl'))
-    cad_data = save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-cad_data.pkl')
+    # cad_data = save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-cad_data.pkl')
     create_report(class_beam_list=class_beam_list,
                   output_folder=output_folder,
                   project_name=project_name,
