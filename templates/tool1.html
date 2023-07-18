@@ -3,385 +3,434 @@
 {% block title %}配筋圖查核_beta{% endblock %}
 
 {% block content %}
+
 <head>
   <style>
-  .banner::before {
-    background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-02.png");
-  }
+    .banner::before {
+      background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-02.png");
+    }
+  </style>
+  <style>
+    /* Style the textarea */
+    #notification-textarea {
+      width: 80%;
+      /* Adjust the width as needed */
+      height: 300px;
+      /* Adjust the height as needed */
+      overflow: auto;
+      border: none;
+      padding: 5px;
+      /* Add scrollbar when content exceeds the height */
+    }
   </style>
 </head>
+
 <body>
-<div class="testbox">
-<form action="" name="compareForm" enctype="multipart/form-data" method="POST" id="compareForm">
-<div class = "banner">
-  <h1  class ="header1" >RC梁柱配筋圖 自動查核<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
-</div>
+  <div class="testbox">
+    <form action="" name="compareForm" enctype="multipart/form-data" method="POST" id="compareForm">
+      <div class="banner">
+        <h1 class="header1">RC梁柱配筋圖 自動查核<p class="header2">Powered by</p>
+          <p class="header3">ELEMENTs Structure Team</p>
+        </h1>
+      </div>
 
-<h3>請輸入以下資訊：</h3>
-<div class="item">
-  <label for="name"><h3>專案名稱 <font color="red">(請記得修改此欄)</font></h3></label>
-  <input type="text" id="project_name" name="project_name" value="temp" required>
-  <labe>Email(選填)，若有填寫會寄送一份結果至信箱</label>
-  <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
-</div>
-<h3>核對項目</h3>
+      <h3>請輸入以下資訊：</h3>
+      <div class="item">
+        <label for="name">
+          <h3>專案名稱 <font color="red">(請記得修改此欄)</font>
+          </h3>
+        </label>
+        <input type="text" id="project_name" name="project_name" value="temp" required>
+        <labe>Email(選填)，若有填寫會寄送一份結果至信箱</label>
+          <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required>
+      </div>
+      <h3>核對項目</h3>
 
-<label class="container">柱配筋 (包含檢查漏配筋及尺寸比對)
-  <input type="checkbox" id="xs-col" name="xs-col" checked onclick="showcol()">
-  <span class="checkmark"></span>
-</label>
+      <label class="container">柱配筋 (包含檢查漏配筋及尺寸比對)
+        <input type="checkbox" id="xs-col" name="xs-col" checked onclick="showcol()">
+        <span class="checkmark"></span>
+      </label>
 
-<label class="container">梁配筋 (<font color="red"><b>不</b></font>包含檢查漏配筋及尺寸比對)
-  <input type="checkbox" id="xs-beam" name="xs-beam" checked onclick="showbeam()">
-  <span class="checkmark"></span>
-</label>
+      <label class="container">梁配筋 (<font color="red"><b>不</b></font>包含檢查漏配筋及尺寸比對)
+        <input type="checkbox" id="xs-beam" name="xs-beam" checked onclick="showbeam()">
+        <span class="checkmark"></span>
+      </label>
 
-<div id='beam2' style='display: block;'>
-<label class="container">核對梁配筋時是否要核對<font color="red">梁配筋圖的尺寸</font>和<font color="red">平面圖的尺寸</font>是否相符
-  <input type="checkbox" id="sizing" name="sizing" checked onclick="showsize()">
-  <span class="checkmark"></span>
-</label>
+      <div id='beam2' style='display: block;'>
+        <label class="container">核對梁配筋時是否要核對<font color="red">梁配筋圖的尺寸</font>和<font color="red">平面圖的尺寸</font>是否相符
+          <input type="checkbox" id="sizing" name="sizing" checked onclick="showsize()">
+          <span class="checkmark"></span>
+        </label>
 
-<label class="container">核對梁配筋時是否要核對<font color="red">梁配筋圖</font>的<font color="red">複線寬度</font>和<font color="red">尺寸</font>是否相符
-  <input type="checkbox" id="mline_scaling" name="mline_scaling" checked onclick="showmline()">
-  <span class="checkmark"></span>
-</label>
-</div>
+        <label class="container">核對梁配筋時是否要核對<font color="red">梁配筋圖</font>的<font color="red">複線寬度</font>和<font
+            color="red">尺寸</font>是否相符
+          <input type="checkbox" id="mline_scaling" name="mline_scaling" checked onclick="showmline()">
+          <span class="checkmark"></span>
+        </label>
+      </div>
 
-<h3>選擇檔案及各圖層名稱</h3>
+      <h3>選擇檔案及各圖層名稱</h3>
 
-<div id='col' style='display: block;'>
-<div><h4>柱配筋圖</h4></div>
-<div class="item">
-<labe>選擇檔案</label>
-<input type=file id=file_col name=file_col value="dwg" multiple>
-</div>
-<div class="item">
-<labe>柱配筋圖文字圖層名稱</label>
-<input type="text" id="text_col_layer" name="text_col_layer" value="S-TEXT" required>
-</div>
-<div class="item">
-<label>柱配筋圖表格線圖層名稱</label>
-<input type="text" id="line_layer" name="line_layer" value="S-STUD" required>
-</div>
-</div>
+      <div id='col' style='display: block;'>
+        <div>
+          <h4>柱配筋圖</h4>
+        </div>
+        <div class="item">
+          <labe>選擇檔案</label>
+            <input type=file id=file_col name=file_col value="dwg" multiple>
+        </div>
+        <div class="item">
+          <labe>柱配筋圖文字圖層名稱</label>
+            <input type="text" id="text_col_layer" name="text_col_layer" value="S-TEXT" required>
+        </div>
+        <div class="item">
+          <label>柱配筋圖表格線圖層名稱</label>
+          <input type="text" id="line_layer" name="line_layer" value="S-STUD" required>
+        </div>
+      </div>
 
-<div id='beam' style='display: block;'>
-<div><h4>梁配筋圖</h4></div>
-<div class="item">
-<label>選擇檔案</label>
-<input type=file id=file1 name=file1 value="dwg" multiple>
-</div>
-<div class="item">
-<label>梁配筋圖文字圖層名稱</label>
-<input type="text" id="text_layer" name="text_layer" value="S-RC" required>
-</div>
-</div>
+      <div id='beam' style='display: block;'>
+        <div>
+          <h4>梁配筋圖</h4>
+        </div>
+        <div class="item">
+          <label>選擇檔案</label>
+          <input type=file id=file1 name=file1 value="dwg" multiple>
+        </div>
+        <div class="item">
+          <label>梁配筋圖文字圖層名稱</label>
+          <input type="text" id="text_layer" name="text_layer" value="S-RC" required>
+        </div>
+      </div>
 
-<div id='main' style='display: block;'>
-<div><h4>結構平面圖</h4></div>
-<div class="item">
-<label>選擇檔案</label>
-<input type=file id=file2 name=file2 value="dwg" multiple>
-</div>
-<div class="item">
-<label>結構平面圖圖框圖層名稱</label>
-<input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required>
-</div>
-<div class="item">
-<labe>結構平面圖樓層字串圖層名稱</label>
-<input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required>
-</div>
-</div>
+      <div id='main' style='display: block;'>
+        <div>
+          <h4>結構平面圖</h4>
+        </div>
+        <div class="item">
+          <label>選擇檔案</label>
+          <input type=file id=file2 name=file2 value="dwg" multiple>
+        </div>
+        <div class="item">
+          <label>結構平面圖圖框圖層名稱</label>
+          <input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required>
+        </div>
+        <div class="item">
+          <labe>結構平面圖樓層字串圖層名稱</label>
+            <input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required>
+        </div>
+      </div>
 
-<div id='main2' style='display: none; color: #bd1a1a' align = 'center'><h3>請選擇核對項目</h3></div>
+      <div id='main2' style='display: none; color: #bd1a1a' align='center'>
+        <h3>請選擇核對項目</h3>
+      </div>
 
-<div id='mline' style='display: block;'>
-<div class="item">
-<label>結構平面圖大梁複線圖層名稱</label>
-<input type="text" id="big_beam_layer" name="big_beam_layer" value="S-RCBMG" required>
-</div>
-<div class="item">
-<label>結構平面圖小梁複線圖層名稱</label>
-<input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-RCBMB" required>
-</div>
-</div>
+      <div id='mline' style='display: block;'>
+        <div class="item">
+          <label>結構平面圖大梁複線圖層名稱</label>
+          <input type="text" id="big_beam_layer" name="big_beam_layer" value="S-RCBMG" required>
+        </div>
+        <div class="item">
+          <label>結構平面圖小梁複線圖層名稱</label>
+          <input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-RCBMB" required>
+        </div>
+      </div>
 
-<div id='beam3' style='display: block;'>
-<div class="item">
-<label>結構平面圖大梁字串圖層名稱</label>
-<input type="text" id="big_beam_text_layer" name="big_beam_text_layer" value="S-TEXTG" required>
-</div>
-<div class="item">
-<label>結構平面圖小梁字串圖層名稱</label>
-<input type="text" id="sml_beam_text_layer" name="sml_beam_text_layer" value="S-TEXTB" required>
-</div>
-</div>
+      <div id='beam3' style='display: block;'>
+        <div class="item">
+          <label>結構平面圖大梁字串圖層名稱</label>
+          <input type="text" id="big_beam_text_layer" name="big_beam_text_layer" value="S-TEXTG" required>
+        </div>
+        <div class="item">
+          <label>結構平面圖小梁字串圖層名稱</label>
+          <input type="text" id="sml_beam_text_layer" name="sml_beam_text_layer" value="S-TEXTB" required>
+        </div>
+      </div>
 
-<div id='size' style='display: block;'>
-<div class="item">
-<label>結構平面圖顯示梁尺寸表格文字圖層名稱</label>
-<input type="text" id="size_layer" name="size_layer" value="S-TEXT" required>
-</div>
-</div>
+      <div id='size' style='display: block;'>
+        <div class="item">
+          <label>結構平面圖顯示梁尺寸表格文字圖層名稱</label>
+          <input type="text" id="size_layer" name="size_layer" value="S-TEXT" required>
+        </div>
+      </div>
 
-<div id='col2' style='display: block;'>
-<div class="item">
-<label>結構平面圖柱字串圖層名稱</label>
-<input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required>
-</div>
-</div>
+      <div id='col2' style='display: block;'>
+        <div class="item">
+          <label>結構平面圖柱字串圖層名稱</label>
+          <input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required>
+        </div>
+      </div>
 
-<div class="btn-block">
-<!-- <button type="submit" id="but_search" onclick="showloader()">完成</button> -->
-<button type='button' id="compare_beam">完成</button>
-<!-- <button type="submit" id="but_search">完成</button> -->
-</div>
-</form>
-</div>
+      <div class="btn-block">
+        <!-- <button type="submit" id="but_search" onclick="showloader()">完成</button> -->
+        <button type='button' id="compare_beam">完成</button>
+        <!-- <button type="submit" id="but_search">完成</button> -->
+      </div>
+    </form>
+  </div>
 
-<!-- <div id='loader' style='display: none;'> -->
+  <!-- <div id='loader' style='display: none;'> -->
 
-<div id='loader' style='display: none;'>
-<div class="testbox">
-<form>
-  <h3>流程說明</h3>
-  <div align="center"><img style="max-width: 80%; height: auto;"src="./static/flow.png" alt="image"></p></div>
-  <h3>即將為您顯示進度...</h3>
-  <img src='../static/loader.gif' style="float: left;width:20%;">
-  <div id="counter" style="float: right; text-align:left;height:300px;width:70%;overflow:auto;background-color:white;color:black;font-family:sans-serif;padding:10px;"></div>
-</form>
-</div>
-</div>
+  <div id='loader' style='display: block;'>
+    <div class="testbox">
+      <form>
+        <h3>流程說明</h3>
+        <div align="center"><img style="max-width: 80%; height: auto;" src="./static/flow.png" alt="image"></p>
+        </div>
+        <h3>即將為您顯示進度...</h3>
+        <textarea id="notification-textarea" readonly></textarea>
+        <img src='../static/loader.gif' style="float: left;width:15%;">
+        <div id="counter"
+          style="float: right; text-align:left;height:300px;width:70%;overflow:auto;background-color:white;color:black;font-family:sans-serif;padding:10px;">
+        </div>
+      </form>
+    </div>
+  </div>
 
-<div class="banner2">
-<h3>&emsp;⚠️注意事項</h3>
-</div>
-<blockquote>
-<ol>
-<li>
-CAD版本須為2016以前之版本。
-</li>
-<li>
-<p>每種物件的<font color="red">圖層要一致</font>。</p>
-</li>
-<li>
-請確認黃色標題後面是否有括號，括號內部需要有<font color="red">英文的樓層名稱</font>。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。
-<ul style="list-style-type:disc;">
-<li>
-<p>範例圖：
-<br>
-<div align="center"><img style="max-width: 35%; height: auto;"src="./static/correct_example1.png" alt="image"></p></div>
-</li>
-<li>
-<p>如下圖，如果沒有後面的括號和樓層，會導致樓層讀取失敗的問題。
-<br>
-<div align="center"><img style="max-width: 35%; height: auto;"src="./static/wrong_example1.png" alt="image"></p></div>
-</li>
-</ul>
-</li>
-<li>
-<p>顯示樓層的字串中，「2-5F」，「3F~6F」，「3F,5F,7F」等等都是可接受的，但盡量<font color="red">避免中文字元</font>，可能會變成西班牙文亂碼。</p>
-<ul style="list-style-type:disc;">
-<li>
-<p>如下圖，使用中文頓號的話，文字顯示的內容會變成&#39;¡B&#39;，容易導致樓層讀取錯誤的問題。
-<br>
-<div align="center"><img style="max-width: 80%; height: auto;"src="./static/wrong_example3.png" alt="image"></p></div>
-</li>
-</ul>
-</li>
-<br>
-<li>
-在一個圖框中，盡量只放一張圖，如果要放兩張以上的圖，請將黃色標題放在圖的下方，比較不容易出錯。
-<br>
-<ul style="list-style-type:disc;">
-<li>
-<p>範例圖：
-<br>
-<div align="center"><img style="max-width: 50%; height: auto;"src="./static/correct_example2.png" alt="image"></p></div>
-</li>
-<li>
-<p>如下圖，如果將黃色標題都在圖的右方，容易導致梁跟樓層配對錯誤。
-<br>
-<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example2.png" alt="image"></p></div>
-</li>
-</ul>
-</li>
+  <div class="banner2">
+    <h3>&emsp;⚠️注意事項</h3>
+  </div>
+  <blockquote>
+    <ol>
+      <li>
+        CAD版本須為2016以前之版本。
+      </li>
+      <li>
+        <p>每種物件的<font color="red">圖層要一致</font>。</p>
+      </li>
+      <li>
+        請確認黃色標題後面是否有括號，括號內部需要有<font color="red">英文的樓層名稱</font>。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。
+        <ul style="list-style-type:disc;">
+          <li>
+            <p>範例圖：
+              <br>
+            <div align="center"><img style="max-width: 35%; height: auto;" src="./static/correct_example1.png"
+                alt="image"></p>
+            </div>
+          </li>
+          <li>
+            <p>如下圖，如果沒有後面的括號和樓層，會導致樓層讀取失敗的問題。
+              <br>
+            <div align="center"><img style="max-width: 35%; height: auto;" src="./static/wrong_example1.png"
+                alt="image"></p>
+            </div>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>顯示樓層的字串中，「2-5F」，「3F~6F」，「3F,5F,7F」等等都是可接受的，但盡量<font color="red">避免中文字元</font>，可能會變成西班牙文亂碼。</p>
+        <ul style="list-style-type:disc;">
+          <li>
+            <p>如下圖，使用中文頓號的話，文字顯示的內容會變成&#39;¡B&#39;，容易導致樓層讀取錯誤的問題。
+              <br>
+            <div align="center"><img style="max-width: 80%; height: auto;" src="./static/wrong_example3.png"
+                alt="image"></p>
+            </div>
+          </li>
+        </ul>
+      </li>
+      <br>
+      <li>
+        在一個圖框中，盡量只放一張圖，如果要放兩張以上的圖，請將黃色標題放在圖的下方，比較不容易出錯。
+        <br>
+        <ul style="list-style-type:disc;">
+          <li>
+            <p>範例圖：
+              <br>
+            <div align="center"><img style="max-width: 50%; height: auto;" src="./static/correct_example2.png"
+                alt="image"></p>
+            </div>
+          </li>
+          <li>
+            <p>如下圖，如果將黃色標題都在圖的右方，容易導致梁跟樓層配對錯誤。
+              <br>
+            <div align="center"><img style="max-width: 50%; height: auto;" src="./static/wrong_example2.png"
+                alt="image"></p>
+            </div>
+          </li>
+        </ul>
+      </li>
 
-<li>
-<p>在柱配筋圖中，請注意<font color="red">不要有多餘的表格線</font>，容易造成讀取錯誤。</p>
-<ul style="list-style-type:disc;">
-<li>
-<p>如下圖，<font color="blue">藍色箭頭⬇</font>指的是多餘的表格線，這會導致9樓的柱讀取錯誤。
-<br>
-<div align="center"><img style="max-width: 50%; height: auto;"src="./static/wrong_example4.png" alt="image"></p></div>
-</li>
-</ul>
-</li>
-<br>
+      <li>
+        <p>在柱配筋圖中，請注意<font color="red">不要有多餘的表格線</font>，容易造成讀取錯誤。</p>
+        <ul style="list-style-type:disc;">
+          <li>
+            <p>如下圖，<font color="blue">藍色箭頭⬇</font>指的是多餘的表格線，這會導致9樓的柱讀取錯誤。
+              <br>
+            <div align="center"><img style="max-width: 50%; height: auto;" src="./static/wrong_example4.png"
+                alt="image"></p>
+            </div>
+          </li>
+        </ul>
+      </li>
+      <br>
 
-</ol>
-</blockquote>
-<script crossorigin="anonymous"> 
-  $(document).ready(function(){
-    $('#compare_beam').click(function(e){
-      e.preventDefault()
-      const form = document.getElementById('compareForm');
-      const formData = new FormData(form);
-      let file_col = $('#file_col');
-      let file_beam = $('#file1')[0].files;
-      let file_plan = $('#file2')[0].files;
-      var col_chosen = $('#xs-col').is(':checked');
-      var beam_chosen = $('#xs-beam').is(':checked');
-      if(!file_col.val() & col_chosen){
+    </ol>
+  </blockquote>
+  <script src="../static/progress.js"></script>
+  <script crossorigin="anonymous">
+    $(document).ready(function () {
+      $('#compare_beam').click(function (e) {
+        e.preventDefault()
+        const form = document.getElementById('compareForm');
+        const formData = new FormData(form);
+        let file_col = $('#file_col');
+        let file_beam = $('#file1')[0].files;
+        let file_plan = $('#file2')[0].files;
+        var col_chosen = $('#xs-col').is(':checked');
+        var beam_chosen = $('#xs-beam').is(':checked');
+        if (!file_col.val() & col_chosen) {
           alert('未上傳"柱"檔案')
           return false
-      };
-      if(!file_beam.length & beam_chosen){
+        };
+        if (!file_beam.length & beam_chosen) {
           alert('未上傳"梁"檔案')
           return false
-      };
-      if(!file_plan.length){
+        };
+        if (!file_plan.length) {
           alert('未上傳"平面圖"檔案')
           return false
-      };
-      // if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){
-      //     alert('檔案類型錯誤')
-      //     return
-      // };
-      fetch("/compare_beam",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
-          .then(response=>response.text())
-          .catch((error)=>{
-          console.log(error);
+        };
+        document.getElementById("loader").style.display = "block";
+        startNotifications()
+        // if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){
+        //     alert('檔案類型錯誤')
+        //     return
+        // };
+        fetch("/compare_beam", { method: 'post', processData: false, contentType: false, cache: 'no-cache', credentials: 'same-origin', body: formData })
+          .then(response => response.text())
+          .catch((error) => {
+            console.log(error);
           })
-          .then(data =>{
-          console.log(JSON.parse(data));
-          alert(JSON.parse(data)['validate']);
-      }).catch((error)=>{
-          console.log(error);
-      })
+          .then(data => {
+            console.log(JSON.parse(data));
+            alert(JSON.parse(data)['validate']);
+            closeNotifications()
+          }).catch((error) => {
+            console.log(error);
+          })
         console.log('wait for response')
         alert('成功傳送，請稍等結果');
         return false;
       });
-  });
-  document.getElementById("loader").style.visibility = "visible";
-  // function showloader() { 
-  //     function delay(n){
-  //         return new Promise(function(resolve){
-  //             setTimeout(resolve,n*1000);
-  //         });
-  //     }
-  //     async function myAsyncFunction(){
-  //         document.getElementById("loader").style.display = "block"; 
-  //         // 顯示進度
+    });
 
-  //         var d = new Date();
+    // function showloader() { 
+    //     function delay(n){
+    //         return new Promise(function(resolve){
+    //             setTimeout(resolve,n*1000);
+    //         });
+    //     }
+    //     async function myAsyncFunction(){
+    //         document.getElementById("loader").style.display = "block"; 
+    //         // 顯示進度
 
-  //         let year = d.getFullYear();
-  //         let month = (d.getMonth() + 1).toString();
-  //         let day = d.getDate().toString();
-  //         let hour = d.getHours().toString();
-  //         let minute = d.getMinutes().toString();
-  //         if (month.length < 2) {
-  //           month = '0' + month;
-  //         }
-  //         if (day.length < 2) {
-  //           day = '0' + day;
-  //         }
-  //         if (hour.length < 2) {
-  //           hour = '0' + hour;
-  //         }
-  //         if (minute.length < 2) {
-  //           minute = '0' + minute;
-  //         }
-  //         d = [year, month, day, hour, minute].join('-');
+    //         var d = new Date();
 
-  //         var project_name = document.getElementById("project_name").value
-          
-  //         await delay(10);
+    //         let year = d.getFullYear();
+    //         let month = (d.getMonth() + 1).toString();
+    //         let day = d.getDate().toString();
+    //         let hour = d.getHours().toString();
+    //         let minute = d.getMinutes().toString();
+    //         if (month.length < 2) {
+    //           month = '0' + month;
+    //         }
+    //         if (day.length < 2) {
+    //           day = '0' + day;
+    //         }
+    //         if (hour.length < 2) {
+    //           hour = '0' + hour;
+    //         }
+    //         if (minute.length < 2) {
+    //           minute = '0' + minute;
+    //         }
+    //         d = [year, month, day, hour, minute].join('-');
 
-  //         var eventSource = new EventSource("/listen/" + d + project_name + "/")
-  //         eventSource.addEventListener("message", function(e) {
-  //           console.log(e.data)
-  //         }, false)
+    //         var project_name = document.getElementById("project_name").value
 
-  //         eventSource.addEventListener("online", function(e) {
-  //           // console.log(e.data.color)
-  //           data = JSON.parse(e.data)
-  //           document.querySelector("#counter").innerText = data.counter
-  //           document.querySelector("body").style.backgroundColor= data.color
-  //         }, true)
-  //     }
-  //     myAsyncFunction();
-  // } 
+    //         await delay(10);
 
-  function showcol() { 
-    document.getElementById("col").style.visibility = "visible";
-    document.getElementById("col2").style.visibility = "visible";
-    if (document.getElementById("xs-col").checked){
-      document.getElementById("col").style.display = "block"; 
-      document.getElementById("col2").style.display = "block"; 
-    }
-    else{
-      document.getElementById("col").style.display = "none"; 
-      document.getElementById("col2").style.display = "none"; 
-    }
-    showmain()
-  } 
+    //         var eventSource = new EventSource("/listen/" + d + project_name + "/")
+    //         eventSource.addEventListener("message", function(e) {
+    //           console.log(e.data)
+    //         }, false)
 
-  function showbeam() { 
-    document.getElementById("beam").style.visibility = "visible";
-    document.getElementById("beam2").style.visibility = "visible";
-    document.getElementById("beam3").style.visibility = "visible";
-    if (document.getElementById("xs-beam").checked){
-      document.getElementById("beam").style.display = "block"; 
-      document.getElementById("beam2").style.display = "block"; 
-      document.getElementById("beam3").style.display = "block"; 
-    }
-    else{
-      document.getElementById("beam").style.display = "none"; 
-      document.getElementById("beam2").style.display = "none"; 
-      document.getElementById("beam3").style.display = "none"; 
-    }
-    showsize()
-    showmline()
-    showmain()
-  } 
+    //         eventSource.addEventListener("online", function(e) {
+    //           // console.log(e.data.color)
+    //           data = JSON.parse(e.data)
+    //           document.querySelector("#counter").innerText = data.counter
+    //           document.querySelector("body").style.backgroundColor= data.color
+    //         }, true)
+    //     }
+    //     myAsyncFunction();
+    // } 
 
-  function showsize() { 
-    document.getElementById("size").style.visibility = "visible";
-    if ((document.getElementById("sizing").checked || document.getElementById("mline_scaling").checked) && document.getElementById("xs-beam").checked){
-      document.getElementById("size").style.display = "block"; 
+    function showcol() {
+      document.getElementById("col").style.visibility = "visible";
+      document.getElementById("col2").style.visibility = "visible";
+      if (document.getElementById("xs-col").checked) {
+        document.getElementById("col").style.display = "block";
+        document.getElementById("col2").style.display = "block";
+      }
+      else {
+        document.getElementById("col").style.display = "none";
+        document.getElementById("col2").style.display = "none";
+      }
+      showmain()
     }
-    else{
-      document.getElementById("size").style.display = "none"; 
-    }
-  } 
 
-  function showmline() { 
-    document.getElementById("mline").style.visibility = "visible";
-    if (document.getElementById("mline_scaling").checked && document.getElementById("xs-beam").checked){
-      document.getElementById("mline").style.display = "block"; 
+    function showbeam() {
+      document.getElementById("beam").style.visibility = "visible";
+      document.getElementById("beam2").style.visibility = "visible";
+      document.getElementById("beam3").style.visibility = "visible";
+      if (document.getElementById("xs-beam").checked) {
+        document.getElementById("beam").style.display = "block";
+        document.getElementById("beam2").style.display = "block";
+        document.getElementById("beam3").style.display = "block";
+      }
+      else {
+        document.getElementById("beam").style.display = "none";
+        document.getElementById("beam2").style.display = "none";
+        document.getElementById("beam3").style.display = "none";
+      }
+      showsize()
+      showmline()
+      showmain()
     }
-    else{
-      document.getElementById("mline").style.display = "none"; 
-    }
-    showsize()
-  } 
 
-  function showmain() { 
-    document.getElementById("main").style.visibility = "visible";
-    if (document.getElementById("xs-col").checked || document.getElementById("xs-beam").checked){
-      document.getElementById("main").style.display = "block"; 
-      document.getElementById("main2").style.display = "none"; 
+    function showsize() {
+      document.getElementById("size").style.visibility = "visible";
+      if ((document.getElementById("sizing").checked || document.getElementById("mline_scaling").checked) && document.getElementById("xs-beam").checked) {
+        document.getElementById("size").style.display = "block";
+      }
+      else {
+        document.getElementById("size").style.display = "none";
+      }
     }
-    else{
-      document.getElementById("main").style.display = "none"; 
-      document.getElementById("main2").style.display = "block"; 
+
+    function showmline() {
+      document.getElementById("mline").style.visibility = "visible";
+      if (document.getElementById("mline_scaling").checked && document.getElementById("xs-beam").checked) {
+        document.getElementById("mline").style.display = "block";
+      }
+      else {
+        document.getElementById("mline").style.display = "none";
+      }
+      showsize()
     }
-  }
-</script>
+
+    function showmain() {
+      document.getElementById("main").style.visibility = "visible";
+      if (document.getElementById("xs-col").checked || document.getElementById("xs-beam").checked) {
+        document.getElementById("main").style.display = "block";
+        document.getElementById("main2").style.display = "none";
+      }
+      else {
+        document.getElementById("main").style.display = "none";
+        document.getElementById("main2").style.display = "block";
+      }
+    }
+  </script>
 
 
 
