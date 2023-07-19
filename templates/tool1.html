@@ -18,9 +18,11 @@
       height: 300px;
       /* Adjust the height as needed */
       overflow: auto;
+      /* Add scrollbar when content exceeds the height */
       border: none;
       padding: 5px;
-      /* Add scrollbar when content exceeds the height */
+      line-height: 1.5;
+      /* Increase the line spacing (adjust the value as needed) */
     }
   </style>
 </head>
@@ -171,7 +173,7 @@
 
   <!-- <div id='loader' style='display: none;'> -->
 
-  <div id='loader' style='display: block;'>
+  <div id='loader' style='display: none;'>
     <div class="testbox">
       <form>
         <h3>流程說明</h3>
@@ -269,8 +271,11 @@
   </blockquote>
   <script src="../static/progress.js"></script>
   <script crossorigin="anonymous">
+
     $(document).ready(function () {
+      let project_count = 0
       $('#compare_beam').click(function (e) {
+        project_count += 1
         e.preventDefault()
         const form = document.getElementById('compareForm');
         const formData = new FormData(form);
@@ -292,7 +297,11 @@
           return false
         };
         document.getElementById("loader").style.display = "block";
-        startNotifications()
+        if (project_count === 1) {
+          console.log(project_count)
+          startNotifications()
+        }
+
         // if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){
         //     alert('檔案類型錯誤')
         //     return
@@ -305,7 +314,11 @@
           .then(data => {
             console.log(JSON.parse(data));
             alert(JSON.parse(data)['validate']);
-            closeNotifications()
+            project_count -= 1
+            console.log(project_count)
+            if (project_count === 0) {
+              closeNotifications()
+            }
           }).catch((error) => {
             console.log(error);
           })

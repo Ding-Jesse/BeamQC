@@ -250,19 +250,19 @@ def upload_file():
                     print(e)
             response = Response()
             response.status_code = 200
-            response.data = json.dumps({'validate': f'完成，請至輸出結果查看'})
+            response.data = json.dumps({'validate': '完成，請至輸出結果查看'})
             response.content_type = 'application/json'
             time.sleep(1)
         except ConnectionRefusedError:
             response = Response()
             response.status_code = 200
-            response.data = json.dumps({'validate': f'發送請求過於頻繁，請稍等'})
+            response.data = json.dumps({'validate': '發送請求過於頻繁，請稍等'})
             response.content_type = 'application/json'
         except Exception as ex:
             print(ex)
             response = Response()
             response.status_code = 200
-            response.data = json.dumps({'validate': f'發生錯誤'})
+            response.data = json.dumps({'validate': '發生錯誤'})
             response.content_type = 'application/json'
         print(
             f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} end {project_name}')
@@ -638,7 +638,7 @@ def read_last_line(file_path):
 
 def generate_notifications(client_id):
     if client_id not in connected_clients:
-        yield f"data:No Project Running\n\n"
+        yield "data:No Project Running\n\n"
         return
     message = f'Client:{client_id}:正在執行專案:{connected_clients[client_id]}'
     yield f"data:{message}\n\n"
