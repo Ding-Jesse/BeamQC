@@ -485,6 +485,10 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                         and object.TextString != '' and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
 
                     beam = object.TextString
+
+                    if ' ' in beam:
+                        beam = beam.replace(' ', '')  # 有空格要把空格拔掉
+
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -1964,10 +1968,11 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
                               progress_file=progress_file,
                               sizing=sizing,
                               mline_scaling=mline_scaling)
-        save_temp_file.save_pkl(data=plan_data, tmp_file='plan_set.pkl')
+        save_temp_file.save_pkl(
+            data=plan_data, tmp_file=f'{os.path.splitext(plan_new_filename)[0]}_plan_set.pkl')
     else:
         plan_data = save_temp_file.read_temp(
-            r'D:\Desktop\BeamQC\TEST\2023-0728\plan_set.pkl')
+            r'plan_set.pkl')
     set_plan, dic_plan, warning_list = sort_plan(plan_filename=plan_filename,
                                                  plan_new_filename=plan_new_filename,
                                                  plan_data=plan_data,
@@ -1994,14 +1999,14 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
 
 
 def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
-    if False:
+    if True:
         floor_to_beam_set = read_beam(
             beam_filename=beam_filename, text_layer=text_layer, progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,
-                                tmp_file='beam_set.pkl')
+                                tmp_file=f'{os.path.splitext(plan_new_filename)[0]}_beam_set.pkl')
     else:
         floor_to_beam_set = save_temp_file.read_temp(
-            r'D:\Desktop\BeamQC\TEST\2023-0728\beam_set.pkl')
+            r'D:\Desktop\BeamQC\TEST\2023-0804\beam_set.pkl')
     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file,
@@ -2050,7 +2055,7 @@ if __name__ == '__main__':
         r'D:\Desktop\BeamQC\TEST\2023-0728\2023-07-28-10-52光明路-2023-0719___2FRF.dwg']
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-0728\2023-07-28-10-52光明路-XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-0804\2023-08-04-14-14楊梅新明段-XS-PLAN.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-0609\XS-BEAM_new.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
