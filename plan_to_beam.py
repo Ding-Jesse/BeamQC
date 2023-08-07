@@ -1969,7 +1969,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
                               sizing=sizing,
                               mline_scaling=mline_scaling)
         save_temp_file.save_pkl(
-            data=plan_data, tmp_file=f'{os.path.splitext(plan_new_filename)[0]}_plan_set.pkl')
+            data=plan_data, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         plan_data = save_temp_file.read_temp(
             r'plan_set.pkl')
@@ -2003,7 +2003,7 @@ def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
         floor_to_beam_set = read_beam(
             beam_filename=beam_filename, text_layer=text_layer, progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,
-                                tmp_file=f'{os.path.splitext(plan_new_filename)[0]}_beam_set.pkl')
+                                tmp_file=f'{os.path.splitext(beam_filename)[0]}_beam_set.pkl')
     else:
         floor_to_beam_set = save_temp_file.read_temp(
             r'D:\Desktop\BeamQC\TEST\2023-0804\beam_set.pkl')
