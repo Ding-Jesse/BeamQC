@@ -418,17 +418,20 @@ def count_beam():
         email_address = request.form['email_address']
         print(request.form['company'])
         template_name = request.form['company']
-        excel_filename = ''
-        excel_filename_rcad = ''
+        progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
+        print(progress_file)
         # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
         beam_filename = ''
         temp_file = ''
-        rebar_txt = ''
-        rebar_excel = ''
+        client_id = session.get('client_id', None)
+        if client_id:
+            if client_id not in connected_clients:
+                connected_clients[client_id] = []
+            connected_clients[client_id].append(project_name)
         # rebar_input_file = os.path.join(app.config['OUTPUT_FOLDER'],rebar_file)
         if len(uploaded_beams) == 0:
             response.status_code = 404
-            response.data = json.dumps({'validate': f'未上傳檔案'})
+            response.data = json.dumps({'validate': '未上傳檔案'})
             response.content_type = 'application/json'
             return response
         for uploaded_beam in uploaded_beams:
@@ -464,10 +467,14 @@ def count_beam():
         if beam_filename != '' and temp_file != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            output_file_list, output_dwg_list = count_beam_multiprocessing(beam_filenames=beam_filenames, layer_config=layer_config, temp_file=temp_file,
-                                                                           project_name=project_name, output_folder=app.config[
-                                                                               'OUTPUT_FOLDER'],
-                                                                           template_name=template_name, floor_parameter_xlsx=xlsx_filename)
+            output_file_list, output_dwg_list = count_beam_multiprocessing(beam_filenames=beam_filenames,
+                                                                           layer_config=layer_config,
+                                                                           temp_file=temp_file,
+                                                                           project_name=project_name,
+                                                                           output_folder=app.config['OUTPUT_FOLDER'],
+                                                                           template_name=template_name,
+                                                                           floor_parameter_xlsx=xlsx_filename,
+                                                                           progress_file=progress_file)
             # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
                 session['count_filenames'].extend(output_file_list)
@@ -515,21 +522,32 @@ def count_column():
             response.data = json.dumps({'validate': f'未上傳檔案'})
             response.content_type = 'application/json'
             return response
+        progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
+        print(progress_file)
+        client_id = session.get('client_id', None)
+        if client_id:
+            if client_id not in connected_clients:
+                connected_clients[client_id] = []
+            connected_clients[client_id].append(project_name)
         for uploaded_column in uploaded_columns:
-            column_ok, column_new_file, input_column_file = storefile(
-                uploaded_column, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            column_ok, column_new_file, input_column_file = storefile(uploaded_column,
+                                                                      app.config['UPLOAD_FOLDER'],
+                                                                      app.config['OUTPUT_FOLDER'],
+                                                                      f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             # column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
             column_filename = input_column_file
             column_filenames.append(column_filename)
-            temp_file = os.path.join(
-                app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
-            print(f'column_filename:{column_filename},temp_file:{temp_file}')
+            temp_file = os.path.join(app.config['UPLOAD_FOLDER'],
+                                     f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
+            # print(f'column_filename:{column_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
-            xlsx_ok, xlsx_new_file, input_xlsx_file = storefile(
-                uploaded_xlsx, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            xlsx_ok, xlsx_new_file, input_xlsx_file = storefile(uploaded_xlsx,
+                                                                app.config['UPLOAD_FOLDER'],
+                                                                app.config['OUTPUT_FOLDER'],
+                                                                f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
             xlsx_filename = input_xlsx_file
-            print(f'xlsx_filename:{xlsx_filename}')
+            # print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
             'text_layer': request.form['column_text_layer'].split('\r\n'),
             'line_layer': request.form['column_line_layer'].split('\r\n'),
@@ -550,10 +568,14 @@ def count_column():
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
             # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
             #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
-            column_excel, column_report = count_column_multiprocessing(column_filenames=column_filenames, layer_config=layer_config, temp_file=temp_file,
-                                                                       output_folder=app.config[
-                                                                           'OUTPUT_FOLDER'], project_name=project_name,
-                                                                       template_name=template_name, floor_parameter_xlsx=xlsx_filename)
+            column_excel, column_report = count_column_multiprocessing(column_filenames=column_filenames,
+                                                                       layer_config=layer_config,
+                                                                       temp_file=temp_file,
+                                                                       output_folder=app.config['OUTPUT_FOLDER'],
+                                                                       project_name=project_name,
+                                                                       template_name=template_name,
+                                                                       floor_parameter_xlsx=xlsx_filename,
+                                                                       progress_file=progress_file)
             if 'count_filenames' in session:
                 session['count_filenames'].extend(
                     [column_excel, column_report])

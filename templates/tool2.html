@@ -3,129 +3,158 @@
 {% block title %}數量計算{% endblock %}
 
 {% block content %}
+
 <head>
     <style>
-    .banner::before {
-        background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
-    }
-    .banner_col::before {
-        background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
-    }
-    textarea {
-        display: block;
-        width: 100%;
-        overflow: visible;
-        resize: both;
-        min-height: 100px;
-        line-height: 20px;
-        font-size: 20px;
-        color:red;
-        line-height: 1.25;
-    }
-    p strong {
-    display: block;
-    }
-    select {
-        width: 200px;
-        height: 50px;
-        line-height: 50px;
-        font-size:large;
-        -webkit-appearance: menulist-button;  
-        -moz-appearance:none;
-        padding: 2px;
-      }
+        .banner::before {
+            background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
+        }
 
+        .banner_col::before {
+            background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-03.png");
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
+            overflow: visible;
+            resize: both;
+            min-height: 100px;
+            line-height: 20px;
+            font-size: 20px;
+            color: red;
+            line-height: 1.25;
+        }
+
+        p strong {
+            display: block;
+        }
+
+        select {
+            width: 200px;
+            height: 50px;
+            line-height: 50px;
+            font-size: large;
+            -webkit-appearance: menulist-button;
+            -moz-appearance: none;
+            padding: 2px;
+        }
+    </style>
+    <style>
+        /* Style the textarea */
+        #notification-textarea {
+            width: 70%;
+            /* Adjust the width as needed */
+            height: 300px;
+            /* Adjust the height as needed */
+            overflow: auto;
+            /* Add scrollbar when content exceeds the height */
+            border: none;
+            padding: 5px;
+            line-height: 1.5;
+            /* Increase the line spacing (adjust the value as needed) */
+        }
     </style>
 </head>
+
 <body>
-<div class="testbox">
-    <form action="" name="dataForm" enctype="multipart/form-data" method="POST" id="dataForm">
-        <div class = "banner">
-            <h1  class ="header1">RC梁數量計算<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
-        </div>
-        <div style="padding-bottom: 10px;padding-top: 10px;">
-        <span>選擇公司樣板:</span>
-        <select id = 'company' name="company" size="1">
-            <option value="" selected disabled hidden>選擇公司</option>
-            <option value="公司1">DrawRC</option>
-            <option value="公司2">Elements</option>
-        </select>
-        </div>
-        <!-- <p id = "download_sample">輸入/輸出範例檔下載</p> -->
-        <div> 
-        <a href="{{url_for('demo_file', filename='sample.zip')}}" style='color: #279c96'>輸入/輸出範例檔下載</a>
-        </div>
-        <h3>請輸入以下資訊：</h3>
-        <div class="item">
-            <labe>專案名稱</label>
-            <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
-            <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
-            <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
-            <label>選擇檔案(.dwg)</label>
-            <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
-            <p><strong>選擇樓層參數檔案(.xlsx)</strong>
-            <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
-            <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
-            <!-- <label>鋼筋指示箭頭及文字圖層</label> -->
-            <!-- <input type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required > -->
-            <p><strong>鋼筋指示箭頭及文字圖層</strong><textarea type="text" id="rebar_data_layer" name="rebar_data_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-LEADER" required ></textarea></p>
-            <!-- <label>鋼筋線圖層</label>
-            <input type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required > -->
-            <p><strong>鋼筋線圖層</strong><textarea type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-REINF" required ></textarea></p>
-            <!-- <label>箍筋文字圖層</label>
-            <input type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required > -->
-            <p><strong>箍筋文字圖層</strong><textarea type="text" id="tie_text_layer" name="tie_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-TEXT" required ></textarea></p>
-            <!-- <label>圖框圖層</label>
-            <input type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required > -->
-            <p><strong>圖框圖層</strong><textarea type="text" id="block_layer" name="block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-GRID" required ></textarea></p>
-            <!-- <label>梁編號圖層</label>
-            <input type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層名稱" value = "S-RC" required > -->
-            <p><strong>梁編號圖層</strong><textarea type="text" id="beam_text_layer" name="beam_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-RC" required ></textarea></p>
-            <!-- <label>梁邊框圖層(選填)</label>
-            <input type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層名稱" value = "S-ARCH"> -->
-            <p><strong>梁支承圖層</strong><textarea type="text" id="rc_block_layer" name="rc_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-RC" required ></textarea></p>
-            <p><strong>標註線圖層</strong><textarea type="text" id="beam_dim_layer" name="beam_dim_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-DIM" required ></textarea></p>
-            <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer" name="bounding_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-ARCH" required ></textarea></p>
-            <div class="btn-block">
-            <button id="count_beam">完成</button>
+    <div class="testbox">
+        <form action="" name="dataForm" enctype="multipart/form-data" method="POST" id="dataForm">
+            <div class="banner">
+                <h1 class="header1">RC梁數量計算<p class="header2">Powered by</p>
+                    <p class="header3">ELEMENTs Structure Team</p>
+                </h1>
             </div>
-        </div>
-    </form> 
-        
-</div>
-<div class="testbox">
-    <form action="" name="dataFormColumn" enctype="multipart/form-data" method="POST" id="dataFormColumn">
-        <div class = "banner">
-            <h1  class ="header1">RC柱數量計算<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
-        </div> 
-        <div style="padding-bottom: 10px;padding-top: 10px;">
-            <span>選擇公司樣板:</span>
-            <select id = 'companyColumn' name="companyColumn" size="1" >
-                <option value="" selected disabled hidden>選擇公司</option>
-                <option value="公司1">DrawRC</option>
-                <option value="公司2">RCAD</option>
-                <option value="公司3">Elements</option>
-            </select>
-        </div>
-        <h3>請輸入以下資訊：</h3>
+            <div style="padding-bottom: 10px;padding-top: 10px;">
+                <span>選擇公司樣板:</span>
+                <select id='company' name="company" size="1">
+                    <option value="" selected disabled hidden>選擇公司</option>
+                    <option value="公司1">DrawRC</option>
+                    <option value="公司2">Elements</option>
+                </select>
+            </div>
+            <!-- <p id = "download_sample">輸入/輸出範例檔下載</p> -->
+            <div>
+                <a href="{{url_for('demo_file', filename='sample.zip')}}" style='color: #279c96'>輸入/輸出範例檔下載</a>
+            </div>
+            <h3>請輸入以下資訊：</h3>
+            <div class="item">
+                <labe>專案名稱</label>
+                    <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required>
+                    <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
+                    <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required>
+                    <label>選擇檔案(.dwg)</label>
+                    <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
+                    <p><strong>選擇樓層參數檔案(.xlsx)</strong>
+                        <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                        <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
+                    <p><strong>鋼筋指示箭頭及文字圖層</strong><textarea type="text" id="rebar_data_layer" name="rebar_data_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-LEADER" required></textarea></p>
+                    <p><strong>鋼筋線圖層</strong><textarea type="text" id="rebar_layer" name="rebar_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-REINF" required></textarea></p>
+                    <p><strong>箍筋文字圖層</strong><textarea type="text" id="tie_text_layer" name="tie_text_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXT" required></textarea></p>
+                    <p><strong>圖框圖層</strong><textarea type="text" id="block_layer" name="block_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-GRID" required></textarea></p>
+                    <p><strong>梁編號圖層</strong><textarea type="text" id="beam_text_layer" name="beam_text_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required></textarea></p>
+                    <p><strong>梁支承圖層</strong><textarea type="text" id="rc_block_layer" name="rc_block_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required></textarea></p>
+                    <p><strong>標註線圖層</strong><textarea type="text" id="beam_dim_layer" name="beam_dim_layer"
+                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-DIM" required></textarea></p>
+                    <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer"
+                            name="bounding_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-ARCH"
+                            required></textarea></p>
+                    <div class="btn-block">
+                        <button id="count_beam">完成</button>
+                    </div>
+            </div>
+        </form>
+
+    </div>
+    <div class="testbox">
+        <form action="" name="dataFormColumn" enctype="multipart/form-data" method="POST" id="dataFormColumn">
+            <div class="banner">
+                <h1 class="header1">RC柱數量計算<p class="header2">Powered by</p>
+                    <p class="header3">ELEMENTs Structure Team</p>
+                </h1>
+            </div>
+            <div style="padding-bottom: 10px;padding-top: 10px;">
+                <span>選擇公司樣板:</span>
+                <select id='companyColumn' name="companyColumn" size="1">
+                    <option value="" selected disabled hidden>選擇公司</option>
+                    <option value="公司1">DrawRC</option>
+                    <option value="公司2">RCAD</option>
+                    <option value="公司3">Elements</option>
+                </select>
+            </div>
+            <h3>請輸入以下資訊：</h3>
             <div class="item">
                 <label>專案名稱</label>
-                <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required >
+                <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required>
                 <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
-                <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required >
+                <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required>
                 <p><strong>選擇樓層參數檔案(.xlsx)</strong>
-                <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
-                <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
+                    <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                    <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
                 <p><strong>選擇柱配筋圖檔案(.dwg)</strong>
-                <input type=file id="file_column" name="file_column" value="dwg" multiple>
-                <p><strong>鋼筋圖層</strong><textarea type="text" id="column_rebar_layer" name="column_rebar_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>鋼筋文字圖層</strong><textarea type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>格線圖層</strong><textarea type="text" id="column_line_layer" name="column_line_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>圖框圖層</strong><textarea type="text" id="column_block_layer" name="column_block_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>柱編號/樓層圖層</strong><textarea type="text" id="column_text_layer" name="column_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>箍筋線圖層</strong><textarea type="text" id="column_tie_layer" name="column_tie_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>箍筋文字圖層</strong><textarea type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
-                <p><strong>柱斷面圖層</strong><textarea type="text" id="column_rc_layer" name="column_rc_layer" placeholder="請輸入圖層名稱" value = "S-LEADER" required ></textarea></p>
+                    <input type=file id="file_column" name="file_column" value="dwg" multiple>
+                <p><strong>鋼筋圖層</strong><textarea type="text" id="column_rebar_layer" name="column_rebar_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>鋼筋文字圖層</strong><textarea type="text" id="column_rebar_text_layer"
+                        name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>格線圖層</strong><textarea type="text" id="column_line_layer" name="column_line_layer"
+                        placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>圖框圖層</strong><textarea type="text" id="column_block_layer" name="column_block_layer"
+                        placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>柱編號/樓層圖層</strong><textarea type="text" id="column_text_layer" name="column_text_layer"
+                        placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>箍筋線圖層</strong><textarea type="text" id="column_tie_layer" name="column_tie_layer"
+                        placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>箍筋文字圖層</strong><textarea type="text" id="column_tie_text_layer" name="column_tie_text_layer"
+                        placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
+                <p><strong>柱斷面圖層</strong><textarea type="text" id="column_rc_layer" name="column_rc_layer"
+                        placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
                 <!-- <input type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required > -->
                 <!-- <label>格線圖層</label>
                 <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
@@ -138,86 +167,115 @@
                 <label>箍筋文字圖層</label>
                 <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">     -->
                 <div class="btn-block">
-                <button id="count_column">完成</button>
+                    <button id="count_column">完成</button>
                 </div>
             </div>
-        </div>
+    </div>
     </form>
-</div>
-<div class="banner2">
-    <h3>&emsp;⚠️注意事項</h3>
-</div>
-<ol>
-<li>圖層分類示意圖
-    <ul style="list-style-type:disc;">
-        <li>
-            <p>梁配筋圖示意圖。
-            <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_demo_example.png" alt="image"></p></div>
+    </div>
+    <div id='loader' style='display: none;'>
+        <div class="testbox">
+            <form>
+                <h3>即將為您顯示進度...</h3>
+                <textarea id="notification-textarea" readonly></textarea>
+                <img src='../static/loader.gif' style="float: left;width:15%;">
+                <div id="counter"
+                    style="float: right; text-align:left;height:300px;width:70%;overflow:auto;background-color:white;color:black;font-family:sans-serif;padding:10px;">
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="banner2">
+        <h3>&emsp;⚠️注意事項</h3>
+    </div>
+    <ol>
+        <li>圖層分類示意圖
+            <ul style="list-style-type:disc;">
+                <li>
+                    <p>梁配筋圖示意圖。
+                        <br>
+                    <div align="center"><img style="max-width: 50%; height: auto;" src="./static/count_demo_example.png"
+                            alt="image"></p>
+                    </div>
+                </li>
+            </ul>
+            <ul style="list-style-type:disc;">
+                <li>
+                    <p>圖框示意圖，梁邊框能提升數量計算精確度。
+                        <br>
+                    <div align="center"><img style="max-width: 50%; height: auto;"
+                            src="./static/count_demo_example2.png" alt="image"></p>
+                    </div>
+                </li>
+                <li>
+                    <p>框選梁邊框，提升數量計算精確度。<font color="red" style="font-weight: 200;">建議可以第一次執行結果框選誤差較多之梁</font>
+                        ，梁邊框僅需框選編號以及其對應圖是大約位置即可。
+                        <br>
+                    <div align="center"><img style="max-width: 50%; height: auto;"
+                            src="./static/count_demo_example3.png" alt="image"></p>
+                    </div>
+                </li>
+                <li>
+                    <p>&emsp;⚠️注意一個邊框只能包含一個梁編號</p>
+                    <br>
+                    <div align="center"><img style="max-width: 50%; height: auto;"
+                            src="./static/count_demo_example_wrong_1.png" alt="image"></p>
+                    </div>
+                </li>
+            </ul>
         </li>
-    </ul>
-    <ul style="list-style-type:disc;">
-        <li>
-            <p>圖框示意圖，梁邊框能提升數量計算精確度。
-            <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_demo_example2.png" alt="image"></p></div>
-        </li>
-        <li>
-            <p>框選梁邊框，提升數量計算精確度。<font color="red" style="font-weight: 200;">建議可以第一次執行結果框選誤差較多之梁</font>，梁邊框僅需框選編號以及其對應圖是大約位置即可。
-            <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_demo_example3.png" alt="image"></p></div>
-        </li>
-        <li>
-            <p>&emsp;⚠️注意一個邊框只能包含一個梁編號</p>
-            <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_demo_example_wrong_1.png" alt="image"></p></div>
-        </li>
-    </ul>
-</li>
-</ol>
-<div class="banner2">
-    <h3>輸出檔案說明</h3>
-</div>
+    </ol>
+    <div class="banner2">
+        <h3>輸出檔案說明</h3>
+    </div>
     <ul style="list-style-type:disc;">
         <li>
             <p>輸出dwg檔示意圖。協助人工辨識有無錯誤的部分
+                <br>
+            <div align="center"><img style="max-width: 50%; height: auto;" src="./static/count_output_dwg_1.png"
+                    alt="image"></p>
+            </div>
             <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_output_dwg_1.png" alt="image"></p></div>
-            <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_output_dwg_2.png" alt="image"></p></div>
+            <div align="center"><img style="max-width: 50%; height: auto;" src="./static/count_output_dwg_2.png"
+                    alt="image"></p>
+            </div>
         </li>
         <li>
             <p>輸出xlsx檔示意圖。
-            <br>
-            <div align="center"><img style="max-width: 50%; height: auto;"src="./static/count_output_excel_1.png" alt="image"></p></div>
+                <br>
+            <div align="center"><img style="max-width: 50%; height: auto;" src="./static/count_output_excel_1.png"
+                    alt="image"></p>
+            </div>
         </li>
     </ul>
 
 </body>
+<script src="../static/progress.js"></script>
 <script type="text/javascript">
     const container = document.getElementById('input-cont');
-    $(document).ready(function(){
-        $('#company').change(function(){
-            if ($('#company').val() == '公司1'){
+    $(document).ready(function () {
+        let project_count = 0
+        $('#company').change(function () {
+            if ($('#company').val() == '公司1') {
                 $('#rebar_data_layer').val('NBAR');
                 $('#rebar_layer').val('RBAR');
                 $('#tie_text_layer').val('NBAR');
                 $('#block_layer').val('DEFPOINTS');
                 $('#beam_text_layer').val('TITLE');
             }
-            if($('#company').val() == "公司2"){
-                $('#rebar_data_layer').val("S-LEADER" );
+            if ($('#company').val() == "公司2") {
+                $('#rebar_data_layer').val("S-LEADER");
                 $('#rebar_layer').val("S-REINF");
-                $('#tie_text_layer').val("S-TEXT" );
+                $('#tie_text_layer').val("S-TEXT");
                 $('#block_layer').val("S-GRID");
                 $('#beam_text_layer').val("S-RC");
                 $('#beam_dim_layer').val("S-DIM");
                 $('rc_block_layer').val("S-RC");
             }
-            
+
         });
-        $('#companyColumn').change(function(){
-            if($('#companyColumn').val() == '公司1'){
+        $('#companyColumn').change(function () {
+            if ($('#companyColumn').val() == '公司1') {
                 $('#column_rebar_text_layer').val('NBAR');
                 $('#column_rebar_layer').val('RBAR');
                 $('#column_tie_text_layer').val('NBAR');
@@ -227,7 +285,7 @@
                 $('#column_line_layer').val('TABLE');
                 $('#column_rc_layer').val('OLINE');
             }
-            if($('#companyColumn').val() == '公司2'){
+            if ($('#companyColumn').val() == '公司2') {
                 $('#column_text_layer').val('文字-柱線名稱\r\n文字-樓層名稱\r\n文字-斷面尺寸');
                 $('#column_line_layer').val('GridInner\r\nGirdBoundary');
                 $('#column_rebar_text_layer').val('文字-主筋根數');
@@ -237,7 +295,7 @@
                 $('#column_block_layer').val('DEFPOINTS');
                 $('#column_rc_layer').val('柱斷面線');
             }
-            if($('#companyColumn').val() == '公司3'){
+            if ($('#companyColumn').val() == '公司3') {
                 $('#column_text_layer').val('S-TEXT');
                 $('#column_line_layer').val('S-STUD');
                 $('#column_rebar_text_layer').val('S-TEXT');
@@ -258,15 +316,16 @@
         //     )
         // })
         // var form = $('#dataForm');
-        $('#count_beam').click(function(){
+        $('#count_beam').click(function () {
+            project_count += 1
             const form = document.getElementById('dataForm');
             const formData = new FormData(form);
             var file = $('#file_beam');
-            if(!file.val()){
+            if (!file.val()) {
                 alert('未上傳檔案')
                 return false
             }
-            if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){
+            if (getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG') {
                 alert('檔案類型錯誤')
                 return false
             }
@@ -282,14 +341,22 @@
             //         console.log(data);
             //     }
             // })
-            fetch("/count_beam",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
-                .then(response=>response.text())
-                .then(data =>{
-                console.log(JSON.parse(data));
-                alert(JSON.parse(data)['validate']);
-            }).catch((error)=>{
-                console.log(error);
-            })
+            document.getElementById("loader").style.display = "block";
+            if (project_count === 1) {
+                startNotifications()
+            }
+            fetch("/count_beam", { method: 'post', processData: false, contentType: false, cache: 'no-cache', credentials: 'same-origin', body: formData })
+                .then(response => response.text())
+                .then(data => {
+                    console.log(JSON.parse(data));
+                    alert(JSON.parse(data)['validate']);
+                    project_count -= 1
+                    if (project_count === 0) {
+                        closeNotifications()
+                    }
+                }).catch((error) => {
+                    console.log(error);
+                })
             // $.post("/count_beam",formData,function(response){
             //         console.log(response);
             // },'json');
@@ -297,19 +364,28 @@
             alert('成功傳送，請稍等結果');
             return false;
         });
-        $('#count_column').click(function(){
+        $('#count_column').click(function () {
+            project_count += 1
             const form = document.getElementById('dataFormColumn');
             const formData = new FormData(form);
-            fetch("/count_column",{method:'post',processData : false,contentType : false,cache: 'no-cache',credentials: 'same-origin',body:formData})
-            .then(response=>response.text())
-            .then(data=>{
-                console.log(data);
-                alert(JSON.parse(data)['validate']);
-            }).catch(()=>{
-                console.log('error');
-            })
+            document.getElementById("loader").style.display = "block";
+            if (project_count === 1) {
+                console.log(project_count)
+                startNotifications()
+            }
+            fetch("/count_column", { method: 'post', processData: false, contentType: false, cache: 'no-cache', credentials: 'same-origin', body: formData })
+                .then(response => response.text())
+                .then(data => {
+                    alert(JSON.parse(data)['validate']);
+                    project_count -= 1
+                    if (project_count === 0) {
+                        closeNotifications()
+                    }
+                }).catch(() => {
+                    console.log('error');
+                })
             console.log('wait for column response')
-            alert('成功傳送，請稍等結果');
+            alert('成功傳送，請至下方察看進度，稍等結果');
             return false;
         })
     });
