@@ -167,7 +167,8 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
             pdf.add_text(texts="鋼筋比層樓分布", align='C')
             png_file = column_survey(
                 results=kwargs['ratio_dict'], category_names=kwargs['header_list'])
-            pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+            if png_file:
+                pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
         # pdf.image(top_png_file,h=pdf.eph - 35,keep_aspect_ratio=True)
         pdf.add_page()
     pdf.add_table(TABLE_DATA=trans_df_to_table(ng_sum_df, 'Scan Item'),
@@ -307,6 +308,8 @@ def column_survey(results: dict[str, dict], category_names: list):
                    for i in range(ord('A'), ord('A') + len(category_names))]
     labels = list(results.keys())
     file_path = r'assets/column.png'
+    if not results:
+        return
     # fig = plt.figure(figsize=(29.7, 21))
     category_colors = cm.get_cmap('jet')(
         np.linspace(0, 1, len(category_names)))

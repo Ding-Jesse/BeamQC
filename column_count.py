@@ -292,7 +292,7 @@ def sort_col_cad(msp_column,
                         coor_to_section_list.append((coor1, coor2))
                 break
             except:
-                print('1')
+                # print('1')
                 error_count += 1
                 time.sleep(5)
         coor_to_col_line_list.sort(key=lambda x: x[0])
@@ -362,7 +362,10 @@ def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):
     # output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
     progress('獲取斷面大小資訊', progress_file=progress_file)
     output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
-                                               new_coor_to_floor_line_list=new_coor_to_floor_line_list, coor_to_section_list=coor_to_section_list, coor_to_size_set=coor_to_size_set)
+                                               new_coor_to_floor_line_list=new_coor_to_floor_line_list,
+                                               coor_to_section_list=coor_to_section_list,
+                                               coor_to_size_set=coor_to_size_set,
+                                               progress_file=progress_file)
     progress('結合柱編號與柱主筋', progress_file=progress_file)
     combine_col_rebar(column_list=output_column_list, coor_to_rebar_list=coor_to_rebar_list,
                       coor_to_rebar_text_list=coor_to_rebar_text_list)
@@ -584,7 +587,11 @@ def _ingrid(size_coor, grid_coor):
     return False
 
 
-def concat_name_to_col_floor(coor_to_size_set: set, new_coor_to_col_line_list: list, new_coor_to_floor_line_list: list, coor_to_section_list: list):
+def concat_name_to_col_floor(coor_to_size_set: set,
+                             new_coor_to_col_line_list: list,
+                             new_coor_to_floor_line_list: list,
+                             coor_to_section_list: list,
+                             progress_file=str):
 
     output_column_list: list[Column]
     output_column_list = []
@@ -605,16 +612,24 @@ def concat_name_to_col_floor(coor_to_size_set: set, new_coor_to_col_line_list: l
         if len(floor) > 0:
             new_column.floor = floor[0][0]
         if len(col) > 1:
-            print(f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
+            progress(
+                f'{size}:{coor} => {list(map(lambda c:c[0],col))}', progress_file)
+            # print(f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
         if len(floor) > 1:
-            print(f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
+            progress(
+                f'{size}:{coor} => {list(map(lambda c:c[0],floor))}', progress_file)
+            # print(f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c: c[0], floor[1:])))
         if new_column.serial != '':
             output_column_list.append(new_column)
     return output_column_list
 
 
-def get_size_from_section(new_coor_to_col_line_list: list, new_coor_to_floor_line_list: list, coor_to_section_list: list, coor_to_size_set: set):
+def get_size_from_section(new_coor_to_col_line_list: list,
+                          new_coor_to_floor_line_list: list,
+                          coor_to_section_list: list,
+                          coor_to_size_set: set,
+                          progress_file=str):
     output_column_list: list[Column]
     output_column_list = []
     size_text = ''
@@ -632,7 +647,7 @@ def get_size_from_section(new_coor_to_col_line_list: list, new_coor_to_floor_lin
             size_text = [
                 s for s in coor_to_size_set if new_column.in_grid(coor=s[0][0])]
             if size_text:
-                print(f'CAD:{size}  TEXT:{size_text[0][1]}')
+                # print(f'CAD:{size}  TEXT:{size_text[0][1]}')
                 size = size_text[0][1]
             new_column.set_size(size)
         if len(col) > 0:
@@ -640,13 +655,19 @@ def get_size_from_section(new_coor_to_col_line_list: list, new_coor_to_floor_lin
         if len(floor) > 0:
             new_column.floor = floor[0][0]
         if len(col) > 1:
-            print(f'{size}:{coor1} => {list(map(lambda c:c[0],col))}')
+            progress(
+                f'{size}:{coor1} => {list(map(lambda c:c[0],col))}', progress_file)
+            # print(f'{size}:{coor1} => {list(map(lambda c:c[0],col))}')
             new_column.multi_column.extend(list(map(lambda c: c[0], col[0:])))
         if len(floor) > 1:
-            print(f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
+            progress(
+                f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}', progress_file)
+            # print(f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c: c[0], floor[1:])))
         if len([c for c in output_column_list if c.floor == new_column.floor and c.serial == new_column.serial]) > 0:
-            print(f'{new_column.floor}{new_column.serial} is exists')
+            progress(
+                f'{new_column.floor}{new_column.serial} is exists', progress_file)
+            # print(f'{new_column.floor}{new_column.serial} is exists')
             continue
         if new_column.serial != '':
             output_column_list.append(new_column)
@@ -841,7 +862,7 @@ def count_column_main(column_filename, layer_config, temp_file='temp_1221_1F.pkl
 
 if __name__ == '__main__':
     # sys.argv[1] # XS-COL的路徑
-    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-10-XS-COL.dwg'
+    col_filename = r'D:\Desktop\BeamQC\TEST\2023-0904\P2022-09A 中德建設楠梓區15FB4-2023-08-31-17-34-XS-COL.dwg'
     column_filenames = [
         # sys.argv[1] # XS-COL的路徑
         r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-10-XS-COL.dwg',
@@ -849,9 +870,9 @@ if __name__ == '__main__':
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-15-floor.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0831'
-    project_name = '0831-楠梓_柱'
+    floor_parameter_xlsx = r'TEST\2023-0904\P2022-09A 中德建設楠梓區15FB4-2023-08-31-17-34-floor.xlsx'
+    output_folder = r'TEST\2023-0904'
+    project_name = '0904-楠梓_柱'
     # layer_config = {
     #     'text_layer':['TABLE','SIZE'],
     #     'line_layer':['TABLE'],
@@ -897,18 +918,21 @@ if __name__ == '__main__':
     sort_col_cad(msp_column=msp_column,
                  doc_column=doc_column,
                  layer_config=layer_config,
-                 temp_file=r'D:\Desktop\BeamQC\TEST\2023-0831\0831-column.pkl')
+                 temp_file=r'D:\Desktop\BeamQC\TEST\2023-0904\\0904-column.pkl',
+                 progress_file=r'result\tmp')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column.pkl'),
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0831\0831-column.pkl'),
-                                   rebar_excel_path=floor_parameter_xlsx)
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0904\\0904-column.pkl'),
+                                   rebar_excel_path=floor_parameter_xlsx,
+                                   progress_file=r'result\tmp')
     create_report(output_column_list=column_list,
                   output_folder=output_folder,
                   project_name=project_name,
-                  floor_parameter_xlsx=floor_parameter_xlsx)
+                  floor_parameter_xlsx=floor_parameter_xlsx,
+                  progress_file=r'result\tmp')
     # count_column_multiprocessing(column_filenames=column_filenames,
     #                              layer_config=layer_config,
     #                              temp_file='temp_0626_COL_Wuku.pkl',

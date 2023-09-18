@@ -33,10 +33,11 @@ def vtPnt(x, y, z=0):
 
 
 def error(error_message):  # 把錯誤訊息印到error.log裡面
-    f = open(error_file, 'a', encoding='utf-8')
+    # f = open(error_file, 'a', encoding='utf-8')
     localtime = time.asctime(time.localtime(time.time()))
-    f.write(f'{localtime} | {error_message}\n')
-    f.close()
+    with open(error_file, 'a', encoding='utf-8') as f:
+        f.write(f'{localtime} | {error_message}\n')
+    # f.close()
     return
 
 
@@ -289,7 +290,7 @@ def sort_beam_cad(msp_beam, layer_config: dict, entity_config: dict, progress_fi
                 break
             except Exception:
                 # raise
-                print(f'error:{error_count}')
+                # print(f'error:{error_count}')
                 error_count += 1
                 time.sleep(5)
     progress('梁配筋圖讀取進度 7/15', progress_file)
@@ -1476,7 +1477,8 @@ def cal_beam_rebar(data={}, progress_file='', rebar_parameter_excel=''):
     start = time.time()
     compare_line_with_dim(class_beam_list=class_beam_list,
                           coor_to_dim_list=coor_to_dim_list,
-                          coor_to_block_list=coor_to_block_list)
+                          coor_to_block_list=coor_to_block_list,
+                          progress_file=progress_file)
     progress(f'配對梁主筋與標註線:{time.time() - start}s', progress_file)
     start = time.time()
     sort_beam(class_beam_list=class_beam_list)
@@ -2165,7 +2167,8 @@ def floor_parameter(beam_list: list[Beam], floor_parameter_xlsx: str):
 
 def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], float, tuple[tuple[float, float], tuple[float, float]]]],
                           class_beam_list: list[Beam],
-                          coor_to_block_list: list[tuple, dict[str, str], dict[str, str]]):
+                          coor_to_block_list: list[tuple, dict[str, str], dict[str, str]],
+                          progress_file: str):
     # coor_to_arrow_dic:{head:tail,float,mid}
     def _get_distance(pt1, pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
@@ -2196,8 +2199,8 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
                         min_dim = min(rebar_dim, key=lambda dim: _get_distance(
                             dim[0], rebar.arrow_coor[0]))
                         if abs(rebar.length - min_dim[1]) > 1:
-                            print(
-                                f'{rebar.start_pt} :{rebar.length} <> {min_dim[0]}:{min_dim[1]}')
+                            progress(
+                                f'{rebar.start_pt} :{rebar.length} <> {min_dim[0]}:{min_dim[1]}', progress_file)
                             if abs(rebar.length - min_dim[1]) < 1:
                                 continue
                             if (min_dim[2][0][0] - rebar.arrow_coor[0][0]) * (min_dim[2][1][0] - rebar.arrow_coor[0][0]) > 0:
@@ -2213,8 +2216,8 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
                                 else:
                                     rebar.start_pt.x = rebar.end_pt.x - rebar.length
                     except:
-                        print(
-                            f'{beam.floor}:{beam.serial} compare_line_with_dim error')
+                        progress(
+                            f'{beam.floor}:{beam.serial} compare_line_with_dim error', progress_file)
                         # new_rebar_arrow,_ = sort_arrow_line(coor_to_rebar_list=[((origin_start_pt_x,rebar.start_pt.y),
                         #                                     (origin_end_pt_x,rebar.end_pt.y),
                         #                                     abs(origin_length - rebar.length))],

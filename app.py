@@ -31,6 +31,14 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
+def write_result_log(file_path, result_content: dict):
+    localtime = time.asctime(time.localtime(time.time()))
+    with open(file_path, 'a', encoding='utf-8') as result_log:
+        result_log.write(f'\n Time:{localtime} \n')
+        for topic, content in result_content.items():
+            result_log.write(f'{topic}:{content} \n')
+
+
 @app.route('/')
 def home():
     return render_template('home.html')
@@ -409,6 +417,7 @@ def login():
 
 @app.route('/count_beam', methods=['POST'])
 def count_beam():
+    result_log_content = {}
     try:
         beam_filename = ''
         beam_filenames = []
@@ -416,10 +425,10 @@ def count_beam():
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
         email_address = request.form['email_address']
-        print(request.form['company'])
+        # print(request.form['company'])
         template_name = request.form['company']
         progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
-        print(progress_file)
+        # print(progress_file)
         # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
         beam_filename = ''
         temp_file = ''
@@ -434,6 +443,7 @@ def count_beam():
             response.data = json.dumps({'validate': '未上傳檔案'})
             response.content_type = 'application/json'
             return response
+        print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
         for uploaded_beam in uploaded_beams:
             beam_ok, beam_new_file, input_beam_file = storefile(
                 uploaded_beam, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
@@ -442,13 +452,13 @@ def count_beam():
             beam_filenames.append(beam_filename)
             temp_file = os.path.join(
                 app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
-            print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
+            # print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
             xlsx_ok, xlsx_new_file, input_xlsx_file = storefile(
                 uploaded_xlsx, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
             xlsx_filename = input_xlsx_file
-            print(f'xlsx_filename:{xlsx_filename}')
+            # print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
             # 箭頭和鋼筋文字的塗層
             'rebar_data_layer': request.form['rebar_data_layer'].split('\r\n'),
@@ -463,7 +473,14 @@ def count_beam():
             'rc_block_layer': request.form['rc_block_layer'].split('\r\n'),
             's_dim_layer': request.form['beam_dim_layer'].split('\r\n')
         }
-        print(layer_config)
+        result_log_content['upload_xlsx'] = uploaded_xlsx
+        result_log_content['upload_beams'] = uploaded_beams
+        result_log_content['project_name'] = project_name
+        result_log_content['email_address'] = email_address
+        result_log_content['template_name'] = template_name
+        result_log_content['layer_config'] = layer_config
+
+        # print(layer_config)
         if beam_filename != '' and temp_file != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
@@ -494,19 +511,25 @@ def count_beam():
         response.status_code = 200
         response.data = json.dumps({'validate': f'計算完成，請至輸出結果查看'})
         response.content_type = 'application/json'
+        result_log_content['status'] = 'success'
         # print(request.form['project_name'])
         time.sleep(1)
     except Exception as ex:
-        print(ex)
+        result_log_content['status'] = f'error, {ex}'
+        # print(ex)
         response = Response()
         response.status_code = 200
         response.data = json.dumps({'validate': f'發生錯誤'})
         response.content_type = 'application/json'
+    print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} end {project_name}')
+    write_result_log(file_path=r'result\result_log.txt',
+                     result_content=result_log_content)
     return response
 
 
 @app.route('/count_column', methods=['POST'])
 def count_column():
+    result_log_content = {}
     try:
         uploaded_columns = request.files.getlist("file_column")
         project_name = request.form['project_name']
@@ -523,12 +546,13 @@ def count_column():
             response.content_type = 'application/json'
             return response
         progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
-        print(progress_file)
+        # print(progress_file)
         client_id = session.get('client_id', None)
         if client_id:
             if client_id not in connected_clients:
                 connected_clients[client_id] = []
             connected_clients[client_id].append(project_name)
+        print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
         for uploaded_column in uploaded_columns:
             column_ok, column_new_file, input_column_file = storefile(uploaded_column,
                                                                       app.config['UPLOAD_FOLDER'],
@@ -564,7 +588,13 @@ def count_column():
             # 斷面圖層
             'column_rc_layer': request.form['column_rc_layer'].split('\r\n'),
         }
-        print(layer_config)
+        result_log_content['upload_xlsx'] = uploaded_xlsx
+        result_log_content['upload_beams'] = uploaded_columns
+        result_log_content['project_name'] = project_name
+        result_log_content['email_address'] = email_address
+        result_log_content['template_name'] = template_name
+        result_log_content['layer_config'] = layer_config
+        # print(layer_config)
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
             # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
             #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
@@ -591,15 +621,21 @@ def count_column():
                 pass
         response = Response()
         response.status_code = 200
-        response.data = json.dumps({'validate': f'{layer_config}'})
+        # response.data = json.dumps({'validate': f'{layer_config}'})
+        response.data = json.dumps({'validate': f'計算完成，請至輸出結果查看'})
         response.content_type = 'application/json'
-        return response
+        # return response
     except Exception as ex:
-        print(ex)
+        with open(r'result\error_log.txt', 'a') as error_log:
+            error_log.write(
+                f'{project_name} | {ex} | column_layer = {layer_config} \n')
         response = Response()
         response.status_code = 200
         response.data = json.dumps({'validate': f'發生錯誤'})
         response.content_type = 'application/json'
+    print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} end {project_name}')
+    write_result_log(file_path=r'result\result_log.txt',
+                     result_content=result_log_content)
     return response
 
 # @app.route('/send_email',methods=['POST'])
@@ -645,7 +681,8 @@ def page_not_found(e):
 
 
 def read_last_line(file_path):
-    while True:
+    error_count = 0
+    while error_count < 3:
         try:
             with open(file_path, 'r', encoding="utf-8") as f:
                 lines = f.readlines()
@@ -654,8 +691,12 @@ def read_last_line(file_path):
                 else:
                     return ""
         except FileNotFoundError:
-            print(f'{file_path} Not Exists')
+            with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
+                error_log.write(
+                    f'{file_path} Not Exists , error_count = {error_count} \n')
+            error_count += 1
             time.sleep(10)
+    raise FileExistsError
 
 
 def generate_notifications(client_id):
@@ -670,12 +711,19 @@ def generate_notifications(client_id):
         message = f'Now Time:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}'
         yield f"data:{message}\n\n"
         for project_name in connected_clients[client_id]:
-            last_notification = read_last_line(
-                f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress')
-            message = f"Client {project_name}: {last_notification}"
-            # print(message)
-            yield f"data: {message}\n\n"
-            time.sleep(1)
+            try:
+                last_notification = read_last_line(
+                    f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress')
+                message = f"Client {project_name}: {last_notification}"
+                # print(message)
+                yield f"data: {message}\n\n"
+                time.sleep(1)
+            except FileExistsError:
+                localtime = time.asctime(time.localtime(time.time()))
+                connected_clients[client_id].remove(project_name)
+                with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
+                    error_log.write(
+                        f'{localtime} | {project_name} Not Exists , remove from session \n')
 
 
 @app.route('/clear_session')
