@@ -1521,24 +1521,24 @@ def create_report(class_beam_list: list[Beam],
     bs_list = create_beam_scan()
     sb_bs_list = create_sbeam_scan()
     fb_bs_list = create_fbeam_scan()
-    # if beam_list:
-    #     pdf_GB_file = create_scan_report(floor_list=floor_list,
-    #                                      beam_list=beam_list,
-    #                                      bs_list=bs_list,
-    #                                      excel_filename=excel_filename,
-    #                                      beam_type=BeamType.Grider,
-    #                                      project_name=project_name,
-    #                                      output_folder=output_folder)
-    #     output_file_list.append(pdf_GB_file)
-    # if fbeam_list:
-    #     pdf_FB_file = create_scan_report(floor_list=floor_list,
-    #                                      beam_list=fbeam_list,
-    #                                      bs_list=fb_bs_list,
-    #                                      excel_filename=excel_filename,
-    #                                      beam_type=BeamType.FB,
-    #                                      project_name=project_name,
-    #                                      output_folder=output_folder)
-    #     output_file_list.append(pdf_FB_file)
+    if beam_list:
+        pdf_GB_file = create_scan_report(floor_list=floor_list,
+                                         beam_list=beam_list,
+                                         bs_list=bs_list,
+                                         excel_filename=excel_filename,
+                                         beam_type=BeamType.Grider,
+                                         project_name=project_name,
+                                         output_folder=output_folder)
+        output_file_list.append(pdf_GB_file)
+    if fbeam_list:
+        pdf_FB_file = create_scan_report(floor_list=floor_list,
+                                         beam_list=fbeam_list,
+                                         bs_list=fb_bs_list,
+                                         excel_filename=excel_filename,
+                                         beam_type=BeamType.FB,
+                                         project_name=project_name,
+                                         output_folder=output_folder)
+        output_file_list.append(pdf_FB_file)
     if sbeam_list:
         pdf_SB_file = create_scan_report(floor_list=floor_list,
                                          beam_list=sbeam_list,
