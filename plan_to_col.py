@@ -3,6 +3,7 @@ from multiprocessing.spawn import prepare
 from tkinter import HIDDEN
 from numpy import Inf, object_
 from openpyxl import load_workbook
+from itertools import groupby
 import win32com.client
 import pythoncom
 import re
@@ -31,7 +32,8 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     floor_layer = layer_config['floor_layer']
     col_layer = layer_config['col_layer']
     block_layer = layer_config['block_layer']
-
+    size_layer = layer_config['size_layer']
+    table_line_layer = layer_config['table_line_layer']
     error_count = 0
     progress('開始讀取平面圖(核對項目: 柱配筋對應)', progress_file)
     # Step 1. 打開應用程式
@@ -91,7 +93,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
 
     # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
     flag = 0
-    layer_list = [floor_layer, col_layer]
+    layer_list = [floor_layer, col_layer, size_layer, table_line_layer]
     non_trash_list = layer_list + [block_layer]
     while not flag and error_count <= 10:
         try:
@@ -150,16 +152,19 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     coor_to_floor_set = set()  # set (字串的coor, floor)
     coor_to_col_set = set()  # set (coor, col)
     coor_to_size_set = set()  # set (coor, size)
+    table_to_size_set = []  # set (coor, size)
     block_coor_list = []  # 存取方框最左下角的點座標
+    table_line_list = []
     progress('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候...', progress_file)
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            count = 0
-            total = msp_plan.Count
-            progress(
-                f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-            for object in msp_plan:
+    for object in msp_plan:
+        error_count = 0
+        flag = 0
+        while not flag and error_count <= 3:
+            try:
+                count = 0
+                total = msp_plan.Count
+                progress(
+                    f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
                 count += 1
                 if count % 1000 == 0:
                     progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
@@ -182,7 +187,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                         coor_to_floor_set.add((coor, floor))
                     else:
                         error(
-                            f'read_plan error in step 7: floor is an empty string. ')
+                            'read_plan error in step 7: floor is an empty string. ')
                 # 取col的字串
                 if object.Layer == col_layer and object.ObjectName == "AcDbText" and (object.TextString[0] == 'C' or ('¡æ' in object.TextString and 'C' in object.TextString)) and 'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1]}"
@@ -221,13 +226,24 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                     block_coor_list.append((coor1, coor2))
                     if _cal_ratio(coor1, coor2) >= 1/5 and _cal_ratio(coor1, coor2) <= 5:  # 避免雜訊影響框框
                         block_coor_list.append((coor1, coor2))
-            flag = 1
 
-        except Exception:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_plan error in step 7: {e}, error_count = {error_count}.')
+                if object.Layer == size_layer and object.EntityName == "AcDbText":
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
+                        object.GetBoundingBox()[0][1], 2))
+                    table_to_size_set.append((coor1, object.TextString))
+                    pass
+                if object.Layer == table_line_layer and (object.EntityName == "AcDbLine" or object.EntityName == "AcDbPolyline"):
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
+                        object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
+                        object.GetBoundingBox()[1][1], 2))
+                    table_line_list.append((coor1, coor2))
+                flag = 1
+            except Exception as e:
+                error_count += 1
+                time.sleep(5)
+                error(
+                    f'read_plan error in step 7: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 7/11', progress_file)
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
@@ -241,7 +257,9 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
         'coor_to_floor_set': coor_to_floor_set,
         'coor_to_col_set': coor_to_col_set,
         'coor_to_size_set': coor_to_size_set,
-        'block_coor_list': block_coor_list
+        'block_coor_list': block_coor_list,
+        'table_to_size_list': table_to_size_set,
+        'table_line_list': table_line_list
     }
 
 
@@ -252,11 +270,12 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
     coor_to_floor_set = plan_data['coor_to_floor_set']
     coor_to_col_set = plan_data['coor_to_col_set']
     coor_to_size_set = plan_data['coor_to_size_set']
-
+    table_to_size_list = plan_data['table_to_size_list']
+    table_line_list = plan_data['table_line_list']
     floor_to_coor_set = set()
-    for x in coor_to_floor_set:  # set (字串的coor, floor)
-        string_coor = x[0]
-        floor = x[1]
+    floor_table_size_dict: dict[str, dict] = dict()
+
+    for string_coor, floor in coor_to_floor_set:  # set (字串的coor, floor)
         for block_coor in block_coor_list:
             x_diff_left = string_coor[0] - block_coor[0][0]  # 和左下角的diff
             y_diff_left = string_coor[1] - block_coor[0][1]
@@ -264,6 +283,50 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:  # 要在框框裡面才算
                 floor_to_coor_set.add((floor, block_coor))
+    for floor, block_coor in floor_to_coor_set:
+        floor_table_size_dict[floor] = {}
+        floor_table_size = [(string_coor, text) for string_coor, text in table_to_size_list if string_coor[0] - block_coor[0][0] > 0 and
+                            string_coor[1] - block_coor[0][1] > 0 and
+                            string_coor[0] - block_coor[1][0] < 0 and
+                            string_coor[1] - block_coor[1][1] < 0]
+        floor_table_line = [(coor1, coor2) for coor1, coor2 in table_line_list if coor1[0] - block_coor[0][0] > 0 and
+                            coor1[1] - block_coor[0][1] > 0 and
+                            coor2[0] - block_coor[1][0] < 0 and
+                            coor2[1] - block_coor[1][1] < 0 and
+                            coor1[1] == coor2[1]]
+        # floor_table_size.sort(key=lambda x: x[0][1])
+        # match_string_list = [(k, list(g))
+        #                      for k, g in groupby(floor_table_size, lambda x: x[0][1])]
+        for string_coor, text in floor_table_size:
+            upper_bound = [(0, 0), (0, 0)]
+            lower_bound = [(0, 0), (0, 0)]
+            if 'Cn' in text:
+                upper_line = [
+                    line for line in floor_table_line if line[0][1] >= string_coor[1]]
+                lower_line = [
+                    line for line in floor_table_line if line[0][1] <= string_coor[1]]
+                if upper_line:
+                    upper_bound = min(upper_line, key=lambda l: l[0][1])
+                if lower_line:
+                    lower_bound = max(lower_line, key=lambda l: l[0][1])
+                sizes = [t for s_coor, t in floor_table_size if re.match(
+                    r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
+                if sizes:
+                    floor_table_size_dict[floor].update({'Cn': sizes[0]})
+            elif re.match(r'C\d+', text):
+                upper_line = [
+                    line for line in floor_table_line if line[0][1] <= string_coor[1]]
+                lower_line = [
+                    line for line in floor_table_line if line[0][1] >= string_coor[1]]
+                if upper_line:
+                    upper_bound = min(upper_line, key=lambda l: l[0][1])
+                if lower_line:
+                    lower_bound = max(lower_line, key=lambda l: l[0][1])
+                sizes = [t for s_coor, t in floor_table_size if re.match(
+                    r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor >= lower_bound[0][1]]
+                if sizes:
+                    floor_table_size_dict[floor].update({text: sizes[0]})
+
     progress('平面圖讀取進度 8/11', progress_file)
 
     # Step 9. 算出Bmax, Fmax, Rmax
@@ -335,28 +398,44 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
         col_coor = x[0][0]
         col_full_coor = x[0]
         col_name = x[1]
-        min_diff = inf
+        min_diff = 500
         match_size = ''
         match_size_coor = ''
-        for y in coor_to_size_set:
-            size_coor = y[0][0]
-            size_full_coor = y[0]
-            size = y[1]
-            x_diff = abs(col_coor[0] - size_coor[0])
-            y_diff = abs(col_coor[1] - size_coor[1])
-            if x_diff + y_diff < min_diff:
-                min_diff = x_diff + y_diff
-                match_size = size
-                match_size_coor = size_full_coor
 
-        if min_diff != inf and match_size != '' and match_size_coor != '':
+        closest_size = min(coor_to_size_set, key=lambda y: abs(
+            col_coor[0] - y[0][0][0]) + abs(col_coor[1] - y[0][0][1]))
+        if abs(col_coor[0] - closest_size[0][0][0]) + abs(col_coor[1] - closest_size[0][0][1]) < min_diff:
+
+            match_size = closest_size[1]
+            match_size_coor = closest_size[0]
+
             left = min(col_full_coor[0][0], match_size_coor[0][0])
             right = max(col_full_coor[1][0], match_size_coor[1][0])
             up = max(col_full_coor[1][1], match_size_coor[1][1])
             down = min(col_full_coor[0][1], match_size_coor[0][1])
 
+        # for y in coor_to_size_set:
+        #     size_coor = y[0][0]
+        #     size_full_coor = y[0]
+        #     size = y[1]
+        #     x_diff = abs(col_coor[0] - size_coor[0])
+        #     y_diff = abs(col_coor[1] - size_coor[1])
+        #     if x_diff + y_diff < min_diff:
+        #         min_diff = x_diff + y_diff
+        #         match_size = size
+        #         match_size_coor = size_full_coor
+
+        # if min_diff != inf and match_size != '' and match_size_coor != '':
+        #     left = min(col_full_coor[0][0], match_size_coor[0][0])
+        #     right = max(col_full_coor[1][0], match_size_coor[1][0])
+        #     up = max(col_full_coor[1][1], match_size_coor[1][1])
+        #     down = min(col_full_coor[0][1], match_size_coor[0][1])
+
             col_size_coor_set.add(
                 (col_name, match_size, (left, right, up, down)))
+        else:
+            col_size_coor_set.add(
+                (col_name, '', (col_full_coor[0][0], col_full_coor[1][0], col_full_coor[1][1], col_full_coor[0][1])))
     progress('平面圖讀取進度 10/11', progress_file)
     # # DEBUG: 檢查col跟size有沒有被圈在一起，或者被亂圈到其他地方
     # for x in col_size_coor_set:
@@ -409,6 +488,11 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
 
         if floor_list != '':
             for floor in floor_list:
+                if col_size == '' and floor in floor_table_size_dict:
+                    if col_name in floor_table_size_dict[floor]:
+                        col_size = floor_table_size_dict[floor][col_name]
+                    elif 'Cn' in floor_table_size_dict[floor]:
+                        col_size = floor_table_size_dict[floor]['Cn']
                 set_plan.add((floor, col_name, col_size))
                 dic_plan[(floor, col_name, col_size)] = full_coor
         else:
@@ -441,7 +525,6 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     '''
     text_layer = layer_config['text_layer']
     line_layer = layer_config['line_layer']
-
     error_count = 0
     progress('開始讀取柱配筋圖', progress_file)
     # Step 1. 打開應用程式
@@ -711,7 +794,7 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
                         set_col.add((min_floor, f'C{i}', size))
                         dic_col[(min_floor, f'C{i}', size)] = (
                             min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
-                except:  # CW3-1 之類的不是區間
+                except Exception as E:  # CW3-1 之類的不是區間
                     set_col.add((min_floor, min_col, size))
                     dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1],
                                                            min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
@@ -1025,9 +1108,11 @@ def run_plan(plan_filename: str, layer_config: dict, result_filename: str, progr
         plan_col_set = read_plan(plan_filename=plan_filename,
                                  layer_config=layer_config,
                                  progress_file=progress_file)
-        save_temp_file.save_pkl(data=plan_col_set, tmp_file='plan_to_col.pkl')
+        save_temp_file.save_pkl(
+            data=plan_col_set, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_to_col.pkl')
     else:
-        plan_col_set = save_temp_file.read_temp(tmp_file='plan_to_col.pkl')
+        plan_col_set = save_temp_file.read_temp(
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1006\test_plan_to_col.pkl')
     set_plan, dic_plan = sort_plan(plan_data=plan_col_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file)
@@ -1041,9 +1126,11 @@ def run_col(col_filename: str, layer_config: dict, result_filename: str, progres
                                  layer_config=layer_config,
                                  result_filename=result_filename,
                                  progress_file=progress_file)
-        save_temp_file.save_pkl(data=floor_col_set, tmp_file='col_set.pkl')
+        save_temp_file.save_pkl(
+            data=floor_col_set, tmp_file=f'{os.path.splitext(col_filename)[0]}_col_set.pkl')
     else:
-        floor_col_set = save_temp_file.read_temp(tmp_file='col_set.pkl')
+        floor_col_set = save_temp_file.read_temp(
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1005\XS-COL(尚無資料)_col_set.pkl')
     set_col, dic_col = sort_col(col_data=floor_col_set,
                                 result_filename=result_filename,
                                 progress_file=progress_file)
@@ -1059,26 +1146,28 @@ if __name__ == '__main__':
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
     col_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-0529\2023-0529 SRC柱配筋(鋼骨) XS col.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1005\XS-COL(尚無資料).dwg']
     # print(col_filename.split(','))
     # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-0529\2023-0529 柱尺寸檢核 XS plan(柱鋼骨).dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1006\test2.dwg']
     # sys.argv[3] # XS-COL_new的路徑
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0529\XS-ss_new.dwg'
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1006\XS_new.dwg'
     # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-0529\XS-PLAN_ss_new.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1006\XS-PLAN_col_new.dwg'
     # sys.argv[5] # 柱配筋結果
-    result_file = r'D:\Desktop\BeamQC\TEST\2023-0529\column_ss.txt'
+    result_file = r'D:\Desktop\BeamQC\TEST\2023-1006\column.txt'
 
     # 在col裡面自訂圖層
     layer_config = {
-        'text_layer': 'SS',
+        'text_layer': 'S-TEXT',
         'line_layer': 'S-TABLE',
-        'block_layer': 'ss-dwfm',
+        'block_layer': '0',
         'floor_layer': 'S-TITLE',
-        'col_layer': 'ss-dim'
+        'col_layer': 'S-TEXTC',
+        'size_layer': 'S-TEXT',
+        'table_line_layer': 'S-TABLE'
     }
     # text_layer = 'SS'#sys.argv[6] # 文字的圖層
     # line_layer = 'S-TABLE'#sys.argv[7] # 線的圖層
