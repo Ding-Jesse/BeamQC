@@ -1,11 +1,3 @@
-from gzip import READ
-from io import TextIOWrapper
-from math import inf, sqrt
-from multiprocessing.spawn import prepare
-from tabnanny import check
-from tkinter import HIDDEN
-from numpy import object_
-from openpyxl import load_workbook
 import win32com.client
 import pythoncom
 import re
@@ -14,12 +6,26 @@ import multiprocessing
 import os
 import pandas as pd
 from functools import cmp_to_key
-from math import inf
 import save_temp_file
 import json
+from gzip import READ
+from io import TextIOWrapper
+from math import inf, sqrt
+from multiprocessing.spawn import prepare
+from tabnanny import check
+from tkinter import HIDDEN
+from numpy import object_
+from openpyxl import load_workbook
 
 
-def turn_floor_to_float(floor):  # 把字串變成小數 (因為1MF = 1.5, 所以不能用整數)
+weird_to_list = ['-', '~']
+weird_comma_list = [',', '、', '¡B']
+beam_head1 = ['B', 'b', 'G', 'g']
+beam_head2 = ['FB', 'FG', 'Fb', 'CB', 'CG', 'cb']
+
+
+def turn_floor_to_float(floor):
+    '''把字串變成小數 (因為1MF = 1.5, 所以不能用整數)'''
 
     if ' ' in floor:  # 不小心有空格要把空格拔掉
         floor = floor.replace(' ', '')
@@ -45,18 +51,22 @@ def turn_floor_to_float(floor):  # 把字串變成小數 (因為1MF = 1.5, 所�
 
         if 'M' in floor:  # 半層以0.5表示
             floor = str(int(floor.replace("M", "")) + 0.5)
-    except:
+    except Exception:
         pass
+        # print(f'{floor}: cannot trans to int')
 
     try:
         floor = float(floor)
         return floor
-    except:
+    except Exception:
         error(f'turn_floor_to_float error: {floor} cannot be turned to float.')
         return False
 
 
-def turn_floor_to_string(floor):  # 把數字變回字串
+def turn_floor_to_string(floor):
+    '''
+    把數字變回字串
+    '''
     if floor == -1000:
         floor = 'FBF'  # 因為beam的部分字尾非F會自動補F，所以在diff的時候要一致
 
@@ -84,6 +94,9 @@ def turn_floor_to_string(floor):  # 把數字變回字串
 
 
 def turn_floor_to_list(floor, Bmax, Fmax, Rmax):
+    '''
+    將多重樓層如(2F-RF)轉為[2F....RF]
+    '''
     floor_list = []
     to_bool = False
     for char in weird_to_list:
@@ -105,7 +118,7 @@ def turn_floor_to_list(floor, Bmax, Fmax, Rmax):
                     for i in range(start, end + 1):
                         if floor_exist(i, Bmax, Fmax, Rmax):
                             floor_list.append(turn_floor_to_string(i))
-                except:
+                except Exception:
                     error(
                         f'turn_floor_to_list error: {floor} cannot be turned to list.')
             to_bool = True
@@ -131,7 +144,10 @@ def turn_floor_to_list(floor, Bmax, Fmax, Rmax):
     return floor_list
 
 
-def floor_exist(i, Bmax, Fmax, Rmax):  # 判斷是否為空號，例如B2F-PRF會從-2跑到2000，但顯然區間裡面的值不可能都合法
+def floor_exist(i, Bmax, Fmax, Rmax):
+    '''
+    判斷是否為空號，例如B2F-PRF會從-2跑到2000，但顯然區間裡面的值不可能都合法
+    '''
     if i == -1000 or i == 2000:
         return True
 
@@ -147,22 +163,29 @@ def floor_exist(i, Bmax, Fmax, Rmax):  # 判斷是否為空號，例如B2F-PRF�
     return False
 
 
-def vtFloat(l):  # 要把點座標組成的list轉成autocad看得懂的樣子？
+def vtFloat(l):
+    '''
+    要把點座標組成的list轉成autocad看得懂的樣子
+    '''
     return win32com.client.VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, l)
 
 
-def error(error_message):  # 把錯誤訊息印到error.log裡面
+def error(error_message):
+    '''
+    把錯誤訊息印到error.log裡面
+    '''
     f = open(error_file, 'a', encoding='utf-8')
     localtime = time.asctime(time.localtime(time.time()))
     f.write(f'{localtime} | {error_message}\n')
-    f.close
+    f.close()
     return
 
 
-def progress(message, progress_file):  # 把進度印到progress裡面，在app.py會對這個檔案做事
+def progress(message, progress_file):
+    '''把進度印到progress裡面，在app.py會對這個檔案做事'''
     f = open(progress_file, 'a', encoding='utf-8')
     f.write(f'{message}\n')
-    f.close
+    f.close()
     return
 
 # 可以先看完 write_plan 跟 write_beam 整理 txt 的規則再看這個函式在幹嘛
@@ -187,20 +210,16 @@ def mycmp(a, b):  # a, b 皆為 tuple , 可能是 ((floor, beam), 0, correct) �
             return -1
 
 
-weird_to_list = ['-', '~']
-weird_comma_list = [',', '、', '¡B']
-beam_head1 = ['B', 'b', 'G', 'g']
-beam_head2 = ['FB', 'FG', 'Fb', 'CB', 'CG', 'cb']
-
-
 def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_scaling):
     def _cal_ratio(pt1, pt2):
         if abs(pt1[1]-pt2[1]) == 0:
             return 1000
         return abs(pt1[0]-pt2[0])/abs(pt1[1]-pt2[1])
     floor_layer = layer_config['floor_layer']
-    beam_layer = layer_config['beam_layer']
-    beam_text_layer = layer_config['beam_text_layer']
+    beam_layer = layer_config['big_beam_layer'] + \
+        layer_config['sml_beam_layer']
+    beam_text_layer = layer_config['big_text_layer'] + \
+        layer_config['sml_text_layer']
     block_layer = layer_config['block_layer']
     size_layer = layer_config['size_layer']
     text_object_type = ['AcDbAttribute', "AcDbText", "AcDbMLeader"]
@@ -213,11 +232,11 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
         try:
             wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
             flag = 1
-        except Exception as e:
+        except Exception as ex:
             error_count += 1
             time.sleep(5)
             error(
-                f'read_plan error in step 1: {e}, error_count = {error_count}.')
+                f'read_plan error in step 1: {ex} ,error in open Autocad, error_count = {error_count}.')
     progress('平面圖讀取進度 1/13', progress_file)
 
     # Step 2. 匯入檔案
@@ -226,11 +245,11 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
         try:
             doc_plan = wincad_plan.Documents.Open(plan_filename)
             flag = 1
-        except Exception as e:
+        except Exception as ex:
             error_count += 1
             time.sleep(5)
             error(
-                f'read_plan error in step 2: {e}, error_count = {error_count}.')
+                f'read_plan error in step 2: {ex} ,error in open dwg file , error_count = {error_count}.')
     progress('平面圖讀取進度 2/13', progress_file)
 
     # Step 3. 匯入modelspace
@@ -239,28 +258,28 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
         try:
             msp_plan = doc_plan.Modelspace
             flag = 1
+        except Exception as ex:
+            error_count += 1
+            time.sleep(5)
+            error(
+                f'read_plan error in step 3: {ex} ,error in reading ModelSpace, error_count = {error_count}.')
+    progress('平面圖讀取進度 3/13', progress_file)
+
+    # Step 4 解鎖所有圖層 -> 不然不能刪東西
+    flag = 0
+    while not flag and error_count <= 10:
+        try:
+            layer_count = doc_plan.Layers.count
+            for x in range(layer_count):
+                layer = doc_plan.Layers.Item(x)
+                layer.Lock = False
+            flag = 1
         except Exception as e:
             error_count += 1
             time.sleep(5)
             error(
-                f'read_plan error in step 3: {e}, error_count = {error_count}.')
-    progress('平面圖讀取進度 3/13', progress_file)
-
-    # Step 4 解鎖所有圖層 -> 不然不能刪東西
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         layer_count = doc_plan.Layers.count
-    #         for x in range(layer_count):
-    #             layer = doc_plan.Layers.Item(x)
-    #             layer.Lock = False
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_plan error in step 4: {e}, error_count = {error_count}.')
-    # progress('平面圖讀取進度 4/13', progress_file)
+                f'read_plan error in step 4: {e}, error_count = {error_count}.')
+    progress('平面圖讀取進度 4/13', progress_file)
 
     # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
     # flag = 0
@@ -343,26 +362,32 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
     #     try:
     count = 0
     total = msp_plan.Count
+    used_layer_list = []
+    for key, layer_name in layer_config.items():
+        used_layer_list += layer_name
     progress(
         f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-    blockref_layer = ''
-    for object in msp_plan:
-        blockref_layer = object.Layer
-        object_list = [object]
-        if object.EntityName == "AcDbBlockReference":
-            if object.GetAttributes():
-                object_list = list(object.GetAttributes())
-        error_count = 0
-        count += 1
-        if count % 1000 == 0 or count == total:
-            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
-        while error_count <= 3 and object_list:
-            object = object_list.pop()
-            if object.Layer == '0':
-                object_layer = blockref_layer
+    for msp_object in msp_plan:
+        if msp_object.Layer not in used_layer_list:
+            continue
+        # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+        object_list = [msp_object]
+        if msp_object.EntityName == "AcDbBlockReference":
+            if msp_object.GetAttributes():
+                object_list = list(msp_object.GetAttributes())
             else:
-                object_layer = object.Layer
+                object_list = list(msp_object.Explode())
+
+        while error_count <= 3 and object_list:
+            count += 1
+            if count % 1000 == 0 or count == total:
+                progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+            object = object_list.pop()
             try:
+                if object.Layer == '0':
+                    object_layer = msp_object.Layer
+                else:
+                    object_layer = object.Layer
                 # 找size
                 if sizing or mline_scaling:
                     if object_layer in size_layer and object.EntityName in text_object_type and object.TextString != '' and object.GetBoundingBox()[0][1] >= 0:
@@ -372,10 +397,12 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                             coor_to_size_beam.add((coor, 'FG'))
                         if 'FBn' in object.TextString:
                             coor_to_size_beam.add((coor, 'FB'))
+                            continue
                         if 'FWB' in object.TextString:
                             coor_to_size_beam.add((coor, 'FWB'))
                         if 'Fbn' in object.TextString:
                             coor_to_size_beam.add((coor, 'Fb'))
+                            continue
                         if 'dbn' in object.TextString:
                             coor_to_size_beam.add((coor, 'db'))  # 車道梁特別處理
                             continue
@@ -435,7 +462,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                                 second = string.split('x')[1]
                                 if float(first) and float(second):
                                     coor_to_size_string.add((coor, string))
-                            except:
+                            except Exception as ex:
                                 pass
 
                 # 找複線
@@ -536,7 +563,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                         try:
                             coor_to_beam_set.add(
                                 ((coor1, coor2), (beam.split(comma_char)[i].strip(), size, round(object.Rotation, 2))))
-                        except:  # 只要不是0or1.57，後面核對的時候就會橫的值得都找。
+                        except Exception as ex:  # 只要不是0or1.57，後面核對的時候就會橫的值得都找。
                             coor_to_beam_set.add(
                                 ((coor1, coor2), (beam.split(comma_char)[i].strip(), size, 1)))
                             error(
@@ -562,7 +589,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                                         second = size.split('x')[1]
                                         if not (float(first) and float(second)):
                                             size = ''
-                                    except:
+                                    except Exception as ex:
                                         size = ''
                                 s = s.split('(')[0]
                             if '\\' in s:
@@ -583,7 +610,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                         try:
                             coor_to_beam_set.add(
                                 ((coor1, coor2), (beam, size, round(object.Rotation, 2))))
-                        except:
+                        except Exception as ex:
                             error(
                                 f'read_plan error in step 7: {(beam, size)} at {(coor1, coor2)} cannot find Rotation.')
                     continue
@@ -600,12 +627,12 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                     continue
 
                 continue
-            except Exception as e:
+            except Exception as ex:
                 error_count += 1
                 object_list.append(object)
                 time.sleep(5)
                 error(
-                    f'read_plan error in step 7: {e}, error_count = {error_count}.')
+                    f'read_plan error in step 7: {ex}, error_count = {error_count}.')
         # except Exception as e:
         #     error_class = e.__class__.__name__ #取得錯誤類型
         #     detail = e.args[0] #取得詳細內容
@@ -622,7 +649,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
     # if error_count > 10:
     try:
         doc_plan.Close(SaveChanges=False)
-    except:
+    except Exception as ex:
         pass
     # return False
     progress('平面圖讀取進度 7/13', progress_file)
@@ -917,7 +944,7 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
                                   beam_rotate)] = full_coor
                         check_list.append((floor, beam_name))
                     else:
-                        if not (floor, beam_name) in check_list:
+                        if (floor, beam_name) not in check_list:
                             set_plan.add((floor, beam_name, '', beam_rotate))
                             dic_plan[(floor, beam_name, '',
                                       beam_rotate)] = full_coor
@@ -942,11 +969,11 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
             try:
                 wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
                 flag = 1
-            except Exception as e:
+            except Exception as ex:
                 error_count += 1
                 time.sleep(5)
                 error(
-                    f'read_plan error in step 13-1, {e}, error_count = {error_count}')
+                    f'read_plan error in step 13-1, {ex}, error_count = {error_count}')
 
         # Step 13-2. 匯入檔案
         flag = 0
@@ -954,11 +981,11 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
             try:
                 doc_plan = wincad_plan.Documents.Open(plan_filename)
                 flag = 1
-            except Exception as e:
+            except Exception as ex:
                 error_count += 1
                 time.sleep(5)
                 error(
-                    f'read_plan error in step 13-2, {e}, error_count = {error_count}')
+                    f'read_plan error in step 13-2, {ex}, error_count = {error_count}')
 
         # Step 13-3. 載入modelspace(還要畫圖)
         flag = 0
@@ -966,11 +993,11 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
             try:
                 msp_plan = doc_plan.Modelspace
                 flag = 1
-            except Exception as e:
+            except Exception as ex:
                 error_count += 1
                 time.sleep(5)
                 error(
-                    f'read_plan error in step 13-3, {e}, error_count = {error_count}')
+                    f'read_plan error in step 13-3, {ex}, error_count = {error_count}')
         time.sleep(5)
 
         # Step 13-4. 設定mark的圖層
@@ -983,11 +1010,11 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
                 layer_plan.Linetype = "Continuous"
                 layer_plan.Lineweight = 0.5
                 flag = 1
-            except Exception as e:
+            except Exception as ex:
                 error_count += 1
                 time.sleep(5)
                 error(
-                    f'read_plan error in step 13-4, {e}, error_count = {error_count}')
+                    f'read_plan error in step 13-4, {ex}, error_count = {error_count}')
 
         # Step 13-5. 找最近的複線，有錯要畫圖 -> 中點找中點
         error_list = []
@@ -1157,90 +1184,108 @@ def read_beam(beam_filename, text_layer, progress_file):
     progress('梁配筋圖讀取進度 3/9', progress_file)
 
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            layer_count = doc_beam.Layers.count
+    # flag = 0
+    # while not flag and error_count <= 10:
+    #     try:
+    #         layer_count = doc_beam.Layers.count
 
-            for x in range(layer_count):
-                layer = doc_beam.Layers.Item(x)
-                layer.Lock = False
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 4: {e}, error_count = {error_count}.')
-    progress('梁配筋圖讀取進度 4/9', progress_file)
+    #         for x in range(layer_count):
+    #             layer = doc_beam.Layers.Item(x)
+    #             layer.Lock = False
+    #         flag = 1
+    #     except Exception as e:
+    #         error_count += 1
+    #         time.sleep(5)
+    #         error(
+    #             f'read_beam error in step 4: {e}, error_count = {error_count}.')
+    # progress('梁配筋圖讀取進度 4/9', progress_file)
 
     # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            count = 0
-            total = msp_beam.Count
-            progress(
-                f'正在炸梁配筋圖的圖塊及篩選判斷用的物件，梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-            for object in msp_beam:
-                count += 1
-                explode_fail = 0
-                while explode_fail <= 3:
-                    try:
-                        if object.EntityName == "AcDbBlockReference" and object.Layer == text_layer:
-                            object.Explode()
-                        if object.Layer != text_layer:
-                            object.Delete()
-                        if count % 1000 == 0:
-                            progress(
-                                f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
-                        break
-                    except:
-                        explode_fail += 1
-                        try:
-                            msp_beam = doc_beam.Modelspace
-                        except:
-                            pass
-            flag = 1
+    # flag = 0
+    # while not flag and error_count <= 10:
+    #     try:
+    #         count = 0
+    #         total = msp_beam.Count
+    #         progress(
+    #             f'正在炸梁配筋圖的圖塊及篩選判斷用的物件，梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+    #         for object in msp_beam:
+    #             count += 1
+    #             explode_fail = 0
+    #             while explode_fail <= 3:
+    #                 try:
+    #                     if object.EntityName == "AcDbBlockReference" and object.Layer == text_layer:
+    #                         object.Explode()
+    #                     if object.Layer != text_layer:
+    #                         object.Delete()
+    #                     if count % 1000 == 0:
+    #                         progress(
+    #                             f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
+    #                     break
+    #                 except:
+    #                     explode_fail += 1
+    #                     try:
+    #                         msp_beam = doc_beam.Modelspace
+    #                     except:
+    #                         pass
+    #         flag = 1
 
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 5: {e}, error_count = {error_count}.')
-            try:
-                msp_beam = doc_beam.Modelspace
-            except:
-                pass
-    progress('梁配筋圖讀取進度 5/9', progress_file)
+    #     except Exception as e:
+    #         error_count += 1
+    #         time.sleep(5)
+    #         error(
+    #             f'read_beam error in step 5: {e}, error_count = {error_count}.')
+    #         try:
+    #             msp_beam = doc_beam.Modelspace
+    #         except:
+    #             pass
+    # progress('梁配筋圖讀取進度 5/9', progress_file)
 
     # Step 6. 重新匯入modelspace
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            msp_beam = doc_beam.Modelspace
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 6: {e}, error_count = {error_count}.')
-    progress('梁配筋圖讀取進度 6/9', progress_file)
+    # flag = 0
+    # while not flag and error_count <= 10:
+    #     try:
+    #         msp_beam = doc_beam.Modelspace
+    #         flag = 1
+    #     except Exception as e:
+    #         error_count += 1
+    #         time.sleep(5)
+    #         error(
+    #             f'read_beam error in step 6: {e}, error_count = {error_count}.')
+    # progress('梁配筋圖讀取進度 6/9', progress_file)
 
     # Step 7. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
     progress('正在遍歷梁配筋圖上的物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候', progress_file)
     floor_to_beam_set = set()
     flag = 0
-    while not flag and error_count <= 10:
-        try:
-            count = 0
-            total = msp_beam.Count
-            progress(
-                f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-            for object in msp_beam:
-                count += 1
-                if count % 1000 == 0:
-                    progress(f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
-                if object.Layer in text_layer and object.ObjectName == "AcDbText" and ' ' in object.TextString:
+    count = 0
+    used_layer_list = []
+    for key, layer_name in layer_config.items():
+        used_layer_list += layer_name
+    total = msp_beam.Count
+    progress(
+        f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+    for msp_object in msp_beam:
+        if msp_object.Layer not in used_layer_list:
+            continue
+        # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+        object_list = [msp_object]
+        if msp_object.EntityName == "AcDbBlockReference":
+            if msp_object.GetAttributes():
+                object_list = list(msp_object.GetAttributes())
+            else:
+                object_list = list(msp_object.Explode())
+        while error_count <= 3 and object_list:
+            count += 1
+            if count % 1000 == 0 or count == total:
+                progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+            object = object_list.pop()
+            try:
+                if object.Layer == '0':
+                    object_layer = msp_object.Layer
+                else:
+                    object_layer = object.Layer
+
+                if object_layer in text_layer and object.ObjectName == "AcDbText" and ' ' in object.TextString:
                     pre_beam = (object.TextString.split(' ')[
                                 1]).split('(')[0]  # 把括號以後的東西拔掉
                     if pre_beam == '':
@@ -1264,12 +1309,12 @@ def read_beam(beam_filename, text_layer, progress_file):
                                 ' ', '')).replace('X', 'x')  # size 的格式就是 90x50, 沒空格且使用小寫x作為乘號
                             floor_to_beam_set.add(
                                 (floor, beam, (coor1, coor2), size))
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 7: {e}, error_count = {error_count}.')
+            except Exception as ex:
+                object_list.append(object)
+                error_count += 1
+                time.sleep(5)
+                error(
+                    f'read_beam error in step 7: {ex}, error_count = {error_count}.')
     progress('梁配筋圖讀取進度 7/9', progress_file)
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
@@ -2040,7 +2085,7 @@ def output_progress_report(output_filename: str, layer_config: dict, start_date,
         f.write(f'CAD資料:{cad_data}]\n')
         f.write(f'平面圖樓層:{plan_data["coor_to_floor_set"]}]\n')
         f.write(f'==========================\n')
-        f.write(f'錯誤訊息:\n')
+        f.write('錯誤訊息:\n')
         f.write(f'{delimiter.join(warning_list)}')
 
 
@@ -2066,26 +2111,26 @@ if __name__ == '__main__':
         r'D:\Desktop\BeamQC\TEST\2023-1005\XS-BEAM(尚無資料).dwg']
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1006\XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1011\XS-PLAN.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
-    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1006\XS-BEAM_new.dwg"
+    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\XS-BEAM_new.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1006\XS_PLAN_new.dwg"
+    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\XS_PLAN_4F_new.dwg"
     # sys.argv[5] # 大梁結果
-    big_file = r"D:\Desktop\BeamQC\TEST\2023-1006\big-new.txt"
+    big_file = r"D:\Desktop\BeamQC\TEST\2023-1011\big.txt"
     # sys.argv[6] # 小梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1006\sml-new.txt"
+    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1011\sml.txt"
     # sys.argv[6] # 地梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1006\fb-new.txt"
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1011\fb.txt"
     # 在beam裡面自訂圖層
     text_layer = ['S-RC']  # sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = ['0']  # sys.argv[8] # 框框的圖層
+    block_layer = ['0', 'DwFm']  # sys.argv[8] # 框框的圖層
     floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
     size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
-    beam_layer = ['S-RCBMG', 'S-RCBMG(FB)', 'S-RCBMB', 'S-RCBMB(FB)']  # 大樑複線圖層
-    beam_text_layer = ['S-TEXTG', 'S-TEXTB']  # 大樑文字圖層
+    # beam_layer = ['S-RCBMG', 'S-RCBMG(FB)', 'S-RCBMB', 'S-RCBMB(FB)']  # 大樑複線圖層
+    # beam_text_layer = ['S-TEXTG', 'S-TEXTB']  # 大樑文字圖層
     sml_beam_layer = ['S-RCBMB', 'S-RCBMB(FB)']  # 小梁複線圖層
     sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
     big_beam_layer = ['S-RCBMG', 'S-RCBMG(FB)']
@@ -2107,8 +2152,10 @@ if __name__ == '__main__':
         'text_layer': text_layer,
         'block_layer': block_layer,
         'floor_layer': floor_layer,
-        'beam_layer': beam_layer,
-        'beam_text_layer': beam_text_layer,
+        # 'beam_layer': beam_layer,
+        # 'beam_text_layer': beam_text_layer,
+        'big_text_layer': big_beam_text_layer,
+        'sml_text_layer': sml_beam_text_layer,
         'big_beam_layer': big_beam_layer,
         'sml_beam_layer': sml_beam_layer,
         'size_layer': size_layer,
