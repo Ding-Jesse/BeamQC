@@ -1,33 +1,38 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>{% block title %}{% endblock %}</title>   
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./static/css/rubic.css">
-    <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js" crossorigin="anonymous"></script>
-  </head>
-  <nav id="scrollspy" class="navbar page-navbar navbar-dark navbar-expand-md" data-spy="affix" data-offset-top="20">
-    <div class="container2">
-      <a class="navbar-brand" href="/"><strong class="text-primary">免費RC梁柱自動化清圖工具</strong><span class="text-light">營造估算複核好幫手！</span></a>
-      <div class="collapse navbar-collapse" id="navbarSupportedContent">
-        <ul class="navbar-nav ml-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="/login">使用條款</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/tool1">配筋圖查核</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/tutorial">使用教學</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/results">輸出結果</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/tool2">數量計算</a>
-          </li>
-          <!--
+
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="./static/css/rubic.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC&display=swap" rel="stylesheet">
+  <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js" crossorigin="anonymous"></script>
+</head>
+<nav id="scrollspy" class="navbar page-navbar navbar-dark navbar-expand-md" data-spy="affix" data-offset-top="20">
+  <div class="container2">
+    <a class="navbar-brand" href="/"><strong class="text-primary">免費RC梁柱自動化清圖工具</strong><span
+        class="text-light">營造估算複核好幫手！</span></a>
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <a class="nav-link" href="/login">使用條款</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/tool1">配筋圖查核</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/tutorial">使用教學</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/results">輸出結果</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/tool2">數量計算</a>
+        </li>
+        <!--
           
           <li class="nav-item">
             <a class="nav-link" href="/tool4">功能四</a>
@@ -36,55 +41,59 @@
             <a class="nav-link" href="/tool5">功能五</a>
           </li>
           -->
-        </ul>
-      </div>
+      </ul>
     </div>
-  </nav>
-  {% block content %}{% endblock %}
-  <footer id="gtco-footer" class="gtco-section" role="contentinfo">
-    <div class="gtco-container">
-      <div class="row row-pb-md">
-        <div class="col-md-4 gtco-widget gtco-footer-paragraph">
+  </div>
+</nav>
+{% block content %}{% endblock %}
+<footer id="gtco-footer" class="gtco-section" role="contentinfo">
+  <div class="gtco-container">
+    <div class="row row-pb-md">
+      <!-- <div class="col-md-4 gtco-widget gtco-footer-paragraph">
           <h3>目前只有配筋圖查核歐</h3>
           <p>我只想說聲辛苦了<a href="/secret" style='color: #666; cursor: text; text-decoration: none' target="_blank">!</a></p>
-        </div>
-        <div class="col-md-4 gtco-footer-link">
-          <div class="row">
-            <div class="col-md-6">
-              <ul class="gtco-list-link">
-                <li><a href="/">首頁</a></li>
-                <li><a href="/login">使用條款</a></li>
-                <li><a href="/tool1">配筋圖查核</a></li>
-                <li><a href="/tutorial">使用教學</a></li>
-                <li><a href="/results">輸出結果</a></li>
-                <li><a href="/tool2">數量計算</a></li>
-                <!--
+        </div> -->
+      <div class="col-md-4 gtco-footer-link">
+        <div class="row">
+          <div class="col-md-6">
+            <ul class="gtco-list-link">
+              <li><a href="/">首頁</a></li>
+              <li><a href="/login">使用條款</a></li>
+              <li><a href="/tool1">配筋圖查核</a></li>
+              <li><a href="/tutorial">使用教學</a></li>
+              <li><a href="/results">輸出結果</a></li>
+              <li><a href="/tool2">數量計算</a></li>
+              <!--
                 <li><a href="/tool3">功能三</a></li>
                 <li><a href="/tool4">功能四</a></li>
                 <li><a href="/tool5">功能五</a></li>
                 -->
-              </ul>
-            </div>
-            <div class="col-md-6">
-              <b style="color: #42e610">
-                官方Line帳號: </b><a href="https://lin.ee/YCrkTU0" target="_blank">https://lin.ee/YCrkTU0</a> <br>
-                <div align="center"><img style="max-width: 100%; height: auto;"src="./static/line.png" alt="image"></p></div>
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <b style="color: #42e610">
+              官方Line帳號: </b><a href="https://lin.ee/YCrkTU0" target="_blank">https://lin.ee/YCrkTU0</a> <br>
+            <div align="center"><img style="max-width: 100%; height: auto;" src="./static/line.png" alt="image"></p>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <div class="gtco-copyright">
-      <div class="gtco-container">
-        <div class="row">
-          <div class="col-md-6 text-left">
-            <p><small>&copy; 2016 Free HTML5. All Rights Reserved. </small></p>
-          </div>
-          <div class="col-md-6 text-right">
-            <p><small>Designed by <a href="http://gettemplates.co/" target="_blank">GetTemplates.co</a> Demo Images: <a href="http://pixeden.com/" target="_blank">Pixeden</a> &amp; <a href="http://unsplash.com" target="_blank">Unsplash</a></small> </p>
-          </div>
+  </div>
+  <div class="gtco-copyright">
+    <div class="gtco-container">
+      <div class="row">
+        <div class="col-md-6 text-left">
+          <p><small>&copy; 2016 Free HTML5. All Rights Reserved. </small></p>
+        </div>
+        <div class="col-md-6 text-right">
+          <p><small>Designed by <a href="http://gettemplates.co/" target="_blank">GetTemplates.co</a> Demo Images: <a
+                href="http://pixeden.com/" target="_blank">Pixeden</a> &amp; <a href="http://unsplash.com"
+                target="_blank">Unsplash</a></small> </p>
         </div>
       </div>
     </div>
-  </footer>
+  </div>
+</footer>
+
 </html>

@@ -218,8 +218,8 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
     floor_layer = layer_config['floor_layer']
     beam_layer = layer_config['big_beam_layer'] + \
         layer_config['sml_beam_layer']
-    beam_text_layer = layer_config['big_text_layer'] + \
-        layer_config['sml_text_layer']
+    beam_text_layer = layer_config['big_beam_text_layer'] + \
+        layer_config['sml_beam_text_layer']
     block_layer = layer_config['block_layer']
     size_layer = layer_config['size_layer']
     text_object_type = ['AcDbAttribute', "AcDbText", "AcDbMLeader"]
@@ -2055,7 +2055,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
 
 
 def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
-    if False:
+    if True:
         floor_to_beam_set = read_beam(
             beam_filename=beam_filename, text_layer=text_layer, progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,
@@ -2154,8 +2154,8 @@ if __name__ == '__main__':
         'floor_layer': floor_layer,
         # 'beam_layer': beam_layer,
         # 'beam_text_layer': beam_text_layer,
-        'big_text_layer': big_beam_text_layer,
-        'sml_text_layer': sml_beam_text_layer,
+        'big_beam_text_layer': big_beam_text_layer,
+        'sml_beam_text_layer': sml_beam_text_layer,
         'big_beam_layer': big_beam_layer,
         'sml_beam_layer': sml_beam_layer,
         'size_layer': size_layer,

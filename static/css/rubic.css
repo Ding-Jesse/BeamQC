@@ -18,18 +18,25 @@
 }
 
 /* testbox */
-html, body {
+html,
+body {
   min-height: 100%;
 }
-body, div, form, input, label { 
+
+body,
+div,
+form,
+input,
+label {
   padding: 0;
   margin: 0;
   outline: none;
-  font-family: Roboto, Arial, sans-serif;
+  font-family: Roboto, Arial, 'Noto Sans TC', sans-serif;
   font-size: 20px;
   color: #666;
   line-height: 40px;
 }
+
 h1 {
   position: absolute;
   margin: 0;
@@ -38,6 +45,7 @@ h1 {
   z-index: 2;
   line-height: 83px;
 }
+
 .testbox {
   display: flex;
   justify-content: center;
@@ -45,15 +53,17 @@ h1 {
   height: inherit;
   padding: 20px;
 }
+
 form {
   width: 100%;
   padding: 20px;
   border-radius: 6px;
   background: #fff;
-  box-shadow: 0 0 8px  #cc7a00; 
+  box-shadow: 0 0 8px #cc7a00;
 }
+
 .banner {
-  position: relative; 
+  position: relative;
   color: white;
   height: 300px;
   width: 100%;
@@ -61,7 +71,8 @@ form {
   align-items: center;
   justify-content: center;
 }
-.banner::before{
+
+.banner::before {
   content: "";
   background-image: url('https://placekitten.com/1200/800');
   background-size: cover;
@@ -72,6 +83,7 @@ form {
   left: 0px;
   opacity: 1;
 }
+
 /* .banner::after {
   content: "";
   background-color: rgba(0, 0, 0, 0.2); 
@@ -87,37 +99,43 @@ form {
   align-items: left;
   text-align: left;
   content: "";
-  background-color: rgba(255, 0, 0, 0.2); 
+  background-color: rgba(255, 0, 0, 0.2);
   width: 25%;
   height: 100%;
 }
-input{
+
+input {
   margin-bottom: 10px;
   border: 1px solid #ccc;
   border-radius: 3px;
   width: calc(100% - 10px);
   padding: 5px;
 }
-input[type=radio]:checked + label:after {
+
+input[type=radio]:checked+label:after {
   opacity: 1;
 }
+
 .btn-block {
   margin-top: 10px;
   text-align: center;
 }
+
 button {
   width: 300px;
   padding: 10px;
   border: none;
-  border-radius: 5px; 
+  border-radius: 5px;
   background: #cc7a00;
   font-size: 20px;
   color: #fff;
   cursor: pointer;
 }
+
 button:hover {
   background: #ff9800;
 }
+
 .container {
   display: block;
   position: relative;
@@ -152,24 +170,24 @@ button:hover {
 }
 
 /* On mouse-over, add a grey background color */
-.container:hover input ~ .checkmark {
+.container:hover input~.checkmark {
   background-color: #ccc;
 }
 
 /* When the checkbox is checked, add a blue background */
-.container input:checked ~ .checkmark {
+.container input:checked~.checkmark {
   background-color: #2196F3;
 }
 
 /* Create the checkmark/indicator (hidden when not checked) */
-  .checkmark:after {
+.checkmark:after {
   content: "";
   position: absolute;
   display: none;
 }
 
 /* Show the checkmark when checked */
-  .container input:checked ~ .checkmark:after {
+.container input:checked~.checkmark:after {
   display: block;
 }
 
@@ -203,7 +221,8 @@ a:not([href]):not([tabindex]) {
   text-decoration: none;
 }
 
-a:not([href]):not([tabindex]):hover, a:not([href]):not([tabindex]):focus {
+a:not([href]):not([tabindex]):hover,
+a:not([href]):not([tabindex]):focus {
   color: inherit;
   text-decoration: none;
 }
@@ -226,8 +245,8 @@ a:not([href]):not([tabindex]):focus {
   display: -ms-flexbox;
   display: flex;
   -webkit-flex-wrap: wrap;
-      -ms-flex-wrap: wrap;
-          flex-wrap: wrap;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
   padding-left: 0;
   margin-bottom: 0;
   list-style: none;
@@ -238,7 +257,8 @@ a:not([href]):not([tabindex]):focus {
   padding: 0.5rem 1rem;
 }
 
-.nav-link:hover, .nav-link:focus {
+.nav-link:hover,
+.nav-link:focus {
   text-decoration: none;
 }
 
@@ -256,35 +276,35 @@ a:not([href]):not([tabindex]):focus {
   display: -ms-flexbox;
   display: flex;
   -webkit-flex-wrap: wrap;
-      -ms-flex-wrap: wrap;
-          flex-wrap: wrap;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
   -webkit-box-align: center;
   -webkit-align-items: center;
-      -ms-flex-align: center;
-          align-items: center;
+  -ms-flex-align: center;
+  align-items: center;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
-      -ms-flex-pack: justify;
-          justify-content: space-between;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
   padding: 0.5rem 1rem;
 }
 
-.navbar > .container2{
+.navbar>.container2 {
   display: -webkit-box;
   display: -webkit-flex;
   display: -ms-flexbox;
   display: flex;
   -webkit-flex-wrap: wrap;
-      -ms-flex-wrap: wrap;
-          flex-wrap: wrap;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
   -webkit-box-align: center;
   -webkit-align-items: center;
-      -ms-flex-align: center;
-          align-items: center;
+  -ms-flex-align: center;
+  align-items: center;
   -webkit-box-pack: justify;
   -webkit-justify-content: space-between;
-      -ms-flex-pack: justify;
-          justify-content: space-between;
+  -ms-flex-pack: justify;
+  justify-content: space-between;
 }
 
 .navbar-brand {
@@ -297,7 +317,8 @@ a:not([href]):not([tabindex]):focus {
   white-space: nowrap;
 }
 
-.navbar-brand:hover, .navbar-brand:focus {
+.navbar-brand:hover,
+.navbar-brand:focus {
   text-decoration: none;
 }
 
@@ -309,8 +330,8 @@ a:not([href]):not([tabindex]):focus {
   -webkit-box-orient: vertical;
   -webkit-box-direction: normal;
   -webkit-flex-direction: column;
-      -ms-flex-direction: column;
-          flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
   padding-left: 0;
   margin-bottom: 0;
   list-style: none;
@@ -323,20 +344,20 @@ a:not([href]):not([tabindex]):focus {
 
 .navbar-collapse {
   -webkit-flex-basis: 100%;
-      -ms-flex-preferred-size: 100%;
-          flex-basis: 100%;
+  -ms-flex-preferred-size: 100%;
+  flex-basis: 100%;
   -webkit-box-flex: 1;
   -webkit-flex-grow: 1;
-      -ms-flex-positive: 1;
-          flex-grow: 1;
+  -ms-flex-positive: 1;
+  flex-grow: 1;
   -webkit-box-align: center;
   -webkit-align-items: center;
-      -ms-flex-align: center;
-          align-items: center;
+  -ms-flex-align: center;
+  align-items: center;
 }
 
 @media (max-width: 767.98px) {
-  .navbar-expand-md > .container2{
+  .navbar-expand-md>.container2 {
     padding-right: 0;
     padding-left: 0;
   }
@@ -347,41 +368,47 @@ a:not([href]):not([tabindex]):focus {
     -webkit-box-orient: horizontal;
     -webkit-box-direction: normal;
     -webkit-flex-flow: row nowrap;
-        -ms-flex-flow: row nowrap;
-            flex-flow: row nowrap;
+    -ms-flex-flow: row nowrap;
+    flex-flow: row nowrap;
     -webkit-box-pack: start;
     -webkit-justify-content: flex-start;
-        -ms-flex-pack: start;
-            justify-content: flex-start;
+    -ms-flex-pack: start;
+    justify-content: flex-start;
   }
+
   .navbar-expand-md .navbar-nav {
     -webkit-box-orient: horizontal;
     -webkit-box-direction: normal;
     -webkit-flex-direction: row;
-        -ms-flex-direction: row;
-            flex-direction: row;
+    -ms-flex-direction: row;
+    flex-direction: row;
   }
+
   .navbar-expand-md .navbar-nav .dropdown-menu {
     position: absolute;
   }
+
   .navbar-expand-md .navbar-nav .nav-link {
     padding-right: 1rem;
     padding-left: 1rem;
   }
-  .navbar-expand-md > .container2{
+
+  .navbar-expand-md>.container2 {
     -webkit-flex-wrap: nowrap;
-        -ms-flex-wrap: nowrap;
-            flex-wrap: nowrap;
+    -ms-flex-wrap: nowrap;
+    flex-wrap: nowrap;
   }
+
   .navbar-expand-md .navbar-collapse {
     display: -webkit-box !important;
     display: -webkit-flex !important;
     display: -ms-flexbox !important;
     display: flex !important;
     -webkit-flex-basis: auto;
-        -ms-flex-preferred-size: auto;
-            flex-basis: auto;
+    -ms-flex-preferred-size: auto;
+    flex-basis: auto;
   }
+
   .navbar-expand-md .navbar-toggler {
     display: none;
   }
@@ -391,7 +418,8 @@ a:not([href]):not([tabindex]):focus {
   color: #fff;
 }
 
-.navbar-dark .navbar-brand:hover, .navbar-dark .navbar-brand:focus {
+.navbar-dark .navbar-brand:hover,
+.navbar-dark .navbar-brand:focus {
   color: #fff;
 }
 
@@ -399,7 +427,8 @@ a:not([href]):not([tabindex]):focus {
   color: rgba(255, 255, 255, 0.5);
 }
 
-.navbar-dark .navbar-nav .nav-link:hover, .navbar-dark .navbar-nav .nav-link:focus {
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus {
   color: rgba(255, 255, 255, 0.75);
 }
 
@@ -407,8 +436,8 @@ a:not([href]):not([tabindex]):focus {
   color: rgba(255, 255, 255, 0.25);
 }
 
-.navbar-dark .navbar-nav .show > .nav-link,
-.navbar-dark .navbar-nav .active > .nav-link,
+.navbar-dark .navbar-nav .show>.nav-link,
+.navbar-dark .navbar-nav .active>.nav-link,
 .navbar-dark .navbar-nav .nav-link.show,
 .navbar-dark .navbar-nav .nav-link.active {
   color: #fff;
@@ -431,69 +460,83 @@ a:not([href]):not([tabindex]):focus {
   color: #fff;
 }
 
-.navbar-dark .navbar-text a:hover, .navbar-dark .navbar-text a:focus {
+.navbar-dark .navbar-text a:hover,
+.navbar-dark .navbar-text a:focus {
   color: #fff;
 }
 
 
-.ml-auto{
+.ml-auto {
   margin-left: auto !important;
 }
 
-.ml-md-4{
+.ml-md-4 {
   margin-left: 1.5rem !important;
 }
 
 /* Page Navbar*/
 .page-navbar {
   min-height: 90px;
-  background-color: rgba(52, 58, 64, 1); /* 背景顏色 */
-  background: linear-gradient(45deg,rgba(52, 58, 64, 1),rgba(80, 89, 97, 1));
+  background-color: rgba(52, 58, 64, 1);
+  /* 背景顏色 */
+  background: linear-gradient(45deg, rgba(52, 58, 64, 1), rgba(80, 89, 97, 1));
   -webkit-transition: all 0.3s;
   transition: all 0.3s;
 }
 
-.page-navbar .navbar-brand { /* 左邊的字的font */
+.page-navbar .navbar-brand {
+  /* 左邊的字的font */
   font-size: 30px;
   -webkit-transition: all 0.3s;
   transition: all 0.3s;
 }
 
 .page-navbar .nav-item .nav-link {
-  color: #dee2e6; /* 右邊的字的顏色 */
+  color: #dee2e6;
+  /* 右邊的字的顏色 */
   font-weight: 0;
 }
 
 .text-primary {
-  color: #ff9a44 ; /* 左邊的字的顏色(前半) */
+  color: #ff9a44;
+  /* 左邊的字的顏色(前半) */
 }
 
 .text-light {
-  color: #f8f9fa !important; /* 左邊的字的顏色(後半) */
+  color: #f8f9fa !important;
+  /* 左邊的字的顏色(後半) */
 }
 
 /* footer */
 #gtco-footer {
-  background: #262626; /* footer 背景顏色 */
-  padding: 2em 0 0 0 !important; /* 字跟上緣的距離？*/
-  width: 100%; /* 左右撐開幾倍的螢幕 */
+  background: #262626;
+  /* footer 背景顏色 */
+  padding: 2em 0 0 0 !important;
+  /* 字跟上緣的距離？*/
+  width: 100%;
+  /* 左右撐開幾倍的螢幕 */
 }
 
 #gtco-footer .gtco-footer-paragraph h3 {
-  color: #fff; /* 左邊大字的顏色 */
-  margin-bottom: 5px; /* 左邊大字跟小字的距離 */
+  color: #fff;
+  /* 左邊大字的顏色 */
+  margin-bottom: 5px;
+  /* 左邊大字跟小字的距離 */
 }
 
 #gtco-footer .gtco-footer-link {
-  padding-left: 30px; /* 左邊字和右邊字的距離(把右邊往右推) */
+  padding-left: 30px;
+  /* 左邊字和右邊字的距離(把右邊往右推) */
 }
 
 #gtco-footer .gtco-copyright {
-  background: #1a1a1a; /* 最下面那排的背景顏色 */
+  background: #1a1a1a;
+  /* 最下面那排的背景顏色 */
 
   float: left;
   width: 100%;
 }
+
 #gtco-footer .gtco-copyright p:last-child {
   margin-bottom: 0;
 }
@@ -503,14 +546,17 @@ a:not([href]):not([tabindex]):focus {
   clear: both;
   position: relative;
 }
+
 @media screen and (max-width: 768px) {
   .gtco-section {
     padding: 2em 0;
   }
 }
+
 .gtco-section.border-bottom {
   border-bottom: 1px solid #d9d9d9;
 }
+
 .gtco-section.gtco-gray {
   background: #f6f6f6;
 }
@@ -522,17 +568,22 @@ a:not([href]):not([tabindex]):focus {
   padding-left: 5px;
   padding-right: 0px;
 }
+
 .row {
   margin-left: -5px;
   margin-right: -5px;
 }
-.row:before, .row:after {
+
+.row:before,
+.row:after {
   content: " ";
   display: table;
 }
+
 .row:after {
   clear: both;
 }
+
 .row-pb-md {
   padding-bottom: 2em !important;
 }
@@ -542,20 +593,26 @@ a:not([href]):not([tabindex]):focus {
     text-align: center !important;
   }
 }
+
 #gtco-footer .gtco-footer-link .gtco-list-link {
   padding: 0;
   margin: 0;
 }
+
 #gtco-footer .gtco-footer-link .gtco-list-link li {
   padding: 0;
   margin: 0;
   list-style: none;
 }
+
 #gtco-footer .gtco-footer-link .gtco-list-link li a {
   text-transform: uppercase;
-  font-size: 20px !important; /* footer 中間那排字的font*/
+  font-size: 20px !important;
+  /* footer 中間那排字的font*/
 }
-.col-md-4, .col-md-6{
+
+.col-md-4,
+.col-md-6 {
   position: relative;
   min-height: 1px;
   padding-left: 20px;
@@ -578,19 +635,22 @@ a:not([href]):not([tabindex]):focus {
 .text-right {
   text-align: right;
 }
-.header1{
+
+.header1 {
   display: block;
   font-size: 60px;
   text-align: center;
   text-shadow: black 0.1em 0.1em 0.2em;
 }
-.header2{
+
+.header2 {
   line-height: 30px;
   font-size: 30px;
   margin: 10px;
   margin-top: 30px;
 }
-.header3{
+
+.header3 {
   line-height: 40px;
   margin: 10px;
   font-size: 40px;

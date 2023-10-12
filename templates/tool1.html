@@ -11,6 +11,18 @@
     }
   </style>
   <style>
+    textarea {
+      display: block;
+      width: 100%;
+      overflow: visible;
+      resize: both;
+      min-height: 100px;
+      line-height: 20px;
+      font-size: 20px;
+      color: red;
+      line-height: 1.25;
+    }
+
     /* Style the textarea */
     #notification-textarea {
       width: 80%;
@@ -22,7 +34,12 @@
       border: none;
       padding: 5px;
       line-height: 1.5;
+      float: right;
       /* Increase the line spacing (adjust the value as needed) */
+    }
+
+    p strong {
+      display: block;
     }
   </style>
 </head>
@@ -82,12 +99,16 @@
             <input type=file id=file_col name=file_col value="dwg" multiple>
         </div>
         <div class="item">
-          <labe>柱配筋圖文字圖層名稱</label>
-            <input type="text" id="text_col_layer" name="text_col_layer" value="S-TEXT" required>
+          <!-- <labe>柱配筋圖文字圖層名稱</label> -->
+          <!-- <input type="text" id="text_col_layer" name="text_col_layer" value="S-TEXT" required> -->
+          <p><strong>柱配筋圖文字圖層名稱</strong><textarea type="text" id="text_col_layer" name="text_col_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXT" required>S-TEXT</textarea></p>
         </div>
         <div class="item">
-          <label>柱配筋圖表格線圖層名稱</label>
-          <input type="text" id="line_layer" name="line_layer" value="S-STUD" required>
+          <!-- <label>柱配筋圖表格線圖層名稱</label>
+          <input type="text" id="line_layer" name="line_layer" value="S-STUD" required> -->
+          <p><strong>柱配筋圖表格線圖層名稱</strong><textarea type="text" id="line_layer" name="line_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-STUD" required>S-STUD</textarea></p>
         </div>
       </div>
 
@@ -100,8 +121,10 @@
           <input type=file id=file1 name=file1 value="dwg" multiple>
         </div>
         <div class="item">
-          <label>梁配筋圖文字圖層名稱</label>
-          <input type="text" id="text_layer" name="text_layer" value="S-RC" required>
+          <!-- <label>梁配筋圖文字圖層名稱</label> -->
+          <!-- <input type="text" id="text_layer" name="text_layer" value="S-RC" required> -->
+          <p><strong>梁配筋圖文字圖層名稱</strong><textarea type="text" id="text_layer" name="text_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required>S-RC</textarea></p>
         </div>
       </div>
 
@@ -114,12 +137,17 @@
           <input type=file id=file2 name=file2 value="dwg" multiple>
         </div>
         <div class="item">
-          <label>結構平面圖圖框圖層名稱</label>
-          <input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required>
+          <!-- <label>結構平面圖圖框圖層名稱</label> -->
+          <!-- <input type="text" id="block_layer" name="block_layer" value="DEFPOINTS" required> -->
+          <p><strong>結構平面圖圖框圖層名稱</strong><textarea type="text" id="block_layer" name="block_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="DEFPOINTS&#10;DwFm&#10;0"
+              required>DEFPOINTS&#10;DwFm&#10;0</textarea></p>
         </div>
         <div class="item">
-          <labe>結構平面圖樓層字串圖層名稱</label>
-            <input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required>
+          <!-- <labe>結構平面圖樓層字串圖層名稱</label> -->
+          <!-- <input type="text" id="floor_layer" name="floor_layer" value="S-TITLE" required> -->
+          <p><strong>結構平面圖樓層字串圖層名稱</strong><textarea type="text" id="floor_layer" name="floor_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TITLE" required>S-TITLE</textarea></p>
         </div>
       </div>
 
@@ -129,37 +157,58 @@
 
       <div id='mline' style='display: block;'>
         <div class="item">
-          <label>結構平面圖大梁複線圖層名稱</label>
-          <input type="text" id="big_beam_layer" name="big_beam_layer" value="S-RCBMG" required>
+          <!-- <label>結構平面圖大梁複線圖層名稱</label> -->
+          <!-- <input type="text" id="big_beam_layer" name="big_beam_layer" value="S-RCBMG" required> -->
+          <p><strong>結構平面圖大梁複線圖層名稱</strong><textarea type="text" id="big_beam_layer" name="big_beam_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RCBMG" required>S-RCBMG</textarea></p>
         </div>
         <div class="item">
-          <label>結構平面圖小梁複線圖層名稱</label>
-          <input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-RCBMB" required>
+          <!-- <label>結構平面圖小梁複線圖層名稱</label> -->
+          <!-- <input type="text" id="sml_beam_layer" name="sml_beam_layer" value="S-RCBMB" required> -->
+          <p><strong>結構平面圖小梁複線圖層名稱</strong><textarea type="text" id="sml_beam_layer" name="sml_beam_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RCBMB" required>S-RCBMB</textarea></p>
         </div>
       </div>
 
       <div id='beam3' style='display: block;'>
         <div class="item">
-          <label>結構平面圖大梁字串圖層名稱</label>
-          <input type="text" id="big_beam_text_layer" name="big_beam_text_layer" value="S-TEXTG" required>
+          <!-- <label>結構平面圖大梁字串圖層名稱</label> -->
+          <!-- <input type="text" id="big_beam_text_layer" name="big_beam_text_layer" value="S-TEXTG" required> -->
+          <p><strong>結構平面圖大梁字串圖層名稱</strong><textarea type="text" id="big_beam_text_layer" name="big_beam_text_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXTG" required>S-TEXTG</textarea></p>
         </div>
         <div class="item">
-          <label>結構平面圖小梁字串圖層名稱</label>
-          <input type="text" id="sml_beam_text_layer" name="sml_beam_text_layer" value="S-TEXTB" required>
+          <!-- <label>結構平面圖小梁字串圖層名稱</label> -->
+          <!-- <input type="text" id="sml_beam_text_layer" name="sml_beam_text_layer" value="S-TEXTB" required> -->
+          <p><strong>梁配筋圖文字圖層名稱</strong><textarea type="text" id="sml_beam_text_layer" name="sml_beam_text_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXTB" required>S-TEXTB</textarea></p>
         </div>
       </div>
 
       <div id='size' style='display: block;'>
         <div class="item">
-          <label>結構平面圖顯示梁尺寸表格文字圖層名稱</label>
-          <input type="text" id="size_layer" name="size_layer" value="S-TEXT" required>
+          <!-- <label>結構平面圖顯示梁尺寸表格文字圖層名稱</label> -->
+          <!-- <input type="text" id="size_layer" name="size_layer" value="S-TEXT" required> -->
+          <p><strong>結構平面圖顯示尺寸表格文字圖層名稱</strong><textarea type="text" id="size_layer" name="size_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXT" required>S-TEXT</textarea></p>
+        </div>
+      </div>
+
+      <div id='line' style='display: block;'>
+        <div class="item">
+          <!-- <label>結構平面圖顯示梁尺寸表格文字圖層名稱</label> -->
+          <!-- <input type="text" id="size_layer" name="size_layer" value="S-TEXT" required> -->
+          <p><strong>結構平面圖顯示尺寸表格線圖層名稱</strong><textarea type="text" id="table_line_layer" name="table_line_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TABLE" required>S-TABLE</textarea></p>
         </div>
       </div>
 
       <div id='col2' style='display: block;'>
         <div class="item">
-          <label>結構平面圖柱字串圖層名稱</label>
-          <input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required>
+          <!-- <label>結構平面圖柱字串圖層名稱</label>
+          <input type="text" id="col_layer" name="col_layer" value="S-TEXTC" required> -->
+          <p><strong>結構平面圖柱字串圖層名稱</strong><textarea type="text" id="col_layer" name="col_layer"
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXTC" required>S-TEXTC</textarea></p>
         </div>
       </div>
 
@@ -173,7 +222,7 @@
 
   <!-- <div id='loader' style='display: none;'> -->
 
-  <div id='loader' style='display: none;'>
+  <div id='loader' style='display:none;'>
     <div class="testbox">
       <form>
         <h3>流程說明</h3>
@@ -181,10 +230,11 @@
         </div>
         <h3>即將為您顯示進度...</h3>
         <textarea id="notification-textarea" readonly></textarea>
-        <img src='../static/loader.gif' style="float: left;width:15%;">
-        <div id="counter"
+        <!-- <img src='../static/loader.gif' style="float: left;width:15%;"> -->
+        <img src='../static/loading-loader.gif' style="float: left;width:15%;">
+        <!-- <div id="counter"
           style="float: right; text-align:left;height:300px;width:70%;overflow:auto;background-color:white;color:black;font-family:sans-serif;padding:10px;">
-        </div>
+        </div> -->
       </form>
     </div>
   </div>
@@ -195,10 +245,13 @@
   <blockquote>
     <ol>
       <li>
-        CAD版本須為2016以前之版本。
+        CAD版本須為2020以前之版本。
       </li>
       <li>
-        <p>每種物件的<font color="red">圖層要一致</font>。</p>
+        <p>每種物件的<font color="red">圖層要一致</font>。如有多種圖層，以分行方式(shift+Enter)填寫</p>
+      </li>
+      <li>
+        <p>可接受圖塊形式，但圖層需符合填入的圖層，<font color="red">圖塊內的物件的圖層如果為'0'則會以圖塊的圖層為主</font>，其餘則使用圖塊內物件本身之圖層</p>
       </li>
       <li>
         請確認黃色標題後面是否有括號，括號內部需要有<font color="red">英文的樓層名稱</font>。例如：在「地下五層結構平面圖」後面加上(B5F)，「五層至六層結構平面圖」後面加上(5F-6F)。

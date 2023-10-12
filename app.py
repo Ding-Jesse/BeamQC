@@ -121,7 +121,6 @@ def upload_file():
             txt_file = ''
             dwg_type = 'single'
             project_name = request.form['project_name']
-
             text_col_layer = request.form['text_col_layer']
             line_layer = request.form['line_layer']
             text_layer = request.form['text_layer']
@@ -133,23 +132,28 @@ def upload_file():
             sml_beam_text_layer = request.form['sml_beam_text_layer']
             size_layer = request.form['size_layer']
             col_layer = request.form['col_layer']
+            table_line_layer = request.form['table_line_layer']
+
             layer_config = {
-                'text_layer': text_layer,
-                'block_layer': block_layer,
-                'floor_layer': floor_layer,
-                'big_beam_layer': big_beam_layer,
-                'big_beam_text_layer': big_beam_text_layer,
-                'sml_beam_layer': sml_beam_layer,
-                'size_layer': size_layer,
-                'sml_beam_text_layer': sml_beam_text_layer
+                'text_layer': text_layer.split('\r\n'),
+                'block_layer': block_layer.split('\r\n'),
+                'floor_layer': floor_layer.split('\r\n'),
+                'big_beam_layer': big_beam_layer.split('\r\n'),
+                'big_beam_text_layer': big_beam_text_layer.split('\r\n'),
+                'sml_beam_layer': sml_beam_layer.split('\r\n'),
+                'size_layer': size_layer.split('\r\n'),
+                'sml_beam_text_layer': sml_beam_text_layer.split('\r\n')
             }
             col_layer_config = {
-                'text_layer': text_col_layer,
-                'line_layer': line_layer,
-                'block_layer': block_layer,
-                'floor_layer': floor_layer,
-                'col_layer': col_layer
+                'text_layer': text_col_layer.split('\r\n'),
+                'line_layer': line_layer.split('\r\n'),
+                'block_layer': block_layer.split('\r\n'),
+                'floor_layer': floor_layer.split('\r\n'),
+                'col_layer': col_layer.split('\r\n'),
+                'size_layer': size_layer.split('\r\n'),
+                'table_line_layer': table_line_layer.split('\r\n'),
             }
+
             xs_col = request.form.get('xs-col')
             xs_beam = request.form.get('xs-beam')
             sizing = request.form.get('sizing')

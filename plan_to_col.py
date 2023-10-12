@@ -1159,7 +1159,7 @@ def run_plan(plan_filename: str, layer_config: dict, result_filename: str, progr
 
 
 def run_col(col_filename: str, layer_config: dict, result_filename: str, progress_file: str):
-    if False:
+    if True:
         floor_col_set = read_col(col_filename=col_filename,
                                  layer_config=layer_config,
                                  result_filename=result_filename,
