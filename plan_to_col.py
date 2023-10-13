@@ -587,22 +587,22 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     progress('柱配筋圖讀取進度 3/10', progress_file)
 
     # Step 4. 解鎖所有圖層 -> 不然不能刪東西
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         layer_count = doc_col.Layers.count
+    flag = 0
+    while not flag and error_count <= 10:
+        try:
+            layer_count = doc_col.Layers.count
 
-    #         for x in range(layer_count):
-    #             layer = doc_col.Layers.Item(x)
-    #             layer.Lock = False
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         msp_col = doc_col.Modelspace
-    #         error(
-    #             f'read_col error in step 4: {e}, error_count = {error_count}.')
-    # progress('柱配筋圖讀取進度 4/10', progress_file)
+            for x in range(layer_count):
+                layer = doc_col.Layers.Item(x)
+                layer.Lock = False
+            flag = 1
+        except Exception as e:
+            error_count += 1
+            time.sleep(5)
+            msp_col = doc_col.Modelspace
+            error(
+                f'read_col error in step 4: {e}, error_count = {error_count}.')
+    progress('柱配筋圖讀取進度 4/10', progress_file)
 
     # Step 5. 遍歷所有物件 -> 炸圖塊
     # flag = 0

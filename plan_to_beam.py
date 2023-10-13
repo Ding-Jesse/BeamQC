@@ -1184,21 +1184,21 @@ def read_beam(beam_filename, text_layer, progress_file):
     progress('梁配筋圖讀取進度 3/9', progress_file)
 
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         layer_count = doc_beam.Layers.count
+    flag = 0
+    while not flag and error_count <= 10:
+        try:
+            layer_count = doc_beam.Layers.count
 
-    #         for x in range(layer_count):
-    #             layer = doc_beam.Layers.Item(x)
-    #             layer.Lock = False
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_beam error in step 4: {e}, error_count = {error_count}.')
-    # progress('梁配筋圖讀取進度 4/9', progress_file)
+            for x in range(layer_count):
+                layer = doc_beam.Layers.Item(x)
+                layer.Lock = False
+            flag = 1
+        except Exception as e:
+            error_count += 1
+            time.sleep(5)
+            error(
+                f'read_beam error in step 4: {e}, error_count = {error_count}.')
+    progress('梁配筋圖讀取進度 4/9', progress_file)
 
     # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
     # flag = 0
@@ -1258,9 +1258,9 @@ def read_beam(beam_filename, text_layer, progress_file):
     floor_to_beam_set = set()
     flag = 0
     count = 0
-    used_layer_list = []
-    for key, layer_name in layer_config.items():
-        used_layer_list += layer_name
+    used_layer_list = [text_layer]
+    # for key, layer_name in layer_config.items():
+    #     used_layer_list += layer_name
     total = msp_beam.Count
     progress(
         f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
