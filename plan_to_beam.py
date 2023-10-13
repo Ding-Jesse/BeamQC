@@ -368,15 +368,24 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
     progress(
         f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
     for msp_object in msp_plan:
-        if msp_object.Layer not in used_layer_list:
-            continue
-        # print(f'{msp_object.Layer}:{msp_object.EntityName}')
-        object_list = [msp_object]
-        if msp_object.EntityName == "AcDbBlockReference":
-            if msp_object.GetAttributes():
-                object_list = list(msp_object.GetAttributes())
-            else:
-                object_list = list(msp_object.Explode())
+        object_list = []
+        error_count = 0
+        while error_count <= 3 and not object_list:
+            try:
+                if msp_object.Layer not in used_layer_list:
+                    break
+                # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+                object_list = [msp_object]
+                if msp_object.EntityName == "AcDbBlockReference":
+                    if msp_object.GetAttributes():
+                        object_list = list(msp_object.GetAttributes())
+                    else:
+                        object_list = list(msp_object.Explode())
+            except Exception as ex:
+                error_count += 1
+                time.sleep(2)
+                error(
+                    f'read_plan error in step 7-1: {ex}, error_count = {error_count}.')
 
         while error_count <= 3 and object_list:
             count += 1
@@ -1264,16 +1273,26 @@ def read_beam(beam_filename, text_layer, progress_file):
     total = msp_beam.Count
     progress(
         f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+
     for msp_object in msp_beam:
-        if msp_object.Layer not in used_layer_list:
-            continue
-        # print(f'{msp_object.Layer}:{msp_object.EntityName}')
-        object_list = [msp_object]
-        if msp_object.EntityName == "AcDbBlockReference":
-            if msp_object.GetAttributes():
-                object_list = list(msp_object.GetAttributes())
-            else:
-                object_list = list(msp_object.Explode())
+        object_list = []
+        error_count = 0
+        while error_count <= 3 and not object_list:
+            try:
+                if msp_object.Layer not in used_layer_list:
+                    break
+                # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+                object_list = [msp_object]
+                if msp_object.EntityName == "AcDbBlockReference":
+                    if msp_object.GetAttributes():
+                        object_list = list(msp_object.GetAttributes())
+                    else:
+                        object_list = list(msp_object.Explode())
+            except Exception as ex:
+                error_count += 1
+                time.sleep(2)
+                error(
+                    f'read_plan error in step 7-1: {ex}, error_count = {error_count}.')
         while error_count <= 3 and object_list:
             count += 1
             if count % 1000 == 0 or count == total:
