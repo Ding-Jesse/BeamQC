@@ -370,6 +370,9 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
     for msp_object in msp_plan:
         object_list = []
         error_count = 0
+        count += 1
+        if count % 1000 == 0 or count == total:
+            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
         while error_count <= 3 and not object_list:
             try:
                 if msp_object.Layer not in used_layer_list:
@@ -388,9 +391,6 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                     f'read_plan error in step 7-1: {ex}, error_count = {error_count}.')
 
         while error_count <= 3 and object_list:
-            count += 1
-            if count % 1000 == 0 or count == total:
-                progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
             object = object_list.pop()
             try:
                 if object.Layer == '0':
@@ -1267,7 +1267,7 @@ def read_beam(beam_filename, text_layer, progress_file):
     floor_to_beam_set = set()
     flag = 0
     count = 0
-    used_layer_list = [text_layer]
+    used_layer_list = text_layer
     # for key, layer_name in layer_config.items():
     #     used_layer_list += layer_name
     total = msp_beam.Count
@@ -1277,6 +1277,9 @@ def read_beam(beam_filename, text_layer, progress_file):
     for msp_object in msp_beam:
         object_list = []
         error_count = 0
+        count += 1
+        if count % 1000 == 0 or count == total:
+            progress(f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
         while error_count <= 3 and not object_list:
             try:
                 if msp_object.Layer not in used_layer_list:
@@ -1292,11 +1295,9 @@ def read_beam(beam_filename, text_layer, progress_file):
                 error_count += 1
                 time.sleep(2)
                 error(
-                    f'read_plan error in step 7-1: {ex}, error_count = {error_count}.')
+                    f'read_beam error in step 7-1: {ex}, error_count = {error_count}.')
         while error_count <= 3 and object_list:
-            count += 1
-            if count % 1000 == 0 or count == total:
-                progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+
             object = object_list.pop()
             try:
                 if object.Layer == '0':
@@ -1308,8 +1309,14 @@ def read_beam(beam_filename, text_layer, progress_file):
                     pre_beam = (object.TextString.split(' ')[
                                 1]).split('(')[0]  # 把括號以後的東西拔掉
                     if pre_beam == '':
-                        print(object.TextString)
-                        continue
+                        if re.findall(r'\s{2,}', object.TextString):
+                            pre_beam = re.sub(
+                                r'\s{2,}', ' ', object.TextString)
+                            pre_beam = (pre_beam.split(' ')[
+                                1]).split('(')[0]  # 把括號以後的東西拔掉
+                        if pre_beam == '':
+                            print(object.TextString)
+                            continue
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -2127,25 +2134,25 @@ if __name__ == '__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
     beam_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1005\XS-BEAM(尚無資料).dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1011\2023-10-13-11-11中德三重-XS-BEAM.dwg']
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
         r'D:\Desktop\BeamQC\TEST\2023-1011\XS-PLAN.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
-    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\XS-BEAM_new.dwg"
+    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-XS-BEAM_new.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\XS_PLAN_4F_new.dwg"
+    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-XS_PLAN_4F_new.dwg"
     # sys.argv[5] # 大梁結果
-    big_file = r"D:\Desktop\BeamQC\TEST\2023-1011\big.txt"
+    big_file = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-big.txt"
     # sys.argv[6] # 小梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1011\sml.txt"
+    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-sml.txt"
     # sys.argv[6] # 地梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1011\fb.txt"
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-fb.txt"
     # 在beam裡面自訂圖層
     text_layer = ['S-RC']  # sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = ['0', 'DwFm']  # sys.argv[8] # 框框的圖層
+    block_layer = ['0', 'DwFm', 'DEFPOINTS']  # sys.argv[8] # 框框的圖層
     floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
     size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
     # beam_layer = ['S-RCBMG', 'S-RCBMG(FB)', 'S-RCBMB', 'S-RCBMB(FB)']  # 大樑複線圖層

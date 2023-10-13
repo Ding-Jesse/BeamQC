@@ -164,15 +164,27 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
         f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
     count = 0
     for msp_object in msp_plan:
-        if msp_object.Layer not in used_layer_list:
-            continue
-        object_list = [msp_object]
-        if msp_object.EntityName == "AcDbBlockReference":
-            if msp_object.GetAttributes():
-                object_list = list(msp_object.GetAttributes())
-            else:
-                object_list = list(msp_object.Explode())
+        object_list = []
         error_count = 0
+        count += 1
+        if count % 1000 == 0 or count == total:
+            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+        while error_count <= 3 and not object_list:
+            try:
+                if msp_object.Layer not in used_layer_list:
+                    break
+                # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+                object_list = [msp_object]
+                if msp_object.EntityName == "AcDbBlockReference":
+                    if msp_object.GetAttributes():
+                        object_list = list(msp_object.GetAttributes())
+                    else:
+                        object_list = list(msp_object.Explode())
+            except Exception as ex:
+                error_count += 1
+                time.sleep(2)
+                error(
+                    f'read_plan error in step 7-1: {ex}, error_count = {error_count}.')
 
         while error_count <= 3 and object_list:
             count += 1
@@ -255,13 +267,10 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                         object.GetBoundingBox()[1][1], 2))
                     table_line_list.append((coor1, coor2))
                 flag = 1
-            except pythoncom.com_error as ex:
+            except Exception as ex:
                 object_list.append(object)
                 error_count += 1
                 time.sleep(5)
-                error(
-                    f'read_plan error in step 7: {ex}, error_count = {error_count}.')
-            except Exception as ex:
                 error(
                     f'read_plan error in step 7: {ex}, error_count = {error_count}.')
     progress('平面圖讀取進度 7/11', progress_file)
@@ -660,16 +669,27 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     for key, layer_name in layer_config.items():
         used_layer_list += layer_name
     for msp_object in msp_col:
-        if msp_object.Layer not in used_layer_list:
-            continue
+        object_list = []
         error_count = 0
-
-        object_list = [msp_object]
-        if msp_object.EntityName == "AcDbBlockReference":
-            if msp_object.GetAttributes():
-                object_list = list(msp_object.GetAttributes())
-            else:
-                object_list = list(msp_object.Explode())
+        count += 1
+        if count % 1000 == 0 or count == total:
+            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+        while error_count <= 3 and not object_list:
+            try:
+                if msp_object.Layer not in used_layer_list:
+                    break
+                # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+                object_list = [msp_object]
+                if msp_object.EntityName == "AcDbBlockReference":
+                    if msp_object.GetAttributes():
+                        object_list = list(msp_object.GetAttributes())
+                    else:
+                        object_list = list(msp_object.Explode())
+            except Exception as ex:
+                error_count += 1
+                time.sleep(2)
+                error(
+                    f'read_col error in step 7-1: {ex}, error_count = {error_count}.')
         while error_count <= 3 and object_list:
             count += 1
             if count % 1000 == 0:
