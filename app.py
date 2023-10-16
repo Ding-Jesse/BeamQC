@@ -142,7 +142,8 @@ def upload_file():
                 'big_beam_text_layer': big_beam_text_layer.split('\r\n'),
                 'sml_beam_layer': sml_beam_layer.split('\r\n'),
                 'size_layer': size_layer.split('\r\n'),
-                'sml_beam_text_layer': sml_beam_text_layer.split('\r\n')
+                'sml_beam_text_layer': sml_beam_text_layer.split('\r\n'),
+                'line_layer': line_layer.split('\r\n'),
             }
             col_layer_config = {
                 'text_layer': text_col_layer.split('\r\n'),

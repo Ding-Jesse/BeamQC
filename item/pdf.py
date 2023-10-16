@@ -10,6 +10,7 @@ from matplotlib.axes import Axes
 # plt.rcParams['axes.unicode_minus'] = False
 from fpdf import FPDF
 from fpdf.fonts import FontFace
+plt.rcParams['font.sans-serif'] = ['SimHei']
 
 
 class PDF(FPDF):
@@ -31,7 +32,7 @@ class PDF(FPDF):
     def footer(self):
         # Page numbers in the footer
         self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
+        self.set_font('helvetica', 'I', 8)
         self.set_text_color(128)
         self.cell(0, 10, 'Page ' + str(self.page_no()), 0, 0, 'C')
         # self.cell(0, 10, 'Page ' + str(self.page_no()), new_x=self.XPos.RIGHT, new_y=self.YPos.TOP)
@@ -170,7 +171,15 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
             if png_file:
                 pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
         # pdf.image(top_png_file,h=pdf.eph - 35,keep_aspect_ratio=True)
-        pdf.add_page()
+
+    if 'header_list' in kwargs and 'ratio_dict' in kwargs:
+        pdf.add_page(orientation="landscape")
+        png_file = plot_rebar_stack_percentage_bar(
+            dataset_dict=rebar_df.T.to_dict())
+        pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+        png_file = plot_rebar_pie_chart(dataset_dict=rebar_df.T.to_dict())
+        pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+    pdf.add_page()
     pdf.add_table(TABLE_DATA=trans_df_to_table(ng_sum_df, 'Scan Item'),
                   table_title=f"{item_name}檢核表", font="標楷體", col_widths=[4, 1, 1])
     pdf.add_dashed_line()
@@ -259,7 +268,7 @@ def survey(results: dict[str, dict], category_names: list):
         for i, (colname, color) in enumerate(zip(category_names, category_colors)):
             widths = data[:, i]
             starts = data_cum[:, i] - widths
-            colname = colname.replace("鋼筋比", "ratio")
+            # colname = colname.replace("鋼筋比", "ratio")
             ax[y].barh(labels, widths, left=starts, height=0.5,
                        label=colname, color=color)
 
@@ -289,6 +298,108 @@ def survey(results: dict[str, dict], category_names: list):
     fig2.savefig(file_path_bot, bbox_inches='tight')
     # plt.savefig(file_path, bbox_inches='tight')
     return file_path_top, file_path_bot
+
+
+def plot_rebar_stack_percentage_bar(dataset_dict: dict[str, dict[str, float]]):
+    image_path = r'assets/rebar_stack_percentage_bar.png'
+
+    # Data
+    # dataset_dict = {
+    #     'PF': {'#3': 0.0, '#4': 1.0, '#5': 12.0},
+    #     'RF': {'#3': 1.0, '#4': 2.0, '#5': 12.0},
+    #     '2F': {'#3': 2.0, '#4': 3.0, '#5': 22.0},
+    #     '1F': {'#3': 3.0, '#4': 2.0, '#5': 24.0},
+    # }
+    # Transfer Data
+    categories = dataset_dict.keys()
+    dataset = list(dataset_dict.values())
+    rebar_dataset = {}
+    for data in dataset:
+        for key, item in data.items():
+            if key not in ['#6', '#7', '#8', '#10', '#11']:
+                continue
+            if key not in rebar_dataset:
+                rebar_dataset[key] = []
+            rebar_dataset[key].append(item)
+
+    # Calculate percentages for each category
+    total_values = [sum(x) if sum(
+        x) > 0 else 1 for x in zip(*rebar_dataset.values())]
+    percent_datasets = {key: [v / total * 100 for v, total in zip(
+        data, total_values)] for key, data in rebar_dataset.items()}
+
+    # Create an array of x values for each category
+    x = np.arange(len(categories))
+
+    # Create a figure
+    fig, ax = plt.subplots(figsize=(29.7, 21))
+    category_colors = cm.get_cmap('jet')(
+        np.linspace(0, 1, len(percent_datasets)))
+    # Create stacked bar charts for each dataset
+    for i, (key, data) in enumerate(percent_datasets.items()):
+        ax.bar(x, data, label=key, bottom=np.sum(list(percent_datasets.values())[
+            :list(percent_datasets.keys()).index(key)], axis=0), color=category_colors[i])
+
+    # Set the x-axis labels
+    ax.set_xticks(x)
+    ax.set_xticklabels(categories)
+    ax.tick_params(axis='y', labelsize=30)
+    ax.tick_params(axis='x', labelsize=30)
+    ax.set_xlabel('樓層', fontsize=30)
+
+    # Set the y-axis label
+    ax.set_ylabel('百分比', fontsize=30)
+
+    # Add a legend
+    ax.legend(fontsize=30)
+
+    # Add a title
+    ax.set_title('號數樓層分布', fontsize=30)
+
+    fig.tight_layout()
+    fig.savefig(image_path, bbox_inches='tight')
+
+    return image_path
+
+
+def plot_rebar_pie_chart(dataset_dict: dict[str, dict[str, float]]):
+    image_path = r'assets/rebar_pie_chart.png'
+
+    # Data
+    # dataset_dict = {
+    #     'PF': {'#3': 0.0, '#4': 1.0, '#5': 12.0},
+    #     'RF': {'#3': 1.0, '#4': 2.0, '#5': 12.0},
+    #     '2F': {'#3': 2.0, '#4': 3.0, '#5': 22.0},
+    #     '1F': {'#3': 3.0, '#4': 2.0, '#5': 24.0},
+    # }
+    # Transfer Data
+    categories = dataset_dict.keys()
+    dataset = list(dataset_dict.values())
+    rebar_dataset = {}
+    for data in dataset:
+        for key, item in data.items():
+            if key == 'total':
+                continue
+            if key not in rebar_dataset:
+                rebar_dataset[key] = []
+            rebar_dataset[key].append(item)
+
+    # Calculate the sum of values across categories for each dataset
+    sum_values = {key: sum(data)
+                  for key, data in rebar_dataset.items() if sum(data) > 0}
+    # Create fig and axes
+    fig, ax = plt.subplots(1, 1, figsize=(29.7, 21))
+
+    ax.pie(sum_values.values(), labels=sum_values.keys(),
+           autopct='%1.11f%%', startangle=90, textprops={'fontsize': 30})
+    # ax.title('Sum of Values Across Categories')
+    ax.axis('equal')
+    ax.set_title('號數分布', pad=30)
+    ax.legend(fontsize=30)
+
+    fig.tight_layout()
+    fig.savefig(image_path, bbox_inches='tight')
+    return image_path
 
 
 def column_survey(results: dict[str, dict], category_names: list):
@@ -331,7 +442,7 @@ def column_survey(results: dict[str, dict], category_names: list):
     for i, (colname, color) in enumerate(zip(category_names, category_colors)):
         widths = data[:, i]
         starts = data_cum[:, i] - widths
-        colname = colname.replace("鋼筋比", "ratio")
+        # colname = colname.replace("鋼筋比", "ratio")
         ax.barh(labels, widths, left=starts, height=0.5,
                 label=colname, color=color)
     fig.tight_layout()

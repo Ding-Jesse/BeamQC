@@ -115,10 +115,12 @@ class Beam():
     beam_type: BeamType
     ng_message: list[str]
     protect_layer: int
+    plan_count: int
     # coor = Point
     # bounding_box = (Point,Point)
 
     def __init__(self, serial, x, y):
+        self.plan_count = 1
         self.beam_type = BeamType.Other
         self.coor = Point()
         self.bounding_box = (Point(), Point())

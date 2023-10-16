@@ -21,6 +21,7 @@ from collections import Counter
 from item.rebar import isRebarSize, readRebarExcel
 from item.pdf import create_scan_pdf
 error_file = './result/error_log.txt'  # error_log.txt的路徑
+one_side = False
 
 
 def vtFloat(l):  # 要把點座標組成的list轉成autocad看得懂的樣子？
@@ -365,7 +366,7 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
     #         new_coor_to_arrow_dic.update({rebar_coor1:(rebar_coor2,text_value,text_postion)})
     #         arrow_dict.pop(key)
     # return new_coor_to_arrow_dic,no_arrow_line_list
-
+    coor_to_rebar_list.sort()
     for i, rebar in enumerate(coor_to_rebar_list):
 
         head_coor = rebar[0]
@@ -393,8 +394,22 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                 rebar_coor2 = value
                 # 下層筋
                 if key[1] > value[1]:
-                    dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
-                        dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
+                    dim_match_line = True
+                    dim_list = [dim for dim in coor_to_dim_list if (
+                        dim[2][0][0] == head_coor[0]) and (dim[2][1][0] == tail_coor[0])]
+                    if not dim_list:
+                        # 處理只有單邊有標註線之梁配筋
+                        if one_side:
+                            dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
+                                dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
+                        else:
+                            dim_match_line = False
+                            dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
+                                dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
+                    # dim_list = [dim for dim in coor_to_dim_list if ((abs(dim[0][1] - key[1]) < 100) and (
+                    #     dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0) or ((dim[0][1] > key[1]) and (
+                    #         dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0)]
+
                 # 上層筋
                 else:
                     dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] > key[1]) and (
@@ -404,7 +419,7 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                         dim[0][1] - key[1]))
                     text_postion, text_value, (line_1_point,
                                                line_2_point) = dim
-                    if abs(text_postion[1] - key[1]) < 150:
+                    if abs(text_postion[1] - key[1]) < 200 or (dim_match_line and abs(text_postion[1] - key[1]) < 500):
                         rebar_coor1 = (
                             (line_1_point[0] + line_2_point[0])/2, head_coor[1])
                         rebar_coor2 = (value[0], value[1])
@@ -1059,8 +1074,8 @@ def combine_beam_rebar(coor_to_arrow_dic: dict, coor_to_rebar_list_straight: lis
         else:
             nearest_beam = min(bounding_box, key=lambda b: _get_distance(
                 b.get_coor(), arrow_head))
-        # if nearest_beam.serial == 'B2-4':
-        #     print(f'b8-1:{arrow_head} {arrow_item}')
+        # if nearest_beam.serial == 'B2-3':
+        #     print(f'B6-4:{arrow_head} {arrow_item}')
         nearest_beam.add_rebar(start_pt=line_mid_coor, end_pt=line_mid_coor,
                                length=length, number=number,
                                size=size, text=f'{number}-{size}', arrow_coor=(arrow_head, text_coor), with_dim=with_dim)
@@ -1486,6 +1501,13 @@ def cal_beam_rebar(data={}, progress_file='', rebar_parameter_excel=''):
     return class_beam_list, cad_data
 
 
+def cal_beam_in_plan(beam_list: list[Beam], plan_floor_count: dict[str, Counter]):
+    for beam in beam_list:
+        if beam.floor in plan_floor_count:
+            if beam.serial in plan_floor_count[beam.floor]:
+                beam.plan_count = plan_floor_count[beam.floor][beam.serial]
+
+
 def create_report(class_beam_list: list[Beam],
                   output_folder: str,
                   project_name: str,
@@ -1530,23 +1552,23 @@ def create_report(class_beam_list: list[Beam],
                                          project_name=project_name,
                                          output_folder=output_folder)
         output_file_list.append(pdf_GB_file)
-    if fbeam_list:
-        pdf_FB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=fbeam_list,
-                                         bs_list=fb_bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.FB,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
-        output_file_list.append(pdf_FB_file)
-    if sbeam_list:
-        pdf_SB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=sbeam_list,
-                                         bs_list=sb_bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.SB,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
+    # if fbeam_list:
+    #     pdf_FB_file = create_scan_report(floor_list=floor_list,
+    #                                      beam_list=fbeam_list,
+    #                                      bs_list=fb_bs_list,
+    #                                      excel_filename=excel_filename,
+    #                                      beam_type=BeamType.FB,
+    #                                      project_name=project_name,
+    #                                      output_folder=output_folder)
+    #     output_file_list.append(pdf_FB_file)
+    # if sbeam_list:
+    #     pdf_SB_file = create_scan_report(floor_list=floor_list,
+    #                                      beam_list=sbeam_list,
+    #                                      bs_list=sb_bs_list,
+    #                                      excel_filename=excel_filename,
+    #                                      beam_type=BeamType.SB,
+    #                                      project_name=project_name,
+    #                                      output_folder=output_folder)
         output_file_list.append(pdf_SB_file)
     rebar_df, concrete_df, coupler_df, formwork_df = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
@@ -1706,7 +1728,7 @@ def seperate_beam(class_beam_list: list[Beam]):
 
 
 def add_beam_to_list(coor_to_beam_list: list, class_beam_list: list, floor_list: list):
-    floor_pattern = r'(\d+F)|(R\d+)|(PR)|(B\d+)|(MF)'
+    floor_pattern = r'(\d+F)|(R\d+)|(PR)|(B\d+)|(MF)|(RF)'
     for beam in coor_to_beam_list:
         try:
             b = Beam(beam[0], beam[1][0], beam[1][1])
@@ -2147,6 +2169,13 @@ def get_template(name: str):
             'rebar_data_leader_layer': ['AcDbPolyline'],
             'tie_text_layer': ['AcDbText']
         }
+    if name == '公司4':
+        return {
+            'rebar_layer': ['AcDbPolyline'],
+            'rebar_data_layer': ['AcDbMText', 'AcDbText'],
+            'rebar_data_leader_layer': ['AcDbLeader', 'AcDbPolyline'],
+            'tie_text_layer': ['AcDbText']
+        }
 
 
 def floor_parameter(beam_list: list[Beam], floor_parameter_xlsx: str):
@@ -2160,7 +2189,7 @@ def floor_parameter(beam_list: list[Beam], floor_parameter_xlsx: str):
         floor_list.append(temp_floor)
         temp_floor.set_beam_prop(parameter_df.loc[floor_name])
         temp_floor.add_beam(
-            [b for b in beam_list if b.floor == temp_floor.floor_name])
+            [b for b in beam_list if b.floor == temp_floor.floor_name or b.floor.replace('F', '') == temp_floor.floor_name.replace('F', '')])
     return floor_list
 # combine dim with text arrow
 
@@ -2183,9 +2212,15 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
             for beam in beam_list:
                 for rebar in beam.rebar_list:
                     try:
+                        temp_dim = [dim for dim in dim_list if round(rebar.start_pt.x, 2) ==
+                                    round(dim[2][0][0], 2) and round(rebar.end_pt.x, 2) == round(dim[2][1][0], 2)]
+                        if temp_dim:
+                            continue  # 如果dim match line的話則不修正
+
                         rebar_dim = [dim for dim in dim_list if ((rebar.start_pt.x - dim[0][0]) * (rebar.end_pt.x - dim[0][0]) <= 0
                                                                  and abs(dim[0][1] - rebar.arrow_coor[0][1]) < 150)]
                         # 下層筋
+
                         if rebar.arrow_coor[0][1] <= rebar.arrow_coor[1][1]:
                             rebar_dim = [dim for dim in rebar_dim if (
                                 dim[0][1] > rebar.arrow_coor[0][1])]
@@ -2237,11 +2272,12 @@ if __name__ == '__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-0814\Drawing2.dwg"
-    beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0617\FB.dwg",
-                      r"D:\Desktop\BeamQC\TEST\2023-0617\GB.dwg",
-                      r"D:\Desktop\BeamQC\TEST\2023-0617\GB2.dwg",
-                      r"D:\Desktop\BeamQC\TEST\2023-0617\SB.dwg"]
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2C結構B0_1120829.dwg"
+    beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2A結構FB_1120829.dwg",
+                      r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2B結構B0_1120821.dwg",
+                      r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2D結構SB_1120821.dwg",
+                      r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S3結構C0_1120829.dwg",
+                      r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2C結構B0_1120829.dwg"]
     # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-1.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-2.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0320\東仁\XS-BEAM(北基地)-B-3.dwg",
@@ -2254,10 +2290,10 @@ if __name__ == '__main__':
     rebar_file = './result/0107-rebar_wu2.txt'  # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt'  # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-0831'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-1016'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
     floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-15-floor.xlsx'
-    project_name = '0831-楠梓'
+    project_name = '1013-test'
     # 在beam裡面自訂圖層
     # layer_config = {
     #     'rebar_data_layer': ['S-LEADER'],  # 箭頭和鋼筋文字的塗層
@@ -2269,15 +2305,25 @@ if __name__ == '__main__':
     #     'rc_block_layer': ['S-RC'],  # 支承端圖層
     #     's_dim_layer': ['S-DIM']  # 標註線圖層
     # }
+    # layer_config = {
+    #     'rebar_data_layer': ['P1'],  # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer': ['P2'],  # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer': ['P1'],  # 箍筋文字圖層
+    #     'block_layer': ['0'],  # 框框的圖層
+    #     'beam_text_layer': ['P2'],  # 梁的字串圖層
+    #     'bounding_block_layer': ['S-ARCH'],
+    #     'rc_block_layer': ['P1'],  # 支承端圖層
+    #     's_dim_layer': ['P1']  # 標註線圖層
+    # }
     layer_config = {
-        'rebar_data_layer': ['P1'],  # 箭頭和鋼筋文字的塗層
-        'rebar_layer': ['P2'],  # 鋼筋和箍筋的線的塗層
-        'tie_text_layer': ['P1'],  # 箍筋文字圖層
-        'block_layer': ['0'],  # 框框的圖層
-        'beam_text_layer': ['P2'],  # 梁的字串圖層
-        'bounding_block_layer': ['S-ARCH'],
-        'rc_block_layer': ['P1'],  # 支承端圖層
-        's_dim_layer': ['P1']  # 標註線圖層
+        'rebar_data_layer': ['主筋文字', '主筋文字引線', '扭力筋文字', '扭力筋文字引線', '扭力筋文字引線 no use'],
+        'rebar_layer': ['主筋線', '剪力筋線', '扭力筋線'],
+        'tie_text_layer': ['剪力筋文字'],
+        'block_layer': ['_noprint'],
+        'beam_text_layer': ['梁跨名稱'],
+        'bounding_block_layer': [''],
+        'rc_block_layer': ['邊界線', '梁柱截斷記號', '邊界線-梁支撐內線', '邊界線-梁支撐外線'],
+        's_dim_layer': ['尺寸標註-字串']
     }
 
     # layer_config = {
@@ -2331,8 +2377,8 @@ if __name__ == '__main__':
     # Elements
     entity_type = {
         'rebar_layer': ['AcDbPolyline'],
-        'rebar_data_layer': ['AcDbMText'],
-        'rebar_data_leader_layer': ['AcDbLeader'],
+        'rebar_data_layer': ['AcDbMText', 'AcDbText'],
+        'rebar_data_leader_layer': ['AcDbLeader', 'AcDbPolyline'],
         'tie_text_layer': ['AcDbText']
     }
 
@@ -2350,12 +2396,12 @@ if __name__ == '__main__':
     #     'tie_text_layer':['AcDbMText']
     # }
 
-    entity_type = {
-        'rebar_layer': ['AcDbLine'],
-        'rebar_data_layer': ['AcDbText'],
-        'rebar_data_leader_layer': ['AcDbLine'],
-        'tie_text_layer': ['AcDbText']
-    }
+    # entity_type = {
+    #     'rebar_layer': ['AcDbLine'],
+    #     'rebar_data_layer': ['AcDbText'],
+    #     'rebar_data_leader_layer': ['AcDbLine'],
+    #     'tie_text_layer': ['AcDbText']
+    # }
 
     start = time.time()
     # msp_beam, doc_beam = read_beam_cad(
@@ -2364,15 +2410,15 @@ if __name__ == '__main__':
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-0814\temp.pkl')
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\test-all.pkl')
     # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
-    #                            temp_file='0617_Wuku.pkl',
+    #                            temp_file='1013_Wuku.pkl',
     #                            project_name=project_name,
     #                            output_folder=output_folder,
-    #                            template_name='公司2',
+    #                            template_name='公司4',
     #                            floor_parameter_xlsx=floor_parameter_xlsx)
-    # class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0714\台南隆興段-2023-07-14-10-25-temp-0.pkl'),
+    # class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-1013\test-all.pkl'),
     #                                            progress_file=progress_file,
     #                                            rebar_parameter_excel=floor_parameter_xlsx)
     # save_temp_file.save_pkl(class_beam_list,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-list.pkl')

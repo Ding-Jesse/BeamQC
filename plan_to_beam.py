@@ -16,6 +16,7 @@ from tabnanny import check
 from tkinter import HIDDEN
 from numpy import object_
 from openpyxl import load_workbook
+from collections import Counter
 
 
 weird_to_list = ['-', '~']
@@ -33,7 +34,7 @@ def turn_floor_to_float(floor):
     if floor == 'FB':  # FB 直接變-1000層
         floor = str(-1000)
 
-    if floor == 'PRF' or floor == 'PR':  # PRF 直接變2000層
+    if floor == 'PRF' or floor == 'PR' or floor == 'PF':  # PRF 直接變2000層
         floor = str(2000)
 
     if floor == 'RF':  # RF = R1F
@@ -496,7 +497,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
                 if object_layer in floor_layer and object.EntityName in text_object_type and '(' in object.TextString and object.InsertionPoint[1] >= 0:
                     floor = object.TextString
-                    floor = re.search('\(([^)]+)', floor).group(1)  # 取括號內的樓層數
+                    floor = re.search(r'\(([^)]+)', floor).group(1)  # 取括號內的樓層數
                     coor = (round(object.InsertionPoint[0], 2), round(
                         object.InsertionPoint[1], 2))  # 不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
                     no_chinese = False
@@ -2054,7 +2055,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
             data=plan_data, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         plan_data = save_temp_file.read_temp(
-            tmp_file=r'TEST\2023-1006\att_test_plan_set.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1011\中德三重_test_plan_set.pkl')
     set_plan, dic_plan, warning_list = sort_plan(plan_filename=plan_filename,
                                                  plan_new_filename=plan_new_filename,
                                                  plan_data=plan_data,
@@ -2081,14 +2082,14 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
 
 
 def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
-    if True:
+    if False:
         floor_to_beam_set = read_beam(
             beam_filename=beam_filename, text_layer=text_layer, progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,
                                 tmp_file=f'{os.path.splitext(beam_filename)[0]}_beam_set.pkl')
     else:
         floor_to_beam_set = save_temp_file.read_temp(
-            r'D:\Desktop\BeamQC\TEST\2023-1005\XS-BEAM(尚無資料)_beam_set.pkl')
+            r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-BEAM_beam_set.pkl')
     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file,
@@ -2134,20 +2135,20 @@ if __name__ == '__main__':
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
     #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
     beam_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1011\2023-10-13-11-11中德三重-XS-BEAM.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-BEAM.dwg']
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1011\XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1016\XS-PLAN.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
-    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-XS-BEAM_new.dwg"
+    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-XS-BEAM_new.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-XS_PLAN_4F_new.dwg"
+    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-XS_PLAN_new.dwg"
     # sys.argv[5] # 大梁結果
-    big_file = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-big.txt"
+    big_file = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-big.txt"
     # sys.argv[6] # 小梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-sml.txt"
+    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-sml.txt"
     # sys.argv[6] # 地梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1011\1013-fb.txt"
+    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-fb.txt"
     # 在beam裡面自訂圖層
     text_layer = ['S-RC']  # sys.argv[7]
 
@@ -2155,6 +2156,7 @@ if __name__ == '__main__':
     block_layer = ['0', 'DwFm', 'DEFPOINTS']  # sys.argv[8] # 框框的圖層
     floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
     size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
+    line_layer = ['S-TABLE']  # 梁表格圖層
     # beam_layer = ['S-RCBMG', 'S-RCBMG(FB)', 'S-RCBMB', 'S-RCBMB(FB)']  # 大樑複線圖層
     # beam_text_layer = ['S-TEXTG', 'S-TEXTB']  # 大樑文字圖層
     sml_beam_layer = ['S-RCBMB', 'S-RCBMB(FB)']  # 小梁複線圖層
@@ -2185,6 +2187,7 @@ if __name__ == '__main__':
         'big_beam_layer': big_beam_layer,
         'sml_beam_layer': sml_beam_layer,
         'size_layer': size_layer,
+        'line_layer': line_layer,
         # 'col_layer':col_layer
     }
     # 多檔案用','來連接，不用空格。Ex. 'file1,file2,file3'

@@ -18,8 +18,8 @@ from functools import cmp_to_key
 from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, mycmp, progress
 
 weird_to_list = ['-', '~']
-weird_comma_list = [',', '、', '¡']
-
+weird_comma_list = [',', '、', '¡', '、']
+special_char_pattern = r'[、|,]'
 # def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
 
 
@@ -691,9 +691,6 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
                 error(
                     f'read_col error in step 7-1: {ex}, error_count = {error_count}.')
         while error_count <= 3 and object_list:
-            count += 1
-            if count % 1000 == 0:
-                progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
             object = object_list.pop()
             try:
                 if object.Layer == '0':
@@ -844,7 +841,13 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
                 min_col_coor = (y[1], y[2])
                 min_col_diff = y[3] - coor[1][1]
         if min_floor != '' and min_col != '':
-            if '-' in min_col:
+            if re.findall(special_char_pattern, min_col):
+                cols = re.split(special_char_pattern, min_col)
+                for col in cols:
+                    set_col.add((min_floor, col, size))
+                    dic_col[(min_floor, col, size)] = (
+                        min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])
+            elif '-' in min_col:
                 try:
                     start = int((min_col.split('-')[0]).split('C')[1])
                     end = int((min_col.split('-')[1]).split('C')[1])
@@ -852,7 +855,7 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
                         set_col.add((min_floor, f'C{i}', size))
                         dic_col[(min_floor, f'C{i}', size)] = (
                             min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
-                except Exception as E:  # CW3-1 之類的不是區間
+                except Exception:  # CW3-1 之類的不是區間
                     set_col.add((min_floor, min_col, size))
                     dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1],
                                                            min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
@@ -1133,9 +1136,10 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
     try:
         rate = round(error_num / count * 100, 2)
         f.write(f'error rate = {rate} %\n')
-    except:
+    except Exception as ex:
         rate = 'unfinish'
-        error(f'write_col error in step 5, there are no col in col.txt?')
+        error(
+            f'write_col error in step 5, there are no col in col.txt? ex:{ex}')
 
     f.close()
     progress('柱配筋圖標註進度 5/5', progress_file)
@@ -1170,7 +1174,7 @@ def run_plan(plan_filename: str, layer_config: dict, result_filename: str, progr
             data=plan_col_set, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_to_col.pkl')
     else:
         plan_col_set = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1006\test_plan_to_col.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-PLAN_plan_to_col.pkl')
     set_plan, dic_plan = sort_plan(plan_data=plan_col_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file)
@@ -1188,7 +1192,7 @@ def run_col(col_filename: str, layer_config: dict, result_filename: str, progres
             data=floor_col_set, tmp_file=f'{os.path.splitext(col_filename)[0]}_col_set.pkl')
     else:
         floor_col_set = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1005\XS-COL(尚無資料)_col_set.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-COL_col_set.pkl')
     set_col, dic_col = sort_col(col_data=floor_col_set,
                                 result_filename=result_filename,
                                 progress_file=progress_file)
@@ -1204,12 +1208,12 @@ if __name__ == '__main__':
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
     col_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1005\XS-COL(尚無資料).dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-COL.dwg']
     # print(col_filename.split(','))
     # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1011\XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-PLAN.dwg']
     # sys.argv[3] # XS-COL_new的路徑
     col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1011\XS_new.dwg'
     # sys.argv[4] # XS-PLAN_new的路徑
