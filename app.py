@@ -425,7 +425,9 @@ def count_beam():
     result_log_content = {}
     try:
         beam_filename = ''
+        plan_filename = ''
         beam_filenames = []
+        uploaded_plans = request.files['file_plan']
         uploaded_xlsx = request.files['file_floor_xlsx']
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
@@ -463,6 +465,11 @@ def count_beam():
                 uploaded_xlsx, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
             xlsx_filename = input_xlsx_file
+        if uploaded_plans:
+            xlsx_ok, xlsx_new_file, input_plan_file = storefile(uploaded_plans, app.config['UPLOAD_FOLDER'],
+                                                                app.config['OUTPUT_FOLDER'],
+                                                                f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            plan_filename = input_plan_file
             # print(f'xlsx_filename:{xlsx_filename}')
         layer_config = {
             # 箭頭和鋼筋文字的塗層
@@ -477,6 +484,11 @@ def count_beam():
             'bounding_block_layer': request.form['bounding_block_layer'].split('\r\n'),
             'rc_block_layer': request.form['rc_block_layer'].split('\r\n'),
             's_dim_layer': request.form['beam_dim_layer'].split('\r\n')
+        }
+        plan_layer_config = {
+            'block_layer':  request.form['plan_block_layer'].split('\r\n'),
+            'floor_text_layer':  request.form['plan_floor_text_layer'].split('\r\n'),
+            'name_text_layer':  request.form['plan_serial_text_layer'].split('\r\n'),
         }
         result_log_content['upload_xlsx'] = uploaded_xlsx
         result_log_content['upload_beams'] = uploaded_beams
@@ -496,7 +508,9 @@ def count_beam():
                                                                            output_folder=app.config['OUTPUT_FOLDER'],
                                                                            template_name=template_name,
                                                                            floor_parameter_xlsx=xlsx_filename,
-                                                                           progress_file=progress_file)
+                                                                           progress_file=progress_file,
+                                                                           plan_filename=plan_filename,
+                                                                           plan_layer_config=plan_layer_config)
             # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
                 session['count_filenames'].extend(output_file_list)

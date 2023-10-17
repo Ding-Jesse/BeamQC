@@ -105,7 +105,7 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
                     object_layer = object.Layer
 
                 if object_layer in used_layer_list:
-                    print(object_layer)
+                    # print(object_layer)
                     if object_layer in block_layer and object.EntityName in block_object_type:
                         block_entity.append(
                             (object.GetBoundingBox()[0], object.GetBoundingBox()[1]))
@@ -176,6 +176,19 @@ def sort_name_text(data):
                     break
         if text not in sort_result:
             sort_result.update({text: Counter(name_text_list)})
+    return sort_result
+
+
+def sort_plan_count(plan_filename, progress_file, layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str]) -> dict[str, Counter]:
+    if True:
+        cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
+        save_temp_file.save_pkl(
+            data=cad_result, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
+    else:
+        cad_result = save_temp_file.read_temp(
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
+    result = sort_name_text(cad_result)
+    sort_result = sort_floor_text(data=result)
     return sort_result
 
 

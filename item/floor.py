@@ -102,22 +102,25 @@ class Floor:
 
     def summary_beam(self, beamtype=None):
         self.beam_rebar_count = defaultdict(lambda: 0)
+        plan_count = 0
         if beamtype:
             beam_list = [
                 beam for beam in self.beam_list if beam.beam_type == beamtype]
         else:
             beam_list = self.beam_list
         for b in beam_list:
+            plan_count += b.plan_count
             for size, count in b.rebar_count.items():
-                self.beam_rebar_count[size] += round(
-                    count/1000/1000, 2) * b.plan_count
+                self.beam_rebar_count[size] += (round(
+                    count/1000/1000, 2) * b.plan_count)
             for size, count in b.tie_count.items():
-                self.beam_rebar_count[size] += round(
-                    count/1000/1000, 2) * b.plan_count
-            self.concrete_count[b.fc] += b.concrete * b.plan_count
-            self.formwork_count += b.formwork * b.plan_count
+                self.beam_rebar_count[size] += (round(
+                    count/1000/1000, 2) * b.plan_count)
+            self.concrete_count[b.fc] += (b.concrete * b.plan_count)
+            self.formwork_count += (b.formwork * b.plan_count)
+        print(f'{len(beam_list)}:plan_count:{plan_count}')
         self.beam_rebar_count['total'] = sum(
-            self.beam_rebar_count.values()) * b.plan_count
+            self.beam_rebar_count.values())
 
 
 def read_parameter_df(read_file, sheet_name, header_list=[0]):

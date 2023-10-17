@@ -373,7 +373,7 @@ def plot_rebar_pie_chart(dataset_dict: dict[str, dict[str, float]]):
     #     '1F': {'#3': 3.0, '#4': 2.0, '#5': 24.0},
     # }
     # Transfer Data
-    categories = dataset_dict.keys()
+    # categories = dataset_dict.keys()
     dataset = list(dataset_dict.values())
     rebar_dataset = {}
     for data in dataset:
@@ -391,10 +391,10 @@ def plot_rebar_pie_chart(dataset_dict: dict[str, dict[str, float]]):
     fig, ax = plt.subplots(1, 1, figsize=(29.7, 21))
 
     ax.pie(sum_values.values(), labels=sum_values.keys(),
-           autopct='%1.11f%%', startangle=90, textprops={'fontsize': 30})
+           autopct='%1.2f%%', startangle=90, textprops={'fontsize': 30})
     # ax.title('Sum of Values Across Categories')
     ax.axis('equal')
-    ax.set_title('號數分布', pad=30)
+    ax.set_title('號數分布', pad=50, fontsize=30)
     ax.legend(fontsize=30)
 
     fig.tight_layout()

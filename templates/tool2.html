@@ -40,6 +40,13 @@
             -moz-appearance: none;
             padding: 2px;
         }
+
+        .dashed-border {
+            border: 2px dashed #000;
+            /* Adjust line thickness and color */
+            padding: 10px;
+            /* Add some padding inside the border */
+        }
     </style>
     <style>
         /* Style the textarea */
@@ -106,9 +113,25 @@
                     <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer"
                             name="bounding_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-ARCH"
                             required></textarea></p>
-                    <div class="btn-block">
-                        <button id="count_beam">完成</button>
-                    </div>
+            </div>
+            <div class="item dashed-border">
+                <labe>以下選填</label>
+                    <labe>平面圖(選填)用於計算數量</label>
+                        <label>選擇檔案(.dwg)</label>
+                        <input type=file id="file_plan" name="file_plan" value="dwg">
+                        <p><strong>圖框圖層</strong><textarea type="plan_block" id="plan_block_layer"
+                                name="plan_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                                required>0&#10;DwFm&#10;DEFPOINTS</textarea>
+                        </p>
+                        <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="plan_floor_text_layer"
+                                name="plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                                required>S-TEXT</textarea></p>
+                        <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="plan_serial_text_layer"
+                                name="plan_serial_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                                required>S-TEXTC&#10;S-TEXTG&#10;S-TEXTB</textarea></p>
+            </div>
+            <div class="btn-block">
+                <button id="count_beam">完成</button>
             </div>
         </form>
 

@@ -352,7 +352,7 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
                 if lower_line:
                     lower_bound = max(lower_line, key=lambda l: l[0][1])
                 sizes = [t for s_coor, t in floor_table_size if re.match(
-                    r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor >= lower_bound[0][1]]
+                    r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
                 if sizes:
                     floor_table_size_dict[floor].update({text: sizes[0]})
 
@@ -427,7 +427,7 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
         col_coor = x[0][0]
         col_full_coor = x[0]
         col_name = x[1]
-        min_diff = 500
+        min_diff = 1000
         match_size = ''
         match_size_coor = ''
 
@@ -673,7 +673,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
         error_count = 0
         count += 1
         if count % 1000 == 0 or count == total:
-            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+            progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
         while error_count <= 3 and not object_list:
             try:
                 if msp_object.Layer not in used_layer_list:
@@ -1174,7 +1174,7 @@ def run_plan(plan_filename: str, layer_config: dict, result_filename: str, progr
             data=plan_col_set, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_to_col.pkl')
     else:
         plan_col_set = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-PLAN_plan_to_col.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-PLAN__plan_to_col.pkl')
     set_plan, dic_plan = sort_plan(plan_data=plan_col_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file)
@@ -1192,7 +1192,7 @@ def run_col(col_filename: str, layer_config: dict, result_filename: str, progres
             data=floor_col_set, tmp_file=f'{os.path.splitext(col_filename)[0]}_col_set.pkl')
     else:
         floor_col_set = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-COL_col_set.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-SCOL_col_set.pkl')
     set_col, dic_col = sort_col(col_data=floor_col_set,
                                 result_filename=result_filename,
                                 progress_file=progress_file)
@@ -1208,18 +1208,18 @@ if __name__ == '__main__':
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
     col_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-COL.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-SCOL.dwg']
     # print(col_filename.split(','))
     # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-PLAN_.dwg']
     # sys.argv[3] # XS-COL_new的路徑
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1011\XS_new.dwg'
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1017\XS_new.dwg'
     # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1011\XS-PLAN_col_new.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1017\XS-PLAN_col_new.dwg'
     # sys.argv[5] # 柱配筋結果
-    result_file = r'D:\Desktop\BeamQC\TEST\2023-1011\column.txt'
+    result_file = r'D:\Desktop\BeamQC\TEST\2023-1017\column.txt'
 
     # 在col裡面自訂圖層
     layer_config = {

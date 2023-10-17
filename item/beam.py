@@ -208,15 +208,15 @@ class Beam():
     def get_beam_info(self, floor_list: list[str]):
         floor_serial_spacing_char = ' '
 
-        def _get_floor_list(floor1: float, floor2: float):
-            if floor1 >= floor2:
-                l = list(range(int(floor1), int(floor2), -1))
-                l.append(floor2)
-                return l
-            else:
-                l = list(range(int(floor1), int(floor2), 1))
-                l.append(floor2)
-                return l
+        # def _get_floor_list(floor1: float, floor2: float):
+        #     if floor1 >= floor2:
+        #         l = list(range(int(floor1), int(floor2), -1))
+        #         l.append(floor2)
+        #         return l
+        #     else:
+        #         l = list(range(int(floor1), int(floor2), 1))
+        #         l.append(floor2)
+        #         return l
         # get beam floor
         if self.serial.count(floor_serial_spacing_char) <= 0:
             # temp = self.serial.split(floor_serial_spacing_char)[0]
