@@ -8,6 +8,7 @@ import save_temp_file
 import pandas as pd
 import numpy as np
 import copy
+from typing import Literal
 from math import sqrt, ceil
 from item.beam import Beam, BeamType, RebarType
 from item.rebar import RebarInfo
@@ -2106,7 +2107,8 @@ def count_beam_multiprocessing(beam_filenames: list,
                                temp_file='temp_1221_1F.pkl',
                                output_folder='',
                                project_name='',
-                               template_name='',
+                               template_name: Literal["ELEMENTS",
+                                                      "DRAWRC", "RCAD", "OTHER"] = '',
                                floor_parameter_xlsx='',
                                progress_file='',
                                plan_filename='',
@@ -2165,30 +2167,30 @@ def count_beam_multiprocessing(beam_filenames: list,
     return output_file_list, output_dwg_list
 
 
-def get_template(name: str):
+def get_template(name: Literal["ELEMENTS", "DRAWRC", "RCAD", "OTHER"]):
 
-    if name == '公司2':
+    if name == 'ELEMENTS':
         return {
             'rebar_layer': ['AcDbPolyline'],
             'rebar_data_layer': ['AcDbMText'],
             'rebar_data_leader_layer': ['AcDbLeader'],
             'tie_text_layer': ['AcDbText']
         }
-    if name == '公司1':
+    if name == 'DRAWRC':
         return {
             'rebar_layer': ['AcDbLine'],
             'rebar_data_layer': ['AcDbText', 'AcDbMText'],
             'rebar_data_leader_layer': ['AcDbPolyline'],
             'tie_text_layer': ['AcDbMText']
         }
-    if name == '公司3':
+    if name == 'OTHER':
         return {
             'rebar_layer': ['AcDbPolyline'],
             'rebar_data_layer': ['AcDbText'],
             'rebar_data_leader_layer': ['AcDbPolyline'],
             'tie_text_layer': ['AcDbText']
         }
-    if name == '公司4':
+    if name == 'RCAD':
         return {
             'rebar_layer': ['AcDbPolyline'],
             'rebar_data_layer': ['AcDbMText', 'AcDbText'],
@@ -2308,7 +2310,7 @@ if __name__ == '__main__':
     progress_file = './result/tmp'  # sys.argv[14]
     rebar_file = './result/0107-rebar_wu2.txt'  # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt'  # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
-    # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/'
+    # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/''
     output_folder = r'D:\Desktop\BeamQC\TEST\2023-1013'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
     floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-1013\1013-floor.xlsx'
@@ -2434,7 +2436,7 @@ if __name__ == '__main__':
                                temp_file=r'TEST\2023-1013\1017_2_hua.pkl',
                                project_name=project_name,
                                output_folder=output_folder,
-                               template_name='公司4',
+                               template_name="RCAD",
                                floor_parameter_xlsx=floor_parameter_xlsx,
                                plan_filename=plan_filename,
                                plan_layer_config=plan_layer_config)

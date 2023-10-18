@@ -24,7 +24,7 @@
             font-size: 20px;
             color: red;
             line-height: 1.25;
-            float: left;
+            /* float: left; */
         }
 
         p strong {
@@ -51,7 +51,7 @@
     <style>
         /* Style the textarea */
         #notification-textarea {
-            width: 70%;
+            width: 80%;
             /* Adjust the width as needed */
             height: 300px;
             /* Adjust the height as needed */
@@ -60,6 +60,7 @@
             border: none;
             padding: 5px;
             line-height: 1.5;
+            float: right;
             /* Increase the line spacing (adjust the value as needed) */
         }
     </style>
@@ -77,8 +78,9 @@
                 <span>選擇公司樣板:</span>
                 <select id='company' name="company" size="1">
                     <option value="" selected disabled hidden>選擇公司</option>
-                    <option value="公司1">DrawRC</option>
-                    <option value="公司2">Elements</option>
+                    <option value="DrawRC">DrawRC</option>
+                    <option value="Elements">Elements</option>
+                    <option value="RCAD">RCAD</option>
                 </select>
             </div>
             <!-- <p id = "download_sample">輸入/輸出範例檔下載</p> -->
@@ -87,48 +89,54 @@
             </div>
             <h3>請輸入以下資訊：</h3>
             <div class="item">
-                <labe>專案名稱</label>
-                    <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required>
-                    <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
-                    <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required>
-                    <label>選擇檔案(.dwg)</label>
-                    <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
-                    <p><strong>選擇樓層參數檔案(.xlsx)</strong>
-                        <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
-                        <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
-                    <p><strong>鋼筋指示箭頭及文字圖層</strong><textarea type="text" id="rebar_data_layer" name="rebar_data_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-LEADER" required></textarea></p>
-                    <p><strong>鋼筋線圖層</strong><textarea type="text" id="rebar_layer" name="rebar_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-REINF" required></textarea></p>
-                    <p><strong>箍筋文字圖層</strong><textarea type="text" id="tie_text_layer" name="tie_text_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXT" required></textarea></p>
-                    <p><strong>圖框圖層</strong><textarea type="text" id="block_layer" name="block_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-GRID" required></textarea></p>
-                    <p><strong>梁編號圖層</strong><textarea type="text" id="beam_text_layer" name="beam_text_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required></textarea></p>
-                    <p><strong>梁支承圖層</strong><textarea type="text" id="rc_block_layer" name="rc_block_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required></textarea></p>
-                    <p><strong>標註線圖層</strong><textarea type="text" id="beam_dim_layer" name="beam_dim_layer"
-                            placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-DIM" required></textarea></p>
-                    <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer"
-                            name="bounding_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-ARCH"
-                            required></textarea></p>
+                <label>專案名稱</label>
+                <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required>
+                <label>Email(選填)，若有填寫會寄送一份結果至信箱</label>
+                <input type="text" id="email_address" name="email_address" placeholder="請輸入電子信箱" required>
+                <label>選擇檔案(.dwg)</label>
+                <input type=file id="file_beam" name="file_beam" value="dwg" multiple>
+                <p><strong>選擇樓層參數檔案(.xlsx)</strong>
+                    <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                    <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
+                <div>
+                    <label for="rebar_data_layer"><strong>鋼筋指示箭頭及文字圖層</strong></label>
+                    <textarea type="text" id="rebar_data_layer" name="rebar_data_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-LEADER" required></textarea>
+                </div>
+                <div>
+                    <label><strong>鋼筋線圖層</strong></label>
+                    <textarea type="text" id="rebar_layer" name="rebar_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱"
+                        value="S-REINF" required></textarea>
+                </div>
+                <p><strong>箍筋文字圖層</strong><textarea type="text" id="tie_text_layer" name="tie_text_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-TEXT" required></textarea></p>
+                <p><strong>圖框圖層</strong><textarea type="text" id="block_layer" name="block_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-GRID" required></textarea></p>
+                <p><strong>梁編號圖層</strong><textarea type="text" id="beam_text_layer" name="beam_text_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required></textarea></p>
+                <p><strong>梁支承圖層</strong><textarea type="text" id="rc_block_layer" name="rc_block_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-RC" required></textarea></p>
+                <p><strong>標註線圖層</strong><textarea type="text" id="beam_dim_layer" name="beam_dim_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-DIM" required></textarea></p>
+                <p><strong>梁邊框圖層(選填)</strong><textarea type="text" id="bounding_block_layer" name="bounding_block_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-ARCH" required></textarea></p>
             </div>
+            <label><strong>以下選填</strong></label>
             <div class="item dashed-border">
-                <labe>以下選填</label>
-                    <labe>平面圖(選填)用於計算數量</label>
-                        <label>選擇檔案(.dwg)</label>
-                        <input type=file id="file_plan" name="file_plan" value="dwg">
-                        <p><strong>圖框圖層</strong><textarea type="plan_block" id="plan_block_layer"
-                                name="plan_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
-                                required>0&#10;DwFm&#10;DEFPOINTS</textarea>
-                        </p>
-                        <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="plan_floor_text_layer"
-                                name="plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
-                                required>S-TEXT</textarea></p>
-                        <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="plan_serial_text_layer"
-                                name="plan_serial_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
-                                required>S-TEXTC&#10;S-TEXTG&#10;S-TEXTB</textarea></p>
+
+                <p><strong>平面圖(選填)用於計算數量</strong>
+                    <label for="file_plan">選擇檔案(.dwg)</label>
+                    <input type=file id="file_plan" name="file_plan" value="dwg">
+                </p>
+                <p><strong>圖框圖層</strong><textarea type="plan_block" id="plan_block_layer" name="plan_block_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>0&#10;DwFm&#10;DEFPOINTS</textarea>
+                </p>
+                <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="plan_floor_text_layer"
+                        name="plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                        required>S-TEXT</textarea></p>
+                <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="plan_serial_text_layer"
+                        name="plan_serial_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                        required>S-TEXTC&#10;S-TEXTG&#10;S-TEXTB</textarea></p>
             </div>
             <div class="btn-block">
                 <button id="count_beam">完成</button>
@@ -197,7 +205,8 @@
     </div>
     </form>
     </div>
-    <div id='loader' style='display: none;'>
+    <!-- style='display: none;' -->
+    <div id='loader'>
         <div class="testbox">
             <form>
                 <h3>即將為您顯示進度...</h3>
@@ -280,26 +289,35 @@
     $(document).ready(function () {
         let project_count = 0
         $('#company').change(function () {
-            if ($('#company').val() == '公司1') {
+            if ($('#company').val() == 'DRAWRC') {
                 $('#rebar_data_layer').val('NBAR');
                 $('#rebar_layer').val('RBAR');
                 $('#tie_text_layer').val('NBAR');
                 $('#block_layer').val('DEFPOINTS');
                 $('#beam_text_layer').val('TITLE');
             }
-            if ($('#company').val() == "公司2") {
+            if ($('#company').val() == "ELEMENTS") {
                 $('#rebar_data_layer').val("S-LEADER");
                 $('#rebar_layer').val("S-REINF");
                 $('#tie_text_layer').val("S-TEXT");
                 $('#block_layer').val("S-GRID");
                 $('#beam_text_layer').val("S-RC");
                 $('#beam_dim_layer').val("S-DIM");
-                $('rc_block_layer').val("S-RC");
+                $('#rc_block_layer').val("S-RC");
+            }
+            if ($('#company').val() == "RCAD") {
+                $('#rebar_data_layer').val('主筋文字\r\n主筋文字引線\r\n扭力筋文字\r\n扭力筋文字引線\r\n扭力筋文字引線 no use');
+                $('#rebar_layer').val("主筋線\r\n剪力筋線\r\n扭力筋線");
+                $('#tie_text_layer').val("剪力筋文字");
+                $('#block_layer').val("_noprint");
+                $('#beam_text_layer').val("梁跨名稱");
+                $('#beam_dim_layer').val("尺寸標註-字串");
+                $('#rc_block_layer').val("邊界線\r\n梁柱截斷記號\r\n邊界線-梁支撐內線\r\n邊界線-梁支撐外線");
             }
 
         });
         $('#companyColumn').change(function () {
-            if ($('#companyColumn').val() == '公司1') {
+            if ($('#companyColumn').val() == 'DRAWRC') {
                 $('#column_rebar_text_layer').val('NBAR');
                 $('#column_rebar_layer').val('RBAR');
                 $('#column_tie_text_layer').val('NBAR');
@@ -309,7 +327,7 @@
                 $('#column_line_layer').val('TABLE');
                 $('#column_rc_layer').val('OLINE');
             }
-            if ($('#companyColumn').val() == '公司2') {
+            if ($('#companyColumn').val() == "RCAD") {
                 $('#column_text_layer').val('文字-柱線名稱\r\n文字-樓層名稱\r\n文字-斷面尺寸');
                 $('#column_line_layer').val('GridInner\r\nGirdBoundary');
                 $('#column_rebar_text_layer').val('文字-主筋根數');
@@ -319,7 +337,7 @@
                 $('#column_block_layer').val('DEFPOINTS');
                 $('#column_rc_layer').val('柱斷面線');
             }
-            if ($('#companyColumn').val() == '公司3') {
+            if ($('#companyColumn').val() == "ELEMENTS") {
                 $('#column_text_layer').val('S-TEXT');
                 $('#column_line_layer').val('S-STUD');
                 $('#column_rebar_text_layer').val('S-TEXT');

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Literal
+import os
 import time
 import pythoncom
 import win32com.client
@@ -147,10 +148,22 @@ def sort_floor_text(data: dict[str, Counter]):
     floor_float_list = [turn_floor_to_float(re.sub(r'\(|\)', '', floor)) for floor in data.keys(
     ) if not re.findall(r'\W', re.sub(r'\(|\)', '', floor))]
     # not equal to -1000 (FB)
-    Bmax = min([f for f in floor_float_list if f < 0 and f != -1000])
-    Fmax = max([f for f in floor_float_list if 1000 > f > 0])
+    Bmax = 0  # 地下最深到幾層(不包括FB不包括FB)
+    Fmax = 0  # 正常樓最高到幾層
+    Rmax = 0  # R開頭最高到幾層(不包括PRF)
+    try:
+        Bmax = min([f for f in floor_float_list if f < 0 and f != -1000])
+    except:
+        pass
+    try:
+        Fmax = max([f for f in floor_float_list if 1000 > f > 0])
+    except:
+        pass
     # not equal to PRF (FB)
-    Rmax = max([f for f in floor_float_list if f > 1000 and f != 2000])
+    try:
+        Rmax = max([f for f in floor_float_list if f > 1000 and f != 2000])
+    except:
+        pass
     for floor in data.keys():
         if re.findall(r'\W', floor):
             for new_floor in turn_floor_to_list(floor=re.sub(r'\(|\)', '', floor), Bmax=Bmax, Fmax=Fmax, Rmax=Rmax):
@@ -183,7 +196,7 @@ def sort_plan_count(plan_filename, progress_file, layer_config: dict[Literal['bl
     if True:
         cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
         save_temp_file.save_pkl(
-            data=cad_result, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
+            data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_count_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
             tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')

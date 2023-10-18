@@ -2138,7 +2138,7 @@ if __name__ == '__main__':
         r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-BEAM.dwg']
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1016\XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2023-1016\1017-B1F.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
     beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-XS-BEAM_new.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
@@ -2163,7 +2163,7 @@ if __name__ == '__main__':
     sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
     big_beam_layer = ['S-RCBMG', 'S-RCBMG(FB)']
     big_beam_text_layer = ['S-TEXTG']  # 小梁文字圖層
-    task_name = 'temp'  # sys.argv[13]
+    task_name = '1017-B1F-temp'  # sys.argv[13]
 
     progress_file = './result/tmp'  # sys.argv[14]
 
