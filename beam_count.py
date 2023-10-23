@@ -500,7 +500,8 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
                        progress_file: str):
     def _get_distance(pt1, pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
-        return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
+        # 避免抓到其他層的主筋資料
+        return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1]) * 3
     # start = time.time()
     # new_coor_to_arrow_dic = {}
     # head_to_data_dic = {} # 座標 -> (number, size)
@@ -1568,23 +1569,23 @@ def create_report(class_beam_list: list[Beam],
                                          project_name=project_name,
                                          output_folder=output_folder)
         output_file_list.append(pdf_GB_file)
-    if fbeam_list:
-        pdf_FB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=fbeam_list,
-                                         bs_list=fb_bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.FB,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
-        output_file_list.append(pdf_FB_file)
-    if sbeam_list:
-        pdf_SB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=sbeam_list,
-                                         bs_list=sb_bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.SB,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
+    # if fbeam_list:
+    #     pdf_FB_file = create_scan_report(floor_list=floor_list,
+    #                                      beam_list=fbeam_list,
+    #                                      bs_list=fb_bs_list,
+    #                                      excel_filename=excel_filename,
+    #                                      beam_type=BeamType.FB,
+    #                                      project_name=project_name,
+    #                                      output_folder=output_folder)
+    #     output_file_list.append(pdf_FB_file)
+    # if sbeam_list:
+    #     pdf_SB_file = create_scan_report(floor_list=floor_list,
+    #                                      beam_list=sbeam_list,
+    #                                      bs_list=sb_bs_list,
+    #                                      excel_filename=excel_filename,
+    #                                      beam_type=BeamType.SB,
+    #                                      project_name=project_name,
+    #                                      output_folder=output_folder)
         output_file_list.append(pdf_SB_file)
     rebar_df, concrete_df, coupler_df, formwork_df = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
@@ -1894,7 +1895,10 @@ def sort_beam(class_beam_list: list[Beam]):
 def output_beam(class_beam_list: list[Beam]):
     def output_rebar_pos(row, i, pos, text):
         if abs(i) >= 2:
-            beam.at[row + i, pos] = f'{beam.at[row + i,pos]}+{text}'
+            if i > 0:
+                beam.at[row + 1, pos] = f'{beam.at[row + 1,pos]}+{text}'
+            else:
+                beam.at[row - 1, pos] = f'{beam.at[row - 1,pos]}+{text}'
         else:
             beam.at[row + i, pos] = text
     header_info_1 = [('樓層', ''), ('編號', ''), ('RC 梁寬', ''), ('RC 梁深', '')]
@@ -2231,6 +2235,10 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
             beam_list = [beam for beam in class_beam_list if inblock(
                 block[0], beam.get_coor())]
             for beam in beam_list:
+                try:
+                    assert beam.floor != 'R1F' or beam.serial != 'BR8'
+                except:
+                    print('')
                 for rebar in beam.rebar_list:
                     try:
                         temp_dim = [dim for dim in dim_list if round(rebar.start_pt.x, 2) ==
@@ -2239,7 +2247,7 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
                             continue  # 如果dim match line的話則不修正
 
                         rebar_dim = [dim for dim in dim_list if ((rebar.start_pt.x - dim[0][0]) * (rebar.end_pt.x - dim[0][0]) <= 0
-                                                                 and abs(dim[0][1] - rebar.arrow_coor[0][1]) < 150)]
+                                                                 and abs(dim[0][1] - rebar.arrow_coor[0][1]) < min_diff)]
                         # 下層筋
 
                         if rebar.arrow_coor[0][1] <= rebar.arrow_coor[1][1]:
@@ -2293,7 +2301,7 @@ if __name__ == '__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-1013\1017-test_PF.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-1013\1023-test.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2A結構FB_1120829.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2B結構B0_1120821.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2D結構SB_1120821.dwg",
@@ -2314,7 +2322,7 @@ if __name__ == '__main__':
     output_folder = r'D:\Desktop\BeamQC\TEST\2023-1013'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
     floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-1013\1013-floor.xlsx'
-    project_name = '1017-華泰電子_all_2'
+    project_name = '1023-華泰電子'
     plan_filename = r'D:\Desktop\BeamQC\TEST\2023-1013\1017_plan.dwg'
     plan_layer_config = {
         'block_layer': ['AREA'],
@@ -2430,34 +2438,44 @@ if __name__ == '__main__':
     #               layer_config=layer_config,
     #               entity_config=entity_type,
     #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\test-PF.pkl')
-    count_beam_multiprocessing(beam_filenames=beam_filenames,
-                               layer_config=layer_config,
-                               temp_file=r'TEST\2023-1013\1017_2_hua.pkl',
-                               project_name=project_name,
-                               output_folder=output_folder,
-                               template_name="RCAD",
-                               floor_parameter_xlsx=floor_parameter_xlsx,
-                               plan_filename=plan_filename,
-                               plan_layer_config=plan_layer_config)
-    # class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-1013\test-PF.pkl'),
+    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1023-test.pkl')
+    # count_beam_multiprocessing(beam_filenames=beam_filenames,
+    #                            layer_config=layer_config,
+    #                            temp_file=r'TEST\2023-1013\1017_2_hua.pkl',
+    #                            project_name=project_name,
+    #                            output_folder=output_folder,
+    #                            template_name="RCAD",
+    #                            floor_parameter_xlsx=floor_parameter_xlsx,
+    #                            plan_filename=plan_filename,
+    #                            plan_layer_config=plan_layer_config)
+    class_beam_list = []
+    for file_name in [r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-0.pkl',
+                      r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-1.pkl',
+                      r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-2.pkl',
+                      r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-3.pkl']:
+        temp_class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(file_name),
+                                                        progress_file=progress_file,
+                                                        rebar_parameter_excel=floor_parameter_xlsx)
+        class_beam_list.extend(temp_class_beam_list)
+    # class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-1013\1023-test.pkl'),
     #                                            progress_file=progress_file,
     #                                            rebar_parameter_excel=floor_parameter_xlsx)
-    # save_temp_file.save_pkl(class_beam_list,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-list.pkl')
+    save_temp_file.save_pkl(
+        class_beam_list, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1023_hua_4_beam_list.pkl')
     # save_temp_file.save_pkl(cad_data,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-cad.pkl')
     # class_beam_list = save_temp_file.read_temp(
-    #     r'D:\Desktop\BeamQC\TEST\2023-1013\1017_hua-beam_list.pkl')
+    #     r'D:\Desktop\BeamQC\TEST\2023-1013\1023_hua_beam_list.pkll')
     # class_beam_list.extend(save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-cad_data.pkl'))
     # cad_data = save_temp_file.read_temp(
-    #     r'D:\Desktop\BeamQC\TEST\2023-1013\1017_hua-cad_data.pkl')
-    # create_report(class_beam_list=class_beam_list,
-    #               output_folder=output_folder,
-    #               project_name=project_name,
-    #               floor_parameter_xlsx=floor_parameter_xlsx,
-    #               cad_data=cad_data,
-    #               progress_file=progress_file,
-    #               plan_filename=plan_filename,
-    #               plan_layer_config=plan_layer_config)
+    #     r'TEST\2023-1013\1017_2_hua-cad_data.pkl')
+    create_report(class_beam_list=class_beam_list,
+                  output_folder=output_folder,
+                  project_name=project_name,
+                  floor_parameter_xlsx=floor_parameter_xlsx,
+                  cad_data=cad_data,
+                  progress_file=progress_file,
+                  plan_filename=plan_filename,
+                  plan_layer_config=plan_layer_config)
     # draw_rebar_line(class_beam_list=class_beam_list,
     #                 msp_beam=msp_beam,
     #                 doc_beam=doc_beam,

@@ -450,7 +450,6 @@ class Beam():
                     self.rebar_count[size] += rebar.length * \
                         rebar.number * RebarInfo(size)
                 break  # middle tie rebar number equal to rebar line number, so only count one middle tie
-            pass
         for tie in self.tie_list:
             if tie.size in self.tie_count:
                 self.tie_count[tie.size] += tie.count * \
@@ -518,10 +517,10 @@ class Beam():
     # 整理梁配筋成常用表格
 
     def sort_rebar_table(self):
-        # try:
-        #     assert self.floor != 'B1F' or self.serial != 'b8-1'
-        # except:
-        #     print('')
+        try:
+            assert self.floor != 'R1F' or self.serial != 'BR8'
+        except:
+            print('')
         min_diff = 30
         self.rebar['top_first'].sort(key=lambda r: r.arrow_coor[0][0])
         # for i,rebar in enumerate(self.rebar['top_first']):
@@ -550,6 +549,18 @@ class Beam():
             if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x) >= min_diff):
                 self.rebar_table['top_length']['middle'].append(rebar.length)
                 continue
+        if len(self.rebar_table['top']['middle']) > 1 and len(self.rebar_table['top']['left']) == 0:
+            self.rebar_table['top']['left'].append(
+                self.rebar_table['top']['middle'].pop(0))
+            self.rebar_table['top_length']['left'].append(
+                self.rebar_table['top_length']['middle'].pop(0))
+            self.start_pt.x = self.rebar_table['top']['left'][0].start_pt.x
+        if len(self.rebar_table['top']['middle']) > 1 and len(self.rebar_table['top']['right']) == 0:
+            self.rebar_table['top']['right'].append(
+                self.rebar_table['top']['middle'].pop())
+            self.rebar_table['top_length']['right'].append(
+                self.rebar_table['top_length']['middle'].pop())
+            self.end_pt.x = self.rebar_table['top']['right'][0].end_pt.x
         for rebar in self.rebar['top_second']:
             if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
                 self.rebar_table['top']['left'].append(rebar)

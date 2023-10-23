@@ -48,6 +48,7 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
     while not flag and error_count <= 10:
         try:
             msp_plan = doc_plan.Modelspace
+            total = msp_plan.Count
             flag = 1
         except Exception as e:
             error_count += 1
@@ -55,9 +56,9 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
             error(
                 f'read_beam error in step 3: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 3/15', progress_file)
+    total = 1
     used_layer_list = []
     count = 0
-    total = msp_plan.Count
 
     for key, layer_name in layer_config.items():
         used_layer_list += layer_name
@@ -199,7 +200,7 @@ def sort_plan_count(plan_filename, progress_file, layer_config: dict[Literal['bl
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_count_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1017_plan_plan_count_set.pkl')
     result = sort_name_text(cad_result)
     sort_result = sort_floor_text(data=result)
     return sort_result
@@ -217,7 +218,7 @@ if __name__ == "__main__":
     # save_temp_file.save_pkl(
     #     data=cad_result, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
     data = save_temp_file.read_temp(
-        tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
+        tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1017_plan_plan_count_set.pkl')
     result = sort_name_text(data)
     result = sort_floor_text(data=result)
     print(result)

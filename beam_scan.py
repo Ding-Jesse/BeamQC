@@ -357,9 +357,13 @@ def set_check_scan(beam_scan: BeamScan):
 
     def index_0207(b: Beam):
         if b.depth >= 90:
-            if len(b.middle_tie) < ceil((b.depth - b.floor_object.slab_height['top'] - 10)/30 - 1):
+            if not b.middle_tie:
+                middle_tie_count = 0
+            else:
+                middle_tie_count = int(b.middle_tie[0].number)
+            if middle_tie_count < ceil((b.depth - b.floor_object.slab_height['top'] - 10)/30 - 1):
                 b.ng_message.append(
-                    f'0207:腰筋支數={len(b.middle_tie)} < (梁深{b.depth} - 上版厚{b.floor_object.slab_height["top"]} - 鋼筋中心至邊緣距離{10})/30 - 1 = {round(ceil((b.depth - b.floor_object.slab_height["top"] - 10)/30 - 1),2)}')
+                    f'0207:腰筋支數={middle_tie_count} < (梁深{b.depth} - 上版厚{b.floor_object.slab_height["top"]} - 鋼筋中心至邊緣距離{10})/30 - 1 = {round(ceil((b.depth - b.floor_object.slab_height["top"] - 10)/30 - 1),2)}')
                 return fail_syntax
         return pass_syntax
 
@@ -495,14 +499,14 @@ def set_check_scan(beam_scan: BeamScan):
             b.ng_message.append(
                 f'0218:{temp}cm2 < code15_4_2_2:{0.25*max(rebarAs)}cm2')
             return fail_syntax
-        for i, pos in enumerate(['左', '右']):
+        for i, pos in [(0, '左'), (2, '右')]:
             if rebarAs[i+3] == 0:
                 return "無鋼筋資料"
-            if 0.5 > rebarAs[i]/rebarAs[i+3]:
+            if 0.5 > round(rebarAs[i]/rebarAs[i+3], 2):
                 b.ng_message.append(
                     f'0218:位置={pos}端上層/{pos}端下層 = {round(rebarAs[i]/rebarAs[i+3],2)}')
                 return fail_syntax
-            if rebarAs[i]/rebarAs[i+3] > 2:
+            if round(rebarAs[i]/rebarAs[i+3], 2) > 2:
                 b.ng_message.append(
                     f'0218:位置={pos}端下層/{pos}端上層 = {round(rebarAs[i+3]/rebarAs[i],2)}')
                 return fail_syntax

@@ -102,6 +102,8 @@ class Floor:
 
     def summary_beam(self, beamtype=None):
         self.beam_rebar_count = defaultdict(lambda: 0)
+        self.concrete_count = defaultdict(lambda: 0)
+        self.formwork_count = 0
         plan_count = 0
         if beamtype:
             beam_list = [
