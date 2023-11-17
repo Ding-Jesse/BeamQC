@@ -2045,7 +2045,7 @@ def write_result_log(excel_file, task_name, plan_result, beam_result, date, runt
 
 def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config: dict, result_filename, progress_file, sizing, mline_scaling, date, fbeam_file):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    if True:
+    if False:
         plan_data = read_plan(plan_filename=plan_filename,
                               layer_config=layer_config,
                               progress_file=progress_file,
@@ -2055,7 +2055,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
             data=plan_data, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         plan_data = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1011\中德三重_test_plan_set.pkl')
+            tmp_file=r'TEST\2023-1114\2023-11-14-14-47台電竹園-XS-PLAN_plan_set.pkl')
     set_plan, dic_plan, warning_list = sort_plan(plan_filename=plan_filename,
                                                  plan_new_filename=plan_new_filename,
                                                  plan_data=plan_data,
@@ -2082,14 +2082,14 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
 
 
 def run_beam(beam_filename, text_layer, result_filename, progress_file, sizing):
-    if True:
+    if False:
         floor_to_beam_set = read_beam(
             beam_filename=beam_filename, text_layer=text_layer, progress_file=progress_file)
         save_temp_file.save_pkl(data=floor_to_beam_set,
                                 tmp_file=f'{os.path.splitext(beam_filename)[0]}_beam_set.pkl')
     else:
         floor_to_beam_set = save_temp_file.read_temp(
-            r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-BEAM_beam_set.pkl')
+            r'TEST\2023-1114\2023-11-14-14-47台電竹園-XS-BEAM_beam_set.pkl')
     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file,
@@ -2144,11 +2144,11 @@ if __name__ == '__main__':
     # sys.argv[4] # XS-PLAN_new的路徑
     plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-XS_PLAN_new.dwg"
     # sys.argv[5] # 大梁結果
-    big_file = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-big.txt"
+    big_file = r"TEST\2023-1114\1114-big.txt"
     # sys.argv[6] # 小梁結果
-    sml_file = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-sml.txt"
+    sml_file = r"TEST\2023-1114\1114-sml.txt"
     # sys.argv[6] # 地梁結果
-    fbeam_file = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-fb.txt"
+    fbeam_file = r"TEST\2023-1114\1114-fb.txt"
     # 在beam裡面自訂圖層
     text_layer = ['S-RC']  # sys.argv[7]
 

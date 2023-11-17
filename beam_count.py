@@ -1569,23 +1569,23 @@ def create_report(class_beam_list: list[Beam],
                                          project_name=project_name,
                                          output_folder=output_folder)
         output_file_list.append(pdf_GB_file)
-    # if fbeam_list:
-    #     pdf_FB_file = create_scan_report(floor_list=floor_list,
-    #                                      beam_list=fbeam_list,
-    #                                      bs_list=fb_bs_list,
-    #                                      excel_filename=excel_filename,
-    #                                      beam_type=BeamType.FB,
-    #                                      project_name=project_name,
-    #                                      output_folder=output_folder)
-    #     output_file_list.append(pdf_FB_file)
-    # if sbeam_list:
-    #     pdf_SB_file = create_scan_report(floor_list=floor_list,
-    #                                      beam_list=sbeam_list,
-    #                                      bs_list=sb_bs_list,
-    #                                      excel_filename=excel_filename,
-    #                                      beam_type=BeamType.SB,
-    #                                      project_name=project_name,
-    #                                      output_folder=output_folder)
+    if fbeam_list:
+        pdf_FB_file = create_scan_report(floor_list=floor_list,
+                                         beam_list=fbeam_list,
+                                         bs_list=fb_bs_list,
+                                         excel_filename=excel_filename,
+                                         beam_type=BeamType.FB,
+                                         project_name=project_name,
+                                         output_folder=output_folder)
+        output_file_list.append(pdf_FB_file)
+    if sbeam_list:
+        pdf_SB_file = create_scan_report(floor_list=floor_list,
+                                         beam_list=sbeam_list,
+                                         bs_list=sb_bs_list,
+                                         excel_filename=excel_filename,
+                                         beam_type=BeamType.SB,
+                                         project_name=project_name,
+                                         output_folder=output_folder)
         output_file_list.append(pdf_SB_file)
     rebar_df, concrete_df, coupler_df, formwork_df = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
@@ -1739,8 +1739,8 @@ def seperate_beam(class_beam_list: list[Beam]):
     '''
     Seperate Beam into GB,SB,FB
     '''
-    return [b for b in class_beam_list if b.beam_type == BeamType.FB],\
-        [b for b in class_beam_list if b.beam_type == BeamType.SB],\
+    return [b for b in class_beam_list if b.beam_type == BeamType.FB], \
+        [b for b in class_beam_list if b.beam_type == BeamType.SB], \
         [b for b in class_beam_list if b.beam_type == BeamType.Grider]
 
 
@@ -2319,11 +2319,11 @@ if __name__ == '__main__':
     rebar_file = './result/0107-rebar_wu2.txt'  # rebar.txt的路徑 -> 計算鋼筋和箍筋總量
     tie_file = './result/0107-tie_wu2.txt'  # rebar.txt的路徑 -> 把箍筋跟梁綁在一起
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/''
-    output_folder = r'D:\Desktop\BeamQC\TEST\2023-1013'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2023-1114'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2023-1013\1013-floor.xlsx'
-    project_name = '1023-華泰電子'
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2023-1013\1017_plan.dwg'
+    floor_parameter_xlsx = r'TEST\2023-1114\台電竹園-2023-11-17-14-13-floor.xlsx'
+    project_name = '1115-test'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2023-1114\台電竹園-2023-11-17-14-13-XS-PLAN.dwg'
     plan_layer_config = {
         'block_layer': ['AREA'],
         'name_text_layer': ['BTXT', 'CTXT', 'BTXT_S_'],
@@ -2448,26 +2448,26 @@ if __name__ == '__main__':
     #                            floor_parameter_xlsx=floor_parameter_xlsx,
     #                            plan_filename=plan_filename,
     #                            plan_layer_config=plan_layer_config)
-    class_beam_list = []
-    for file_name in [r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-0.pkl',
-                      r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-1.pkl',
-                      r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-2.pkl',
-                      r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-3.pkl']:
-        temp_class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(file_name),
-                                                        progress_file=progress_file,
-                                                        rebar_parameter_excel=floor_parameter_xlsx)
-        class_beam_list.extend(temp_class_beam_list)
+    # class_beam_list = []
+    # for file_name in [r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-0.pkl',
+    #                   r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-1.pkl',
+    #                   r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-2.pkl',
+    #                   r'D:\Desktop\BeamQC\TEST\2023-1013\1017_2_hua-3.pkl']:
+    #     temp_class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(file_name),
+    #                                                     progress_file=progress_file,
+    #                                                     rebar_parameter_excel=floor_parameter_xlsx)
+    #     class_beam_list.extend(temp_class_beam_list)
     # class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-1013\1023-test.pkl'),
     #                                            progress_file=progress_file,
     #                                            rebar_parameter_excel=floor_parameter_xlsx)
-    save_temp_file.save_pkl(
-        class_beam_list, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1023_hua_4_beam_list.pkl')
+    # save_temp_file.save_pkl(
+    #     class_beam_list, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1023_hua_4_beam_list.pkl')
     # save_temp_file.save_pkl(cad_data,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-cad.pkl')
-    # class_beam_list = save_temp_file.read_temp(
-    #     r'D:\Desktop\BeamQC\TEST\2023-1013\1023_hua_beam_list.pkll')
+    class_beam_list = save_temp_file.read_temp(
+        r'TEST\2023-1114\台電竹園-2023-11-17-14-13-temp-beam_list.pkl')
     # class_beam_list.extend(save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-cad_data.pkl'))
-    # cad_data = save_temp_file.read_temp(
-    #     r'TEST\2023-1013\1017_2_hua-cad_data.pkl')
+    cad_data = save_temp_file.read_temp(
+        r'TEST\2023-1114\台電竹園-2023-11-17-14-13-temp-cad_data.pkl')
     create_report(class_beam_list=class_beam_list,
                   output_folder=output_folder,
                   project_name=project_name,
