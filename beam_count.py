@@ -2173,21 +2173,21 @@ def count_beam_multiprocessing(beam_filenames: list,
 
 def get_template(name: Literal["ELEMENTS", "DRAWRC", "RCAD", "OTHER"]):
 
-    if name == 'ELEMENTS':
+    if name == 'Elements':
         return {
             'rebar_layer': ['AcDbPolyline'],
             'rebar_data_layer': ['AcDbMText'],
             'rebar_data_leader_layer': ['AcDbLeader'],
             'tie_text_layer': ['AcDbText']
         }
-    if name == 'DRAWRC':
+    if name == 'DrawRC':
         return {
             'rebar_layer': ['AcDbLine'],
             'rebar_data_layer': ['AcDbText', 'AcDbMText'],
             'rebar_data_leader_layer': ['AcDbPolyline'],
             'tie_text_layer': ['AcDbMText']
         }
-    if name == 'OTHER':
+    if name == 'Other':
         return {
             'rebar_layer': ['AcDbPolyline'],
             'rebar_data_layer': ['AcDbText'],
@@ -2301,7 +2301,7 @@ if __name__ == '__main__':
     # 檔案路徑區
     # 跟AutoCAD有關的檔案都要吃絕對路徑
     # beam_filename = r"D:\Desktop\BeamQC\TEST\INPUT\2022-11-18-17-16temp-XS-BEAM.dwg"#sys.argv[1] # XS-BEAM的路徑
-    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-1013\1023-test.dwg"
+    beam_filename = r"D:\Desktop\BeamQC\TEST\2023-1114\P2021-03K 土城沛陂150地號9FB2-2023-11-17-17-06-XS-BEAM.dwg"
     beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2A結構FB_1120829.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2B結構B0_1120821.dwg",
                       r"D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S2D結構SB_1120821.dwg",
@@ -2321,25 +2321,25 @@ if __name__ == '__main__':
     # output_folder ='D:/Desktop/BeamQC/TEST/OUTPUT/''
     output_folder = r'D:\Desktop\BeamQC\TEST\2023-1114'
     # floor_parameter_xlsx = r'D:\Desktop\BeamQC\file\樓層參數_floor.xlsx'
-    floor_parameter_xlsx = r'TEST\2023-1114\台電竹園-2023-11-17-14-13-floor.xlsx'
+    floor_parameter_xlsx = r'TEST\2023-1114\P2021-03K 土城沛陂150地號9FB2-2023-11-17-17-06-floor.xlsx'
     project_name = '1115-test'
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2023-1114\台電竹園-2023-11-17-14-13-XS-PLAN.dwg'
+    plan_filename = r''
     plan_layer_config = {
         'block_layer': ['AREA'],
         'name_text_layer': ['BTXT', 'CTXT', 'BTXT_S_'],
         'floor_text_layer': ['TEXT1']
     }
     # 在beam裡面自訂圖層
-    # layer_config = {
-    #     'rebar_data_layer': ['S-LEADER'],  # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer': ['S-REINF'],  # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
-    #     'block_layer': ['0'],  # 框框的圖層
-    #     'beam_text_layer': ['S-RC'],  # 梁的字串圖層
-    #     'bounding_block_layer': ['S-ARCH'],
-    #     'rc_block_layer': ['S-RC'],  # 支承端圖層
-    #     's_dim_layer': ['S-DIM']  # 標註線圖層
-    # }
+    layer_config = {
+        'rebar_data_layer': ['S-LEADER'],  # 箭頭和鋼筋文字的塗層
+        'rebar_layer': ['S-REINF'],  # 鋼筋和箍筋的線的塗層
+        'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
+        'block_layer': ['0'],  # 框框的圖層
+        'beam_text_layer': ['S-RC'],  # 梁的字串圖層
+        'bounding_block_layer': ['S-ARCH'],
+        'rc_block_layer': ['S-RC'],  # 支承端圖層
+        's_dim_layer': ['S-DIM']  # 標註線圖層
+    }
     # layer_config = {
     #     'rebar_data_layer': ['P1'],  # 箭頭和鋼筋文字的塗層
     #     'rebar_layer': ['P2'],  # 鋼筋和箍筋的線的塗層
@@ -2350,16 +2350,16 @@ if __name__ == '__main__':
     #     'rc_block_layer': ['P1'],  # 支承端圖層
     #     's_dim_layer': ['P1']  # 標註線圖層
     # }
-    layer_config = {
-        'rebar_data_layer': ['主筋文字', '主筋文字引線', '扭力筋文字', '扭力筋文字引線', '扭力筋文字引線 no use'],
-        'rebar_layer': ['主筋線', '剪力筋線', '扭力筋線'],
-        'tie_text_layer': ['剪力筋文字'],
-        'block_layer': ['_noprint'],
-        'beam_text_layer': ['梁跨名稱'],
-        'bounding_block_layer': [''],
-        'rc_block_layer': ['邊界線', '梁柱截斷記號', '邊界線-梁支撐內線', '邊界線-梁支撐外線'],
-        's_dim_layer': ['尺寸標註-字串']
-    }
+    # layer_config = {
+    #     'rebar_data_layer': ['主筋文字', '主筋文字引線', '扭力筋文字', '扭力筋文字引線', '扭力筋文字引線 no use'],
+    #     'rebar_layer': ['主筋線', '剪力筋線', '扭力筋線'],
+    #     'tie_text_layer': ['剪力筋文字'],
+    #     'block_layer': ['_noprint'],
+    #     'beam_text_layer': ['梁跨名稱'],
+    #     'bounding_block_layer': [''],
+    #     'rc_block_layer': ['邊界線', '梁柱截斷記號', '邊界線-梁支撐內線', '邊界線-梁支撐外線'],
+    #     's_dim_layer': ['尺寸標註-字串']
+    # }
 
     # layer_config = {
     #     'rebar_data_layer':['NBAR'], # 箭頭和鋼筋文字的塗層
@@ -2432,13 +2432,13 @@ if __name__ == '__main__':
     # }
 
     start = time.time()
-    # msp_beam, doc_beam = read_beam_cad(
-    #     beam_filename=beam_filename, progress_file=progress_file)
-    # sort_beam_cad(msp_beam=msp_beam,
-    #               layer_config=layer_config,
-    #               entity_config=entity_type,
-    #               progress_file=progress_file,
-    #               temp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1023-test.pkl')
+    msp_beam, doc_beam = read_beam_cad(
+        beam_filename=beam_filename, progress_file=progress_file)
+    sort_beam_cad(msp_beam=msp_beam,
+                  layer_config=layer_config,
+                  entity_config=entity_type,
+                  progress_file=progress_file,
+                  temp_file=r'D:\Desktop\BeamQC\TEST\2023-1114\1115-test.pkl')
     # count_beam_multiprocessing(beam_filenames=beam_filenames,
     #                            layer_config=layer_config,
     #                            temp_file=r'TEST\2023-1013\1017_2_hua.pkl',
@@ -2457,17 +2457,17 @@ if __name__ == '__main__':
     #                                                     progress_file=progress_file,
     #                                                     rebar_parameter_excel=floor_parameter_xlsx)
     #     class_beam_list.extend(temp_class_beam_list)
-    # class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-1013\1023-test.pkl'),
-    #                                            progress_file=progress_file,
-    #                                            rebar_parameter_excel=floor_parameter_xlsx)
+    class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-1114\1115-test.pkl'),
+                                               progress_file=progress_file,
+                                               rebar_parameter_excel=floor_parameter_xlsx)
     # save_temp_file.save_pkl(
     #     class_beam_list, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1023_hua_4_beam_list.pkl')
     # save_temp_file.save_pkl(cad_data,tmp_file=r'D:\Desktop\BeamQC\TEST\2023-0607\0607-GB-cad.pkl')
-    class_beam_list = save_temp_file.read_temp(
-        r'TEST\2023-1114\台電竹園-2023-11-17-14-13-temp-beam_list.pkl')
+    # class_beam_list = save_temp_file.read_temp(
+    #     r'TEST\2023-1114\台電竹園-2023-11-17-14-13-temp-beam_list.pkl')
     # class_beam_list.extend(save_temp_file.read_temp(r'D:\Desktop\BeamQC\0617_Wuku-cad_data.pkl'))
-    cad_data = save_temp_file.read_temp(
-        r'TEST\2023-1114\台電竹園-2023-11-17-14-13-temp-cad_data.pkl')
+    # cad_data = save_temp_file.read_temp(
+    #     r'TEST\2023-1114\台電竹園-2023-11-17-14-13-temp-cad_data.pkl')
     create_report(class_beam_list=class_beam_list,
                   output_folder=output_folder,
                   project_name=project_name,
