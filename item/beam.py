@@ -44,6 +44,16 @@ class Rebar:
     def __repr__(self) -> str:
         return self.text
 
+    def set_new_property(self, number, size):
+        '''
+        set rebar with new size and number
+        '''
+        self.size = size
+        self.number = int(number)
+        self.As = RebarArea(self.size) * self.number
+        self.fy = RebarFy(self.size)
+        self.text = f'{self.number}-{self.size}'
+
 
 class RebarType(Enum):
     Top = 'top'

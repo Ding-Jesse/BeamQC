@@ -136,7 +136,7 @@ def in_block(coor: tuple, block: tuple[tuple, tuple]):
 
 
 def check_is_floor(text: str):
-    if re.match(r'\(B?P?R?\d*F?\W?P?R?\d*F?\)', text):
+    if re.search(r'\(B?P?R?\d*F?\W?P?R?\d*F?\)', text):
         return True
     return False
 

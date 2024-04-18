@@ -5,6 +5,7 @@ from math import sqrt, ceil
 from item.rebar import RebarDiameter
 from item.floor import read_parameter_df
 from column_scan import rename_unnamed
+from utils.check import check_beam_shear_strength
 import pandas as pd
 import numpy as np
 
@@ -560,6 +561,15 @@ def set_check_scan(beam_scan: BeamScan):
                         return fail_syntax
         return pass_syntax
 
+    def index_0224(b: Beam):
+        if not b.floor_object.is_seismic:
+            return "不檢核此項"
+        ratio_Vp, ratio_Veq = check_beam_shear_strength(b)
+        if ratio_Vp > 1.5 or ratio_Veq > 1.5:
+            b.ng_message.append(f'0224:Vp DCR={ratio_Vp},Veq DCR={ratio_Veq}')
+            return fail_syntax
+        return pass_syntax
+
     def index_0301(b: Beam):
         return index_0201(b=b)
 
@@ -680,7 +690,8 @@ def set_check_scan(beam_scan: BeamScan):
         beam_scan.set_check_function(index_0222)
     if beam_scan.scan_index == 223:
         beam_scan.set_check_function(index_0223)
-
+    if beam_scan.scan_index == 224:
+        beam_scan.set_check_function(index_0224)
     if beam_scan.scan_index == 101:
         beam_scan.set_check_function(index_0101)
     if beam_scan.scan_index == 102:

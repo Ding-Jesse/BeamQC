@@ -9,7 +9,8 @@ from math import pow, sqrt
 
 
 class Column:
-
+    width = 0
+    depth = 0
     height = 0
     size = ''
     serial = ''

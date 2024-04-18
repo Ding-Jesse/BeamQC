@@ -2045,7 +2045,7 @@ def write_result_log(excel_file, task_name, plan_result, beam_result, date, runt
 
 def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config: dict, result_filename, progress_file, sizing, mline_scaling, date, fbeam_file):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    if True:
+    if False:
         plan_data = read_plan(plan_filename=plan_filename,
                               layer_config=layer_config,
                               progress_file=progress_file,
@@ -2055,7 +2055,7 @@ def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config:
             data=plan_data, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         plan_data = save_temp_file.read_temp(
-            tmp_file=r'TEST\2023-1114\2023-11-14-14-47台電竹園-XS-PLAN_plan_set.pkl')
+            tmp_file=r'TEST\2024-0412\2024-04-12-16-332024-0412 茂德新莊-XS-PLAN_plan_set.pkl')
     set_plan, dic_plan, warning_list = sort_plan(plan_filename=plan_filename,
                                                  plan_new_filename=plan_new_filename,
                                                  plan_data=plan_data,
