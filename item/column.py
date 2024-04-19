@@ -44,6 +44,7 @@ class Column:
     ng_message: list[str]
     protect_layer = 4
     plan_count: int
+    joint_result: dict
 
     def __init__(self):
         self.plan_count = 1
@@ -79,6 +80,7 @@ class Column:
         self.floor_object = None
         self.ng_message = []
         self.protect_layer = 4
+        self.joint_result = {}
 
     def set_border(self, list1: list, list2: list):
         left_bot = Point((list1[0], list2[2]))

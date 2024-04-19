@@ -112,11 +112,13 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
     result = []
 
     for column in column_list:
+        column.joint_result = {}
         try:
             connect_beams = column_beam_df.loc[column.floor, column.serial]
         except KeyError:
             continue
         H1 = column.floor_object.height
+
         if column.up_column:
             H2 = column.up_column.floor_object.height
         else:
@@ -189,7 +191,7 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
             Vn = 0.85 * design_code * sqrt(column.fc) * Aj
             Vu = max(Ts1 + Cc2 - Mpr1 / ((H1 + H2)/2),
                      Ts2 + Cc1 - Mpr2 / ((H1 + H2)/2))
-            result.append({
+            cal_result = {
                 'story': column.floor,
                 'column': column.serial,
                 'beams_rebar': beams_rebar,
@@ -213,6 +215,8 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                 'Vu(tf)': Vu / 1000,
                 'Vn(tf)': Vn / 1000,
                 'DCR': round(Vu/Vn, 2)
-            })
-            column.DCR = round(Vu/Vn, 2)
+            }
+            result.append(cal_result)
+            column.joint_result.update({pos: cal_result})
+
     return result, no_rebar_data, column_beam_df, beams_df

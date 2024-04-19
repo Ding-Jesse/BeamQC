@@ -20,9 +20,14 @@ from multiprocessing.pool import ThreadPool as Pool
 from collections import Counter
 from typing import Literal
 from joint_draw import create_joint_plan_view
-from itertools import chain
+from enum import Enum
 
-tol = 10
+tol = 50
+
+
+class UserDefineWarning(Enum):
+    ColumnConnectError = "column_connect"
+    ColumnJointShearFail = "shear"
 
 
 class ColumnBlock:
@@ -31,6 +36,7 @@ class ColumnBlock:
     mid: tuple
     column_serial: str
     column_data: Column
+    warning: list[UserWarning]
 
     def __init__(self, start, end) -> None:
         self.start = start
@@ -38,6 +44,7 @@ class ColumnBlock:
         self.column_serial = None
         self.mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, 0)
         self.column_data = None
+        self.warning = []
 
     def get_corner(self) -> list:
         points = [
@@ -90,6 +97,9 @@ class MlineObject:
             elif not self.left_column.column_serial:
                 self.left_column = None
             else:
+                if abs(self.left_column.end[column_pos] - self.start[column_pos]) > 1:
+                    self.left_column.warning.append(
+                        UserDefineWarning.ColumnConnectError)
                 if abs(self.mid[beam_pos] - (self.left_column.start[beam_pos] + self.left_column.end[beam_pos]) / 2) < \
                         abs((self.left_column.start[beam_pos] - self.left_column.end[beam_pos])):
                     self.left_offset = self.mid[beam_pos] - \
@@ -103,6 +113,9 @@ class MlineObject:
             elif not self.right_column.column_serial:
                 self.right_column = None
             else:
+                if abs(self.right_column.start[column_pos] - self.end[column_pos]) > 1:
+                    self.right_column.warning.append(
+                        UserDefineWarning.ColumnConnectError)
                 if abs(self.mid[beam_pos] - (self.right_column.start[beam_pos] + self.right_column.end[beam_pos]) / 2) < \
                         abs((self.right_column.start[beam_pos] - self.right_column.end[beam_pos])):
                     self.right_offset = self.mid[beam_pos] - (
@@ -377,6 +390,7 @@ def sort_entity_to_floor(data: dict):
             entity for entity in mline_entity if in_block(entity.mid, block)]
 
         sort_floor_block[text].update({
+            'block': [block, text],
             'beam_name_text_list': beam_name_text_list,
             'column_name_text_list': column_name_text_list,
             'column_block_list': column_block_list,
@@ -544,24 +558,38 @@ def joint_scan_main(plan_filename,
     create_joint_plan_view(plan_filename=new_plan_view,
                            mline_list=concat_list(
                                [items["mline_list"] for floor, items in sort_floor_block.items()]),
+                           column_block_list=concat_list(
+                               [items["column_block_list"] for floor, items in sort_floor_block.items()]),
+                           block_list=[(floor, items["block"])
+                                       for floor, items in sort_floor_block.items()],
                            layer_config={
+                               "Block": {
+                                   "ColorIndex": 2,
+                                   "Linetype": "HIDDEN",
+                                   "Lineweight": 0.5
+                               },
+                               "Warning": {
+                                   "ColorIndex": 1,
+                                   "Linetype": "HIDDEN",
+                                   "Lineweight": 0.5
+                               },
                                "Beam": {
                                    "ColorIndex": 2,
                                    "Linetype": "HIDDEN",
                                    "Lineweight": 0.5
                                },
                                "Column": {
-                                   "ColorIndex": 7,
+                                   "ColorIndex": 4,
                                    "Linetype": "Continuous",
                                    "Lineweight": 0.5
                                },
                                "BeamText": {
-                                   "ColorIndex": 7,
+                                   "ColorIndex": 2,
                                    "Linetype": "Continuous",
                                    "Lineweight": 0.5
                                },
                                "ColumnText": {
-                                   "ColorIndex": 7,
+                                   "ColorIndex": 2,
                                    "Linetype": "Continuous",
                                    "Lineweight": 0.5
                                },
