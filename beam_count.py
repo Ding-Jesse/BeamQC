@@ -2168,7 +2168,7 @@ def count_beam_multiprocessing(beam_filenames: list,
     print("執行時間：%f 秒" % (end - start))
     # return os.path.basename(excel_filename),os.path.basename(excel_filename_rcad),output_dwg_list
     output_file_list = [os.path.basename(file) for file in output_file_list]
-    return output_file_list, output_dwg_list
+    return output_file_list, output_dwg_list, f'{temp_new}-beam_list.pkl'
 
 
 def get_template(name: Literal["ELEMENTS", "DRAWRC", "RCAD", "OTHER"]):

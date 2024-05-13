@@ -3,7 +3,223 @@
 {% block title %}tool5{% endblock %}
 
 {% block content %}
+
+<head>
+    <style>
+        .banner::before {
+            background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-04.png");
+        }
+
+        .banner_col::before {
+            background-image: url("../static/RC check網站橫幅(無字)_工作區域 1-04.png");
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
+            overflow: visible;
+            resize: both;
+            min-height: 100px;
+            line-height: 20px;
+            font-size: 20px;
+            color: red;
+            line-height: 1.25;
+            /* float: left; */
+        }
+
+        .section-title {
+            display: flex;
+            flex-direction: column;
+            align-items: start;
+            /* Ensures vertical alignment in the middle */
+            margin-bottom: 5px;
+            /* Space between sections */
+        }
+
+        .radio-button {
+
+            display: flex;
+            align-items: center;
+            /* Aligns the radio button and the text vertically */
+            margin-right: 10px;
+            /* Space between individual radio buttons */
+        }
+
+        .radio-buttons-container {
+
+            display: flex;
+            flex-direction: column;
+            align-items: start;
+            /* flex-wrap: wrap; */
+            /* Allows radio buttons to wrap to the next line */
+            margin-top: 5px;
+            /* Space between title and radio buttons */
+        }
+
+        .radio-button input[type="radio"] {
+            width: auto;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            margin: 10px;
+            /* Space between the radio button and the label text */
+        }
+
+        /* Style the textarea */
+        #notification-textarea {
+            width: 80%;
+            /* Adjust the width as needed */
+            height: 300px;
+            /* Adjust the height as needed */
+            overflow: auto;
+            /* Add scrollbar when content exceeds the height */
+            border: none;
+            padding: 5px;
+            line-height: 1.5;
+            float: right;
+            /* Increase the line spacing (adjust the value as needed) */
+        }
+    </style>
+</head>
+
 <body>
-<h2>尚未開放</h2>
+    <div class="testbox">
+        <form>
+            <div class="banner">
+                <h1 class="header1">RC梁柱接頭檢核<p class="header2">Powered by</p>
+                    <p class="header3">ELEMENTs Structure Team</p>
+                </h1>
+            </div>
+            <div class="item">
+                <label>專案名稱</label>
+                <input type="text" id="project_name" name="project_name" placeholder="請輸入專案名稱" required>
+                <p><strong>平面圖用於判斷梁柱關係</strong>
+                    <label for="file_plan">選擇檔案(.dwg)</label>
+                    <input type=file id="file_plan" name="file_plan" value="dwg">
+                </p>
+                <p><strong>選擇樓層參數檔案(.xlsx)</strong>
+                    <a href="{{url_for('demo_file', filename='樓層參數_floor.xlsx')}}" style='color: #279c96'>範例檔下載</a>
+                    <input type=file id="file_floor_xlsx" name="file_floor_xlsx" value="xlsx">
+                <p><strong>圖框圖層</strong><textarea type="plan_block" id="block_layer" name="block_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>0&#10;DwFm&#10;DEFPOINTS</textarea>
+                </p>
+                <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="floor_text_layer" name="floor_text_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TITLE</textarea>
+                </p>
+                <p><strong>梁編號文字圖層</strong><textarea type="beam_name_text" id="beam_name_text_layer"
+                        name="beam_name_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                        required>S-TEXTG</textarea>
+                </p>
+                <p><strong>柱編號文字圖層</strong><textarea type="column_name_text" id="column_name_text_layer"
+                        name="column_name_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value=""
+                        required>S-TEXTC</textarea>
+                </p>
+                <p><strong>梁複線圖層</strong><textarea type="beam_mline" id="beam_mline_layer" name="beam_mline_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-RCBMG</textarea>
+                </p>
+                <p><strong>柱斷面圖層</strong><textarea type="column_block" id="column_block_layer" name="column_block_layer"
+                        placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-COL</textarea>
+                </p>
+                <div class="section-title">
+                    <strong>梁鋼筋檔案</strong>
+                    <div class="radio-buttons-container">
+                        {% for option in session.beam_pkl_files %}
+                        <div class="radio-button">
+                            <input type="radio" name="beam_pkl_file" value="{{ option }}">
+                            <label>{{ option }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="section-title">
+                    <strong>柱鋼筋檔案</strong>
+                    <div class="radio-buttons-container">
+                        {% for option in session.column_pkl_files %}
+                        <div class="radio-button">
+                            <input type="radio" name="column_pkl_file" value="{{ option }}">
+                            <label>{{ option }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button type="submit">Submit</button>
+            </div>
+        </form>
+    </div>
+    <div id='loader'>
+        <div class="testbox">
+            <form>
+                <h3>即將為您顯示進度...</h3>
+                <textarea id="notification-textarea" readonly></textarea>
+                <img src='../static/loading-loader.gif' style="float: left;width:15%;">
+            </form>
+        </div>
+    </div>
 </body>
+<script>
+    $(document).ready(function () {
+        $('form').on('submit', function (e) {
+            e.preventDefault();  // Prevent default form submission
+            testNotification();
+            var formData = new FormData(this);  // Create a FormData object passing the form element
+            var file = $('#file_plan');
+            if (!file.val()) {
+                alert('未上傳檔案')
+                return false
+            }
+            if (getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG') {
+                alert('檔案類型錯誤')
+                return false
+            }
+            $.ajax({
+                type: 'POST',
+                url: '/joint_scan',
+                data: formData,
+                processData: false,  // Prevent jQuery from processing the data
+                contentType: false,  // Prevent jQuery from setting the Content-Type header
+                success: function (response) {
+                    //console.log(response['validate']);
+                    alert(response['validate'])
+                    //alert(JSON.parse(response.responseText)['validate']);
+                    // alert('Form Submitted! Selected: ' + response.selectedOption);
+                },
+                error: function (xhr) {
+                    var errorResponse = JSON.parse(xhr.responseText);
+                    alert('Error: ' + errorResponse.message);
+                }
+            });
+            alert('成功傳送，稍等結果');
+        });
+    });
+    function getExtension(filename) {
+        var parts = filename.split('.');
+        return parts[parts.length - 1];
+    }
+    function testNotification() {
+        const notificationTextarea = document.getElementById('notification-textarea');
+        var eventSource = new EventSource('/stream-logs');
+        eventSource.onmessage = function (event) {
+            console.log('New log entry:', event.data);
+            // Append the new notification to the textarea
+            notificationTextarea.value += event.data + '\n';
+            // Scroll to the bottom of the textarea
+            notificationTextarea.scrollTop = notificationTextarea.scrollHeight;
+            if (event.data.includes("EOF")) {
+                eventSource.close();
+                notificationTextarea.value += 'Finish' + '\n';
+                console.log('Finish');
+            }
+        }
+        // Handle any errors that occur
+        eventSource.onerror = function (error) {
+            console.error('EventSource failed:', error);
+            eventSource.close();  // Close the connection on error
+        };
+        // To close the EventSource connection when the user navigates away
+        window.onbeforeunload = function () {
+            eventSource.close();
+        };
+    }
+</script>
 {% endblock %}

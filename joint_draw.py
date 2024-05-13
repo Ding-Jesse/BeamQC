@@ -4,9 +4,12 @@ import time
 import pythoncom
 from math import sqrt
 from collections import defaultdict
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-main_logger = logging.getLogger(__name__)
+from logger import setup_custom_logger
+# logging.basicConfig(level=logging.DEBUG,
+#                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# main_logger = logging.getLogger(__name__)
+global main_logger
+# main_logger = setup_custom_logger(__name__)
 split_line = "\n"
 
 
@@ -18,7 +21,7 @@ def vtFloat(l):
 
 
 def open_new_joint_plan():
-
+    pythoncom.CoInitialize()
     draw_plan_logger = main_logger.getChild('open_new_joint_plan')
     wincad_acad = None
     error_count = 0
@@ -117,8 +120,9 @@ def draw_beam_line(msp_joint_plan, mline_list, layer_config: dict[str, dict]):
     mline: joint_scan.MlineObject
     draw_beam_line_logger = main_logger.getChild('draw_beam_line')
     visited = set()
-    for mline in mline_list:
-        draw_beam_line_logger.debug(f"Add {mline.beam_serial}")
+    for count, mline in enumerate(mline_list):
+        if count % 500 == 0:
+            draw_beam_line_logger.info(f"繪製梁{count} / {len(mline_list)}")
 
         if not mline.beam_serial:
             continue
@@ -378,7 +382,9 @@ def create_joint_plan_view(plan_filename,
                            mline_list,
                            column_block_list,
                            block_list,
-                           layer_config):
+                           layer_config, client_id):
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id)
     doc_joint_plan, msp_joint_plan = open_new_joint_plan()
 
     setup_drawing_layer(doc_joint_plan=doc_joint_plan,

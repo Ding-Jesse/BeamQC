@@ -897,7 +897,7 @@ def count_column_multiprocessing(column_filenames: list[str],
 
     end = time.time()
     print("執行時間：%f 秒" % (end - start))
-    return os.path.basename(excel_filename), os.path.basename(pdf_report)
+    return os.path.basename(excel_filename), os.path.basename(pdf_report), f'{temp_new}-column_list.pkl'
 
 
 def count_column_main(column_filename, layer_config, temp_file='temp_1221_1F.pkl', output_folder='', project_name='', template_name='', floor_parameter_xlsx=''):
@@ -916,7 +916,7 @@ def count_column_main(column_filename, layer_config, temp_file='temp_1221_1F.pkl
 
 if __name__ == '__main__':
     # sys.argv[1] # XS-COL的路徑
-    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0417\XS-COL.dwg'
+    col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-03-XS-COL.dwg'
     column_filenames = [
         # sys.argv[1] # XS-COL的路徑
         r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-10-XS-COL.dwg',
@@ -924,9 +924,9 @@ if __name__ == '__main__':
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'TEST\2024-0417\2024-0417 茂德新莊.xlsx'
+    floor_parameter_xlsx = r'TEST\INPUT\2024-0513 test-2024-05-13-09-05-2024-0417_.xlsx'
     output_folder = r'TEST\2024-0417'
-    project_name = '0417-test'
+    project_name = '0513-test'
     plan_filename = r'TEST\2024-0415\XS-PLAN.dwg'
     # plan_layer_config = {
     #     'block_layer': ['DwFm'],
@@ -979,18 +979,18 @@ if __name__ == '__main__':
     sort_col_cad(msp_column=msp_column,
                  doc_column=doc_column,
                  layer_config=layer_config,
-                 temp_file=r'D:\Desktop\BeamQC\TEST\2024-0417\\0417-column.pkl',
+                 temp_file=r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-05-temp-0.pkl',
                  progress_file=r'result\tmp')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column.pkl'),
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0417\\0417-column.pkl'),
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-05-temp-0.pkl'),
                                    rebar_excel_path=floor_parameter_xlsx,
                                    progress_file=r'result\tmp')
     save_temp_file.save_pkl(
-        column_list, r'D:\Desktop\BeamQC\TEST\2024-0417\\column_list.pkl')
+        column_list, r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-03-temp-column_list.pkl')
     create_report(output_column_list=column_list,
                   output_folder=output_folder,
                   project_name=project_name,

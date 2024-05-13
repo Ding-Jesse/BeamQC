@@ -74,7 +74,7 @@ form {
 
 .banner::before {
   content: "";
-  background-image: url('https://placekitten.com/1200/800');
+  background-image: url('https://loremflickr.com/1800/300?random=1');
   background-size: cover;
   position: absolute;
   top: 0px;
@@ -105,7 +105,7 @@ form {
 }
 
 input {
-  margin-bottom: 10px;
+  /* margin-bottom: 10px; */
   border: 1px solid #ccc;
   border-radius: 3px;
   width: calc(100% - 10px);

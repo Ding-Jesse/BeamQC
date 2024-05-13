@@ -4,26 +4,24 @@ import json
 import time
 import os
 import uuid
-from flask import Flask, request, redirect, url_for, render_template, send_from_directory, session, Response
+import logging
+import queue
+from flask import Flask, request, redirect, url_for, render_template, send_from_directory, session, Response, jsonify, stream_with_context
 from flask_mail import Mail, Message
 from flask_session import Session
 from main import main_functionV3, main_col_function, storefile, Output_Config
 from auth import sendPhoneMessage
 from beam_count import count_beam_multiprocessing
 from column_count import count_column_multiprocessing
+from joint_scan import joint_scan_main
+
 
 app = Flask(__name__)
 app.config.from_object('config.config.Config')
 Session(app)
 mail = Mail(app)
 connected_clients: dict[str, list] = {}
-# UPLOAD_FOLDER = 'C:/Users/User/Desktop/BeamQC/INPUT'
-# OUTPUT_FOLDER = 'C:/Users/User/Desktop/BeamQC/OUTPUT'
 ALLOWED_EXTENSIONS = set(['dwg', 'DWG'])
-# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
-# app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
-# app.config['SECRET_KEY'] = b'_5#y2L"F4Q8z\n\xec]/'
 
 
 def allowed_file(filename):
@@ -331,8 +329,72 @@ def NOT_FOUND():
     return render_template('404.html')
 
 
-@app.route('/tool5')
+@app.route('/joint_scan', methods=['GET', 'POST'])
+@login_required
 def tool5():
+    if request.method == 'POST':
+        try:
+
+            beam_pkl = request.form.get('beam_pkl_file')
+            column_pkl = request.form.get('column_pkl_file')
+
+            beam_pkl = os.path.join(
+                app.config['UPLOAD_FOLDER'], f'{beam_pkl}.pkl')
+            column_pkl = os.path.join(
+                app.config['UPLOAD_FOLDER'], f'{column_pkl}.pkl')
+
+            uploaded_plans = request.files['file_plan']
+            project_name = request.form['project_name']
+
+            uploaded_xlsx = request.files['file_floor_xlsx']
+
+            if uploaded_plans:
+                xlsx_ok, xlsx_new_file, input_plan_file = storefile(uploaded_plans, app.config['UPLOAD_FOLDER'],
+                                                                    app.config['OUTPUT_FOLDER'],
+                                                                    f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+                plan_filename = input_plan_file
+            if uploaded_xlsx:
+                xlsx_ok, xlsx_new_file, input_xlsx_file = storefile(
+                    uploaded_xlsx, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+                # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+                xlsx_filename = input_xlsx_file
+
+            layer_config = {
+                'block_layer': request.form['block_layer'].split('\r\n'),
+                'floor_text_layer': request.form['floor_text_layer'].split('\r\n'),
+                'beam_name_text_layer': request.form['beam_name_text_layer'].split('\r\n'),
+                # 框框的圖層
+                'column_name_text_layer': request.form['column_name_text_layer'].split('\r\n'),
+                'beam_mline_layer': request.form['beam_mline_layer'].split('\r\n'),
+                'column_block_layer': request.form['column_block_layer'].split('\r\n'),
+            }
+            new_plan_view, excel_filename = joint_scan_main(plan_filename=plan_filename,
+                                                            layer_config=layer_config,
+                                                            output_folder=app.config['OUTPUT_FOLDER'],
+                                                            project_name=project_name,
+                                                            beam_pkl=beam_pkl,
+                                                            column_pkl=column_pkl,
+                                                            column_beam_joint_xlsx=xlsx_filename,
+                                                            client_id=session.get('client_id'))
+            if 'count_filenames' in session:
+                session['count_filenames'].extend(
+                    [new_plan_view, excel_filename])
+            else:
+                session['count_filenames'] = [new_plan_view, excel_filename]
+            response = Response()
+            response.status_code = 200
+            response.data = json.dumps({'validate': f'計算完成，請至輸出結果查看'})
+            response.content_type = 'application/json'
+        except Exception as ex:
+            # result_log_content['status'] = f'error, {ex}'
+            print(ex.args)
+            response = Response()
+            response.status_code = 200
+            response.data = json.dumps({'validate': f'發生錯誤'})
+            response.content_type = 'application/json'
+        return response
+        # Process the selected option as needed
+        # return jsonify({'status': 'success', 'selectedOption': selected_option})
     return render_template('tool5.html')
 
 
@@ -501,16 +563,16 @@ def count_beam():
         if beam_filename != '' and temp_file != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            output_file_list, output_dwg_list = count_beam_multiprocessing(beam_filenames=beam_filenames,
-                                                                           layer_config=layer_config,
-                                                                           temp_file=temp_file,
-                                                                           project_name=project_name,
-                                                                           output_folder=app.config['OUTPUT_FOLDER'],
-                                                                           template_name=template_name,
-                                                                           floor_parameter_xlsx=xlsx_filename,
-                                                                           progress_file=progress_file,
-                                                                           plan_filename=plan_filename,
-                                                                           plan_layer_config=plan_layer_config)
+            output_file_list, output_dwg_list, pkl = count_beam_multiprocessing(beam_filenames=beam_filenames,
+                                                                                layer_config=layer_config,
+                                                                                temp_file=temp_file,
+                                                                                project_name=project_name,
+                                                                                output_folder=app.config['OUTPUT_FOLDER'],
+                                                                                template_name=template_name,
+                                                                                floor_parameter_xlsx=xlsx_filename,
+                                                                                progress_file=progress_file,
+                                                                                plan_filename=plan_filename,
+                                                                                plan_layer_config=plan_layer_config)
             # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
                 session['count_filenames'].extend(output_file_list)
@@ -518,6 +580,12 @@ def count_beam():
             else:
                 session['count_filenames'] = output_file_list
                 session['count_filenames'].extend(output_dwg_list)
+            pkl = os.path.splitext(os.path.basename(pkl))[0]
+            if 'beam_pkl_files' in session:
+
+                session['beam_pkl_files'].extend(pkl)
+            else:
+                session['beam_pkl_files'] = [pkl]
         if (email_address):
             try:
                 sendResult(email_address, output_file_list, "梁配筋圖數量計算結果")
@@ -617,19 +685,25 @@ def count_column():
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
             # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
             #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
-            column_excel, column_report = count_column_multiprocessing(column_filenames=column_filenames,
-                                                                       layer_config=layer_config,
-                                                                       temp_file=temp_file,
-                                                                       output_folder=app.config['OUTPUT_FOLDER'],
-                                                                       project_name=project_name,
-                                                                       template_name=template_name,
-                                                                       floor_parameter_xlsx=xlsx_filename,
-                                                                       progress_file=progress_file)
+            column_excel, column_report, pkl = count_column_multiprocessing(column_filenames=column_filenames,
+                                                                            layer_config=layer_config,
+                                                                            temp_file=temp_file,
+                                                                            output_folder=app.config['OUTPUT_FOLDER'],
+                                                                            project_name=project_name,
+                                                                            template_name=template_name,
+                                                                            floor_parameter_xlsx=xlsx_filename,
+                                                                            progress_file=progress_file)
             if 'count_filenames' in session:
                 session['count_filenames'].extend(
                     [column_excel, column_report])
             else:
                 session['count_filenames'] = [column_excel, column_report]
+            pkl = os.path.splitext(os.path.basename(pkl))[0]
+            if 'column_pkl_files' in session:
+                session['column_pkl_files'].extend(pkl)
+            else:
+                session['column_pkl_files'] = [pkl]
+
         if (email_address):
             try:
                 sendResult(email_address, [
@@ -743,6 +817,39 @@ def generate_notifications(client_id):
                 with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
                     error_log.write(
                         f'{localtime} | {project_name} Not Exists , remove from session \n')
+
+
+def tail_logs(filename):
+    """Implements tail -f command in Python to yield new log lines as they are written to the file."""
+    with open(filename, 'r') as file:
+        # Move the cursor to the end of the file
+        file.seek(0, 2)
+
+        while True:
+            line = file.readline()
+            if 'EOF' in line:
+                yield line
+                break
+            if not line:
+                time.sleep(0.5)  # Sleep briefly to avoid busy looping
+                continue
+            yield line
+
+
+@app.route('/stream-logs')
+def stream_logs():
+    client_id = session.get('client_id')
+
+    def generate():
+        # tail_logs would need to parse and yield lines
+        while not os.path.exists(f'logs/app_{client_id}.log'):
+            time.sleep(5)
+        for log_line in tail_logs(f'logs/app_{client_id}.log'):
+            # print(f'user_id={user_id}:{log_line}')
+            # if f'user_id={user_id}' in log_line:
+            yield f"data: {log_line}\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 
 @app.route('/clear_session')

@@ -300,7 +300,7 @@
                 $('#rebar_data_layer').val("S-LEADER");
                 $('#rebar_layer').val("S-REINF");
                 $('#tie_text_layer').val("S-TEXT");
-                $('#block_layer').val("S-GRID");
+                $('#block_layer').val("S-GRID\r\n0\r\nDEFPOINTS\r\nDwFm");
                 $('#beam_text_layer').val("S-RC");
                 $('#beam_dim_layer').val("S-DIM");
                 $('#rc_block_layer').val("S-RC");
@@ -339,12 +339,12 @@
             }
             if ($('#companyColumn').val() == "Elements") {
                 $('#column_text_layer').val('S-TEXT');
-                $('#column_line_layer').val('S-STUD');
+                $('#column_line_layer').val('S-STUD\r\nS-TABLE');
                 $('#column_rebar_text_layer').val('S-TEXT');
                 $('#column_rebar_layer').val('S-REINFD');
                 $('#column_tie_text_layer').val('S-TEXT');
                 $('#column_tie_layer').val('S-REINF');
-                $('#column_block_layer').val('Page');
+                $('#column_block_layer').val('Page\r\n0\r\nDEFPOINTS\r\nDwFm');
                 $('#column_rc_layer').val('S-RC');
             }
         });

@@ -21,8 +21,9 @@ from collections import Counter
 from typing import Literal
 from joint_draw import create_joint_plan_view
 from enum import Enum
-
+from logger import setup_custom_logger
 tol = 50
+global main_logger
 
 
 class UserDefineWarning(Enum):
@@ -168,8 +169,10 @@ def match_rebar_data_with_object(data: dict, beams_df: pd.DataFrame, column_list
 
 def column_joint_main(output_folder: str, project_name: str, beam_pkl: str, column_pkl: str, column_beam_df: pd.DataFrame, column_beam_joint_xlsx: str):
     user_define = False
+
     beam_list = save_temp_file.read_temp(beam_pkl)
     column_list = save_temp_file.read_temp(column_pkl)
+
     floor_list = column_floor_parameter(column_list=column_list,
                                         floor_parameter_xlsx=column_beam_joint_xlsx)  # sort column floor
     # sort up bottom column
@@ -184,21 +187,24 @@ def column_joint_main(output_folder: str, project_name: str, beam_pkl: str, colu
         f'{output_folder}/'
         f'{project_name}_'
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
-        f'Joint.xlsx'
+        f'Joint_Result.xlsx'
     )
 
     joint_df, beams_df = check_column_joint(excel_filename=excel_filename,
                                             column_beam_df=column_beam_df,
                                             column_list=column_list,
                                             beam_list=beam_list)
-    return joint_df, beams_df, column_list
+    return joint_df, beams_df, column_list, excel_filename
 
 
 def read_column_beam_plan(plan_filename, layer_config: dict):
     '''
     match column amd beam relation in plan
     '''
+    read_column_beam_plan = main_logger.getChild('draw_rebar_data')
+
     error_count = 0
+    pythoncom.CoInitialize()
     # Step 1. 打開應用程式
     wincad_plan = None
     while not wincad_plan and error_count <= 10:
@@ -206,6 +212,7 @@ def read_column_beam_plan(plan_filename, layer_config: dict):
             wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
 
         except Exception as e:
+            read_column_beam_plan.info(e)
             error_count += 1
             time.sleep(5)
 
@@ -216,16 +223,19 @@ def read_column_beam_plan(plan_filename, layer_config: dict):
             doc_plan = wincad_plan.Documents.Open(plan_filename)
 
         except Exception as e:
+            read_column_beam_plan.info(e)
             error_count += 1
             time.sleep(5)
 
     # Step 3. 匯入modelspace
+    total = 0
     msp_plan = None
     while not msp_plan and error_count <= 10:
         try:
             msp_plan = doc_plan.Modelspace
             total = msp_plan.Count
         except Exception as e:
+            read_column_beam_plan.info(e)
             error_count += 1
             time.sleep(5)
 
@@ -259,7 +269,7 @@ def read_column_beam_plan(plan_filename, layer_config: dict):
         object_list = []
         count += 1
         if count % 1000 == 0:
-            print(f'平面圖已讀取{count}個物件')
+            read_column_beam_plan.info(f'平面圖已讀取{count}/{total}個物件')
         while error_count <= 3 and not object_list:
             try:
                 # print(msp_object.Layer)
@@ -478,12 +488,6 @@ def match_beam_column(data: dict):
 
 
 def output_match_result(data: dict):
-    excel_filename = (
-        f'{output_folder}/'
-        f'{project_name}_'
-        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
-        f'Joint.xlsx'
-    )
     df = pd.DataFrame([], columns=['樓層', '梁編號', '左柱',
                       '左側偏心', '右柱', '右側偏心', '方向'])
     row = 0
@@ -500,18 +504,19 @@ def output_match_result(data: dict):
                            round(mline.right_offset) if mline.right_column else "",
                            mline.xy_direction.upper()]
             row += 1
-    OutputExcel([df], excel_filename, "梁柱接頭表")
+    # OutputExcel([df], excel_filename, "梁柱接頭表")
     return df
 
 
 def match_column_beam_plan(plan_filename, layer_config):
-    if False:
+
+    if True:
         cad_result = read_column_beam_plan(plan_filename, layer_config)
         save_temp_file.save_pkl(
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'TEST\2024-0417\XS-PLAN_plan_set.pkl')
+            tmp_file=r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-16-01-XS-PLAN_plan_set.pkl')
 
     # seperate entity to floor block
     sort_floor_block = sort_entity_to_floor(cad_result)
@@ -524,6 +529,7 @@ def match_column_beam_plan(plan_filename, layer_config):
     # output column beam match
     column_beam_df = output_match_result(sort_floor_block)
 
+    main_logger.info('完成梁柱平面關係配對')
     return sort_floor_block, column_beam_df
 
 
@@ -533,28 +539,38 @@ def joint_scan_main(plan_filename,
                     project_name,
                     beam_pkl,
                     column_pkl,
-                    column_beam_joint_xlsx):
+                    column_beam_joint_xlsx,
+                    client_id="temp"):
     def concat_list(input_list):
         result = []
         for l in input_list:
             result += l
         return result
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     sort_floor_block, column_beam_df = match_column_beam_plan(plan_filename=plan_filename,
                                                               layer_config=layer_config)
 
-    joint_df, beams_df, column_list = column_joint_main(output_folder=output_folder,
-                                                        project_name=project_name,
-                                                        beam_pkl=beam_pkl,
-                                                        column_pkl=column_pkl,
-                                                        column_beam_df=column_beam_df,
-                                                        column_beam_joint_xlsx=column_beam_joint_xlsx)
+    joint_df, beams_df, column_list, excel_filename = column_joint_main(output_folder=output_folder,
+                                                                        project_name=project_name,
+                                                                        beam_pkl=beam_pkl,
+                                                                        column_pkl=column_pkl,
+                                                                        column_beam_df=column_beam_df,
+                                                                        column_beam_joint_xlsx=column_beam_joint_xlsx
+                                                                        )
 
     # output plan view
     match_rebar_data_with_object(data=sort_floor_block,
                                  beams_df=beams_df,
                                  column_list=column_list)
-
-    new_plan_view = f'{os.path.splitext(plan_filename)[0]}_joint_plan.dwg'
+    new_plan_view = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'Joint_Plan.dwg'
+    )
+    # new_plan_view = f'{output_folder}/{os.path.splitext(os.path.basename(plan_filename))[0]}_joint_plan.dwg'
+    main_logger.info("正在輸出結果")
     create_joint_plan_view(plan_filename=new_plan_view,
                            mline_list=concat_list(
                                [items["mline_list"] for floor, items in sort_floor_block.items()]),
@@ -598,8 +614,10 @@ def joint_scan_main(plan_filename,
                                    "Linetype": "Continuous",
                                    "Lineweight": 0.5
                                }
-                           })
-
+                           },
+                           client_id=client_id)
+    main_logger.info("EOF")
+    return os.path.basename(new_plan_view), os.path.basename(excel_filename)
 # def count_beam_multiprocessing(beam_filenames: list,
 #                                layer_config: dict,
 #                                temp_file='temp_1221_1F.pkl',
@@ -649,9 +667,9 @@ def joint_scan_main(plan_filename,
 if __name__ == "__main__":
     output_folder = r"TEST\2024-0417"
     project_name = r"0417-test"
-    beam_pkl = r"TEST\2024-0417\beam_list.pkl"
-    column_pkl = r"TEST\2024-0417\column_list.pkl"
-    column_beam_joint_xlsx = r"TEST\2024-0417\2024-0417 茂德新莊.xlsx"
+    beam_pkl = r"TEST\INPUT\2024-0510 test-2024-05-10-14-57-temp-beam_list.pkl"
+    column_pkl = r"TEST\INPUT\2024-0513 test-2024-05-13-09-03-temp-column_list.pkl"
+    column_beam_joint_xlsx = r"TEST\INPUT\2024-0510 test-2024-05-10-16-22-2024-0417_.xlsx"
 
     plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0417\XS-PLAN.dwg"
     layer_config = {
