@@ -118,6 +118,7 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
         except KeyError:
             continue
         H1 = column.floor_object.height
+        column.connect_beams = connect_beams
 
         if column.up_column:
             H2 = column.up_column.floor_object.height

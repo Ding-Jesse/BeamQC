@@ -6,10 +6,12 @@ import pythoncom
 import win32com.client
 import save_temp_file
 import re
+import numpy as np
 from main import OutputExcel
 from utils.demand import calculate_column_beam_joint_shear
 from item.beam import Beam
 from item.column import Column
+from item.floor import Floor
 from item.floor import read_parameter_df
 from column_count import floor_parameter as column_floor_parameter
 from column_count import sort_floor_column
@@ -128,10 +130,18 @@ class MlineObject:
 def check_column_joint(excel_filename: str,
                        column_beam_df: pd.DataFrame,
                        column_list: list[Column],
-                       beam_list: list[Beam]):
+                       beam_list: list[Beam],
+                       floor_list: list[Floor]):
     result, no_rebar_data, column_beam_df, beams_df = calculate_column_beam_joint_shear(
         column_list=column_list, beam_list=beam_list, column_beam_df=column_beam_df)
     joint_df = pd.DataFrame(result)
+    column_beam_df = sort_dataframe_by_floor(
+        column_beam_df, [f.floor_name for f in floor_list], 'Floor', [c.serial for c in column_list], 'Column')
+    no_rebar_data = sort_dataframe_by_floor(
+        no_rebar_data, [f.floor_name for f in floor_list], '樓層')
+    summary_df = summary_column_joint_df(joint_df)
+    summary_df = sort_dataframe_by_floor(
+        summary_df, [f.floor_name for f in floor_list], 'story')
 
     OutputExcel(df_list=[joint_df],
                 file_path=excel_filename, sheet_name='梁柱接頭剪力表')
@@ -139,6 +149,8 @@ def check_column_joint(excel_filename: str,
                 file_path=excel_filename, sheet_name='錯誤表')
     OutputExcel(df_list=[column_beam_df],
                 file_path=excel_filename, sheet_name='梁柱接頭統整表')
+    OutputExcel(df_list=[summary_df],
+                file_path=excel_filename, sheet_name='統整表')
     return joint_df, beams_df
 
 
@@ -179,6 +191,7 @@ def column_joint_main(output_folder: str, project_name: str, beam_pkl: str, colu
     sort_floor_column(floor_list=floor_list, column_list=column_list)
     beam_floor_parameter(beam_list=beam_list,
                          floor_parameter_xlsx=column_beam_joint_xlsx)  # sort beam floor
+
     if user_define:
         column_beam_df = read_parameter_df(
             read_file=column_beam_joint_xlsx, sheet_name="梁柱接頭表")
@@ -193,7 +206,9 @@ def column_joint_main(output_folder: str, project_name: str, beam_pkl: str, colu
     joint_df, beams_df = check_column_joint(excel_filename=excel_filename,
                                             column_beam_df=column_beam_df,
                                             column_list=column_list,
-                                            beam_list=beam_list)
+                                            beam_list=beam_list,
+                                            floor_list=floor_list)
+
     return joint_df, beams_df, column_list, excel_filename
 
 
@@ -516,7 +531,7 @@ def match_column_beam_plan(plan_filename, layer_config):
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-16-01-XS-PLAN_plan_set.pkl')
+            tmp_file=r'TEST\2024-0514\XS-PLAN_plan_set.pkl')
 
     # seperate entity to floor block
     sort_floor_block = sort_entity_to_floor(cad_result)
@@ -618,60 +633,88 @@ def joint_scan_main(plan_filename,
                            client_id=client_id)
     main_logger.info("EOF")
     return os.path.basename(new_plan_view), os.path.basename(excel_filename)
-# def count_beam_multiprocessing(beam_filenames: list,
-#                                layer_config: dict,
-#                                temp_file='temp_1221_1F.pkl',
-#                                output_folder='',
-#                                project_name='',
-#                                template_name: Literal["ELEMENTS",
-#                                                       "DRAWRC", "RCAD", "OTHER"] = '',
-#                                floor_parameter_xlsx='',
-#                                progress_file='',
-#                                plan_filename='',
-#                                plan_layer_config=''):
-#     if progress_file == '':
-#         progress_file = './result/tmp'
-#     cad_counter = Counter()
-#     output_dwg_list = []
-#     output_dwg = ''
 
-#     def read_beam_multi(beam_filename, temp_file):
-#         msp_beam, doc_beam = read_beam_cad(
-#             beam_filename=beam_filename, progress_file=progress_file)
-#         sort_beam_cad(msp_beam=msp_beam,
-#                       layer_config=layer_config,
-#                       entity_config=get_template(template_name),
-#                       temp_file=temp_file,
-#                       progress_file=progress_file)
-#         output_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(temp_file),
-#                                                     progress_file=progress_file,
-#                                                     rebar_parameter_excel=floor_parameter_xlsx)
-#         return output_beam_list, cad_data, os.path.basename(output_dwg)
-#     start = time.time()  # 開始測量執行時間
-#     with Pool(processes=10) as p:
-#         jobs = []
-#         beam_list = []
-#         for i, filename in enumerate(beam_filenames):
-#             temp_new = os.path.splitext(temp_file)[0]
-#             beam_temp = f'{temp_new}-{i}.pkl'
-#             jobs.append(p.apply_async(read_beam_multi, (filename, beam_temp)))
-#         for job in jobs:
-#             output_beam_list, cad_data, output_dwg = job.get()
-#             cad_counter.update(cad_data)
-#             output_dwg_list.append(output_dwg)
-#             beam_list.extend(output_beam_list)
-#     save_temp_file.save_pkl(beam_list, f'{temp_new}-beam_list.pkl')
-#     save_temp_file.save_pkl(cad_counter, f'{temp_new}-cad_data.pkl')
+
+def summary_column_joint_df(joint_df: pd.DataFrame):
+    def merge_lists_of_dicts(series):
+        result_list = []
+        for lst in series:
+            result_list.extend(lst)
+        return result_list
+    # Assume df is your DataFrame loaded with the appropriate data
+    # Create 'X_DCR' and 'Y_DCR' columns before grouping
+    joint_df['X_DCR'] = joint_df.apply(
+        lambda row: row['DCR'] if row['pos'] == 'X' else None, axis=1)
+    joint_df['Y_DCR'] = joint_df.apply(
+        lambda row: row['DCR'] if row['pos'] == 'Y' else None, axis=1)
+
+    # Group by 'story' and 'column'
+    joint_df = joint_df.groupby(['story', 'column']).agg({
+        'beams_rebar': merge_lists_of_dicts,  # Use your previously defined function
+        'X_DCR': 'max',  # Since only one value per group should be non-null, max works
+        'Y_DCR': 'max',  # Same logic as for 'X_DCR'
+    }).reset_index()
+
+    joint_df['type'] = np.where(
+        joint_df['beams_rebar'].apply(len) < 8, 'Outer', 'Inner')
+    group_df = joint_df.groupby(['story', 'type'])
+    # Aggregate on two columns with the same conditions
+    result = group_df.agg({
+        'X_DCR': [
+            ('>=1', lambda x: (x >= 1).sum()),  # Counts values >= 1 in DCR
+            ('<1', lambda x: (x < 1).sum())    # Counts values < 1 in DCR
+        ],
+        'Y_DCR': [
+            ('>=1', lambda x: (x >= 1).sum()),  # Counts values >= 1 in LCR
+            ('<1', lambda x: (x < 1).sum())    # Counts values < 1 in LCR
+        ]
+    })
+
+    return result
+
+
+def sort_dataframe_by_floor(df: pd.DataFrame, floor_list: list[str], column1: str, serial_list: list[str] = [], column2: str = ""):
+    # Create a mapping from story value to a custom sort key
+    order_mapping = {key: i for i, key in enumerate(floor_list)}
+
+    # Add a helper column based on the custom order
+    df['sort_key1'] = df.index.get_level_values(column1).map(order_mapping)
+
+    if column2 == "":
+        # Sort the DataFrame by the helper column
+        df_sorted = df.sort_values(['sort_key1'])
+
+        # Optionally, remove the helper column if not needed
+        df_sorted.drop(['sort_key1'], axis=1, inplace=True)
+
+        return df_sorted
+
+    # serial_list
+    new_serial_list = [re.findall(r'(\D*)(\d*)', s)[0] for s in serial_list]
+    new_serial_list.sort(key=lambda s: (
+        s[0], float(s[1]) if s[1].isnumeric() else 0))
+    serial_list = [s[0] + s[1] for s in new_serial_list]
+
+    order_mapping = {key: i for i, key in enumerate(serial_list)}
+    df['sort_key2'] = df.index.get_level_values(column2).map(order_mapping)
+
+    # Sort the DataFrame by the helper column
+    df_sorted = df.sort_values(['sort_key1', 'sort_key2'])
+
+    # Optionally, remove the helper column if not needed
+    df_sorted.drop(['sort_key1', 'sort_key2'], axis=1, inplace=True)
+
+    return df_sorted
 
 
 if __name__ == "__main__":
-    output_folder = r"TEST\2024-0417"
-    project_name = r"0417-test"
-    beam_pkl = r"TEST\INPUT\2024-0510 test-2024-05-10-14-57-temp-beam_list.pkl"
-    column_pkl = r"TEST\INPUT\2024-0513 test-2024-05-13-09-03-temp-column_list.pkl"
-    column_beam_joint_xlsx = r"TEST\INPUT\2024-0510 test-2024-05-10-16-22-2024-0417_.xlsx"
+    output_folder = r"TEST\2024-0514"
+    project_name = r"0514_chengming"
+    beam_pkl = r"TEST\2024-0514\2024-0513 test-2024-05-14-17-14-temp-beam_list.pkl"
+    column_pkl = r"TEST\2024-0514\2024-0513 test-2024-05-14-16-53-temp-column_list.pkl"
+    column_beam_joint_xlsx = r"TEST\2024-0514\2024-0417 茂德新莊.xlsx"
 
-    plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0417\XS-PLAN.dwg"
+    plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0514\XS-PLAN.dwg"
     layer_config = {
         'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
         'beam_name_text_layer': ['S-TEXTG'],

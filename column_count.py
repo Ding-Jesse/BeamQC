@@ -808,6 +808,7 @@ def floor_parameter(column_list: list[Column], floor_parameter_xlsx: str):
     floor_list = []
     parameter_df = read_parameter_df(floor_parameter_xlsx, '柱參數表')
     parameter_df.set_index(['樓層'], inplace=True)
+    floor_seq_list = parameter_df.index
     for c in column_list[:]:
         # for floor in c.multi_floor:
         for column_name in c.multi_column:
@@ -850,7 +851,7 @@ def sort_floor_column(floor_list: list[Floor], column_list: list[Column]):
         temp_list = floor_list[i].column_list
         up_list = floor_list[i - 1].column_list
         list(map(lambda c: match_column(c, up_list, 'up'), temp_list))
-    column_list.sort(key=lambda c: (c.serial, -1*c.seq))
+    column_list.sort(key=lambda c: (c.serial, c.seq))
 
 
 def count_column_multiprocessing(column_filenames: list[str],

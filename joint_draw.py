@@ -373,9 +373,17 @@ def draw_block(msp_joint_plan, block_list, summary_dict):
 
 
 def save_new_file(doc_joint_plan, plan_filename):
-    doc_joint_plan.SaveAs(plan_filename)
-    doc_joint_plan.Close(SaveChanges=True)
-    main_logger.info(f"{plan_filename} save Success")
+    error_count = 0
+    while error_count < 3:
+        try:
+            doc_joint_plan.SaveAs(plan_filename)
+            doc_joint_plan.Close(SaveChanges=True)
+            main_logger.info(f"{plan_filename} save Success")
+            break
+        except pythoncom.com_error:
+            main_logger.info(f"saving plan file:{plan_filename} error")
+            error_count += 1
+            time.sleep(3)
 
 
 def create_joint_plan_view(plan_filename,

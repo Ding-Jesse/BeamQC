@@ -3,6 +3,7 @@ import functools
 import json
 import time
 import os
+import sys
 import uuid
 import logging
 import queue
@@ -270,7 +271,9 @@ def upload_file():
             response.data = json.dumps({'validate': '發送請求過於頻繁，請稍等'})
             response.content_type = 'application/json'
         except Exception as ex:
-            print(ex)
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate': '發生錯誤'})

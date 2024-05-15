@@ -45,6 +45,7 @@ class Column:
     protect_layer = 4
     plan_count: int
     joint_result: dict
+    connect_beams: dict
 
     def __init__(self):
         self.plan_count = 1

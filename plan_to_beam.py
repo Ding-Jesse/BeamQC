@@ -2045,7 +2045,7 @@ def write_result_log(excel_file, task_name, plan_result, beam_result, date, runt
 
 def run_plan(plan_filename, plan_new_filename, big_file, sml_file, layer_config: dict, result_filename, progress_file, sizing, mline_scaling, date, fbeam_file):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    if False:
+    if True:
         plan_data = read_plan(plan_filename=plan_filename,
                               layer_config=layer_config,
                               progress_file=progress_file,
