@@ -8,7 +8,7 @@ import save_temp_file
 import pandas as pd
 import numpy as np
 import copy
-from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, progress
+from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat
 from item.column import Column
 from item.beam import Beam
 from plan_count import sort_plan_count
@@ -20,9 +20,20 @@ from item.floor import Floor, read_parameter_df, summary_floor_rebar, summary_fl
 from item.rebar import readRebarExcel
 from item.pdf import create_scan_pdf
 from utils.demand import calculate_column_beam_joint_shear
+from logger import setup_custom_logger
 slash_pattern = r'(.+)[~|-](.+)'  # ~
 commom_pattern = r'(,)|(、)'
 multi = True
+
+global main_logger
+
+
+def progress(message):  # 把進度印到log裡面，在app.py會對這個檔案做事
+    main_logger.info(message)
+
+
+def error(message):  # 把錯誤印到log裡面，在app.py會對這個檔案做事
+    main_logger.error(message)
 
 
 def read_column_cad(column_filename):
@@ -40,7 +51,7 @@ def read_column_cad(column_filename):
             error_count += 1
             time.sleep(5)
             error(
-                f'read_beam error in step 1: {e}, error_count = {error_count}.')
+                f'read_column error in step 1: {e}, error_count = {error_count}.')
 
     # Step 2. 匯入檔案
     flag = 0
@@ -52,7 +63,7 @@ def read_column_cad(column_filename):
             error_count += 1
             time.sleep(5)
             error(
-                f'read_beam error in step 2: {e}, error_count = {error_count}.')
+                f'read_column error in step 2: {e}, error_count = {error_count}.')
 
     # Step 3. 匯入modelspace
     flag = 0
@@ -64,7 +75,7 @@ def read_column_cad(column_filename):
             error_count += 1
             time.sleep(5)
             error(
-                f'read_beam error in step 3: {e}, error_count = {error_count}.')
+                f'read_column error in step 3: {e}, error_count = {error_count}.')
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
@@ -159,12 +170,12 @@ def sort_col_cad(msp_column,
             error_count += 1
     # try:
     progress(
-        f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+        f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
     for count, object in enumerate(msp_column):
         # check object is successfully loaded
         error_count = 0
         if count % 1000 == 0:
-            progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
+            progress(f'柱配筋圖已讀取{count}/{total}個物件')
         while error_count < 3:
             try:
                 # print(f'{object.Layer}:{object.ObjectName}')
@@ -300,8 +311,8 @@ def sort_col_cad(msp_column,
                             object.GetBoundingBox()[1][1], 2))
                         coor_to_section_list.append((coor1, coor2))
                 break
-            except:
-                # print('1')
+            except Exception as ex:
+                error(ex)
                 error_count += 1
                 time.sleep(5)
         coor_to_col_line_list.sort(key=lambda x: x[0])
@@ -361,24 +372,24 @@ def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):
     coor_to_tie_list = data['coor_to_tie_list']
     coor_to_section_list = data['coor_to_section_list']
     readRebarExcel(file_path=rebar_excel_path)
-    progress('結合格線與柱編號', progress_file=progress_file)
+    progress('結合格線與柱編號')
     new_coor_to_col_line_list = concat_col_to_grid(
         coor_to_col_set=coor_to_col_set, coor_to_col_line_list=coor_to_col_line_list)
-    progress('結合格線與樓層編號', progress_file=progress_file)
+    progress('結合格線與樓層編號')
     new_coor_to_floor_line_list = concat_floor_to_grid(
         coor_to_floor_set=coor_to_floor_set, coor_to_floor_line_list=coor_to_floor_line_list)
     # draw_grid_line(new_coor_to_floor_line_list=new_coor_to_floor_line_list,new_coor_to_col_line_list=new_coor_to_col_line_list,msp_beam=msp_column,doc_beam=doc_column)
     # output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
-    progress('獲取斷面大小資訊', progress_file=progress_file)
+    progress('獲取斷面大小資訊')
     output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
                                                new_coor_to_floor_line_list=new_coor_to_floor_line_list,
                                                coor_to_section_list=coor_to_section_list,
                                                coor_to_size_set=coor_to_size_set,
                                                progress_file=progress_file)
-    progress('結合柱編號與柱主筋', progress_file=progress_file)
+    progress('結合柱編號與柱主筋')
     combine_col_rebar(column_list=output_column_list, coor_to_rebar_list=coor_to_rebar_list,
                       coor_to_rebar_text_list=coor_to_rebar_text_list)
-    progress('結合柱編號與柱箍筋', progress_file=progress_file)
+    progress('結合柱編號與柱箍筋')
     combine_col_tie(column_list=output_column_list, coor_to_tie_list=coor_to_tie_list,
                     coor_to_tie_text_list=coor_to_tie_text_list)
     return output_column_list
@@ -438,27 +449,27 @@ def create_report(output_column_list: list[Column],
 
     floor_list = floor_parameter(column_list=output_column_list,
                                  floor_parameter_xlsx=floor_parameter_xlsx)
-    progress('整理樓層與柱編號', progress_file=progress_file)
+    progress('整理樓層與柱編號')
     sort_floor_column(floor_list=floor_list, column_list=output_column_list)
-    progress('統計樓層柱鋼筋', progress_file=progress_file)
+    progress('統計樓層柱鋼筋')
     rebar_df, concrete_df, coupler_df, formwork_df = summary_floor_rebar(
         floor_list=floor_list, item_type='column')
-    progress('讀取SCAN項目', progress_file=progress_file)
+    progress('讀取SCAN項目')
     cs_list = create_column_scan()
-    progress('柱斷面檢核', progress_file=progress_file)
+    progress('柱斷面檢核')
     scan_df = column_check(column_list=output_column_list,
                            column_scan_list=cs_list)
-    progress('統整柱鋼筋比', progress_file=progress_file)
+    progress('統整柱鋼筋比')
     header_list, ratio_dict = summary_floor_column_rebar_ratio(
         floor_list=floor_list)
-    progress('產生柱EXCEL報表', progress_file=progress_file)
+    progress('產生柱EXCEL報表')
     column_df = output_col_excel(column_list=output_column_list,
                                  output_folder=output_folder,
                                  project_name=project_name)
-    progress('產生柱詳細檢核報表', progress_file=progress_file)
+    progress('產生柱詳細檢核報表')
     ng_df = output_detail_scan_report(column_list=output_column_list)
     column_ng_df, sum_df = output_ng_ratio(scan_df)
-    progress('產生報表', progress_file=progress_file)
+    progress('產生報表')
     OutputExcel(df_list=[scan_df],
                 file_path=excel_filename,
                 sheet_name='柱檢核表',
@@ -476,7 +487,7 @@ def create_report(output_column_list: list[Column],
     OutputExcel(df_list=[formwork_df],
                 file_path=excel_filename, sheet_name='模板統計表')
     OutputExcel(df_list=[ng_df], file_path=excel_filename, sheet_name='詳細檢核表')
-    progress('產生PDF報表', progress_file=progress_file)
+    progress('產生PDF報表')
     create_scan_pdf(scan_list=cs_list,
                     scan_df=ng_df.copy(),
                     concrete_df=concrete_df,
@@ -661,11 +672,11 @@ def concat_name_to_col_floor(coor_to_size_set: set,
             new_column.floor = floor[0][0]
         if len(col) > 1:
             progress(
-                f'{size}:{coor} => {list(map(lambda c:c[0],col))}', progress_file)
+                f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
             # print(f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
         if len(floor) > 1:
             progress(
-                f'{size}:{coor} => {list(map(lambda c:c[0],floor))}', progress_file)
+                f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
             # print(f'{size}:{coor} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c: c[0], floor[1:])))
         if new_column.serial != '':
@@ -704,17 +715,17 @@ def get_size_from_section(new_coor_to_col_line_list: list,
             new_column.floor = floor[0][0]
         if len(col) > 1:
             progress(
-                f'{size}:{coor1} => {list(map(lambda c:c[0],col))}', progress_file)
+                f'{size}:{coor1} => {list(map(lambda c:c[0],col))}')
             # print(f'{size}:{coor1} => {list(map(lambda c:c[0],col))}')
             new_column.multi_column.extend(list(map(lambda c: c[0], col[0:])))
         if len(floor) > 1:
             progress(
-                f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}', progress_file)
+                f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
             # print(f'{size}:{coor1} => {list(map(lambda c:c[0],floor))}')
             new_column.multi_floor.extend(list(map(lambda c: c[0], floor[1:])))
         if len([c for c in output_column_list if c.floor == new_column.floor and c.serial == new_column.serial]) > 0:
             progress(
-                f'{new_column.floor}{new_column.serial} is exists', progress_file)
+                f'{new_column.floor}{new_column.serial} is exists')
             # print(f'{new_column.floor}{new_column.serial} is exists')
             continue
         if new_column.serial != '':
@@ -863,7 +874,8 @@ def count_column_multiprocessing(column_filenames: list[str],
                                  floor_parameter_xlsx='',
                                  progress_file='',
                                  plan_filename='',
-                                 plan_layer_config=None):
+                                 plan_layer_config=None,
+                                 client_id="temp"):
     def read_col_multi(column_filename, temp_file):
         msp_column, doc_column = read_column_cad(
             column_filename=column_filename)
@@ -876,6 +888,8 @@ def count_column_multiprocessing(column_filenames: list[str],
                                               rebar_excel_path=floor_parameter_xlsx,
                                               progress_file=progress_file)
         return output_column_list
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     start = time.time()  # 開始測量執行時間
     with Pool(processes=10) as p:
         jobs = []
@@ -901,18 +915,18 @@ def count_column_multiprocessing(column_filenames: list[str],
     return os.path.basename(excel_filename), os.path.basename(pdf_report), f'{temp_new}-column_list.pkl'
 
 
-def count_column_main(column_filename, layer_config, temp_file='temp_1221_1F.pkl', output_folder='', project_name='', template_name='', floor_parameter_xlsx=''):
-    start = time.time()
-    msp_column, doc_column = read_column_cad(column_filename=column_filename)
-    sort_col_cad(msp_beam=msp_column, doc_column=doc_column,
-                 layer_config=layer_config, temp_file=temp_file)
-    output_column_list = cal_column_rebar(
-        data=save_temp_file.read_temp(temp_file))
-    output_excel = create_report(output_column_list=output_column_list, output_folder=output_folder,
-                                 project_name=project_name, floor_parameter_xlsx=floor_parameter_xlsx)
-    # output_dwg = draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_column,doc_beam=doc_column,output_folder=output_folder,project_name=project_name)
-    print(f'Total Time:{time.time() - start}')
-    return os.path.basename(output_excel)
+# def count_column_main(column_filename, layer_config, temp_file='temp_1221_1F.pkl', output_folder='', project_name='', template_name='', floor_parameter_xlsx=''):
+#     start = time.time()
+#     msp_column, doc_column = read_column_cad(column_filename=column_filename)
+#     sort_col_cad(msp_beam=msp_column, doc_column=doc_column,
+#                  layer_config=layer_config, temp_file=temp_file)
+#     output_column_list = cal_column_rebar(
+#         data=save_temp_file.read_temp(temp_file))
+#     output_excel = create_report(output_column_list=output_column_list, output_folder=output_folder,
+#                                  project_name=project_name, floor_parameter_xlsx=floor_parameter_xlsx)
+#     # output_dwg = draw_rebar_line(class_beam_list=class_beam_list,msp_beam=msp_column,doc_beam=doc_column,output_folder=output_folder,project_name=project_name)
+#     print(f'Total Time:{time.time() - start}')
+#     return os.path.basename(output_excel)
 
 
 if __name__ == '__main__':
@@ -974,14 +988,16 @@ if __name__ == '__main__':
         'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
         'column_rc_layer': ['S-RC']  # 斷面圖層
     }
+    main_logger = setup_custom_logger(__name__, client_id=project_name)
     msp_column = None
     doc_column = None
     msp_column, doc_column = read_column_cad(col_filename)
-    sort_col_cad(msp_column=msp_column,
-                 doc_column=doc_column,
-                 layer_config=layer_config,
-                 temp_file=r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-05-temp-0.pkl',
-                 progress_file=r'result\tmp')
+
+    # sort_col_cad(msp_column=msp_column,
+    #              doc_column=doc_column,
+    #              layer_config=layer_config,
+    #              temp_file=r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-05-temp-0.pkl',
+    #              progress_file=r'result\tmp')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column.pkl'),
     #                 msp_column=msp_column,

@@ -7,6 +7,7 @@ import sys
 import uuid
 import logging
 import queue
+import traceback
 from flask import Flask, request, redirect, url_for, render_template, send_from_directory, session, Response, jsonify, stream_with_context
 from flask_mail import Mail, Message
 from flask_session import Session
@@ -232,7 +233,8 @@ def upload_file():
                                               layer_config=layer_config,
                                               progress_file=progress_file,
                                               sizing=sizing,
-                                              mline_scaling=mline_scaling)
+                                              mline_scaling=mline_scaling,
+                                              client_id=client_id)
                 filenames_beam = output_file
                 filenames.extend(filenames_beam)
             if column_ok and plan_ok:
@@ -246,7 +248,8 @@ def upload_file():
                                   result_file=txt_file,
                                   layer_config=col_layer_config,
                                   task_name=project_name,
-                                  progress_file=progress_file)
+                                  progress_file=progress_file,
+                                  client_id=client_id)
                 filenames_column = [f'{project_name}-column.txt']
                 filenames.extend(filenames_column)
             if column_ok or beam_ok:
@@ -270,10 +273,14 @@ def upload_file():
             response.status_code = 200
             response.data = json.dumps({'validate': '發送請求過於頻繁，請稍等'})
             response.content_type = 'application/json'
-        except Exception as ex:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+        except Exception:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            detailed_traceback = traceback.extract_tb(exc_traceback)
+            for entry in detailed_traceback:
+                print("Filename:", entry.filename)
+                print("Line:", entry.lineno)
+                print("Function:", entry.name)
+                print("Code Context:", entry.line)
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate': '發生錯誤'})
@@ -575,7 +582,8 @@ def count_beam():
                                                                                 floor_parameter_xlsx=xlsx_filename,
                                                                                 progress_file=progress_file,
                                                                                 plan_filename=plan_filename,
-                                                                                plan_layer_config=plan_layer_config)
+                                                                                plan_layer_config=plan_layer_config,
+                                                                                client_id=client_id)
             # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
                 session['count_filenames'].extend(output_file_list)
@@ -695,7 +703,8 @@ def count_column():
                                                                             project_name=project_name,
                                                                             template_name=template_name,
                                                                             floor_parameter_xlsx=xlsx_filename,
-                                                                            progress_file=progress_file)
+                                                                            progress_file=progress_file,
+                                                                            client_id=client_id)
             if 'count_filenames' in session:
                 session['count_filenames'].extend(
                     [column_excel, column_report])

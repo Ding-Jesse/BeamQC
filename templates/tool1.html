@@ -108,7 +108,7 @@
           <!-- <label>柱配筋圖表格線圖層名稱</label>
           <input type="text" id="line_layer" name="line_layer" value="S-STUD" required> -->
           <p><strong>柱配筋圖表格線圖層名稱</strong><textarea type="text" id="line_layer" name="line_layer"
-              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-STUD" required>S-STUD</textarea></p>
+              placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-STUD" required>S-STUD&#10;S-TABLE</textarea></p>
         </div>
       </div>
 
@@ -352,7 +352,7 @@
         document.getElementById("loader").style.display = "block";
         if (project_count === 1) {
           console.log(project_count)
-          startNotifications()
+          startNotifications('/stream-logs')
         }
 
         // if(getExtension(file.val()) != 'dwg' & getExtension(file.val()) != 'DWG'){

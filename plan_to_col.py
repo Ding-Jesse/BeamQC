@@ -15,12 +15,28 @@ from numpy import Inf, object_
 from openpyxl import load_workbook
 from itertools import groupby
 from functools import cmp_to_key
-from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, mycmp, progress
+from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, mycmp
+from logger import setup_custom_logger
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡', '、']
 special_char_pattern = r'[、|,]'
+global main_logger
 # def read_plan(plan_filename, floor_layer, col_layer, block_layer, result_filename, progress_file):
+
+
+def error(error_message):
+    '''
+    把錯誤訊息印到error.log裡面
+    '''
+    global main_logger
+    main_logger.error(error_message)
+
+
+def progress(message):
+    '''把進度印到progress裡面，在app.py會對這個檔案做事'''
+    global main_logger
+    main_logger.info(message)
 
 
 def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
@@ -35,7 +51,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     table_line_layer = layer_config['table_line_layer']
     error_count = 0
     text_entity_name = ["AcDbText", 'AcDbAttribute']
-    progress('開始讀取平面圖(核對項目: 柱配筋對應)', progress_file)
+    progress('開始讀取平面圖(核對項目: 柱配筋對應)')
     # Step 1. 打開應用程式
     flag = 0
     while not flag and error_count <= 10:
@@ -47,7 +63,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
             time.sleep(5)
             error(
                 f'read_plan error in step 1: {ex}, error_count = {error_count}.')
-    progress('平面圖讀取進度 1/11', progress_file)
+    progress('平面圖讀取進度 1/11')
 
     # Step 2. 匯入檔案
     flag = 0
@@ -60,7 +76,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
             time.sleep(5)
             error(
                 f'read_plan error in step 2: {e}, error_count = {error_count}.')
-    progress('平面圖讀取進度 2/11', progress_file)
+    progress('平面圖讀取進度 2/11')
 
     # Step 3. 匯入modelspace
     flag = 0
@@ -73,7 +89,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
             time.sleep(5)
             error(
                 f'read_plan error in step 3: {ex}, error_count = {error_count}.')
-    progress('平面圖讀取進度 3/11', progress_file)
+    progress('平面圖讀取進度 3/11')
 
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
     flag = 0
@@ -89,7 +105,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
             time.sleep(5)
             error(
                 f'read_plan error in step 4: {ex}, error_count = {error_count}.')
-    progress('平面圖讀取進度 4/11', progress_file)
+    progress('平面圖讀取進度 4/11')
 
     # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
     # flag = 0
@@ -155,20 +171,20 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     table_to_size_set = []  # set (coor, size)
     block_coor_list = []  # 存取方框最左下角的點座標
     table_line_list = []
-    progress('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候...', progress_file)
+    progress('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候...')
     used_layer_list = []
     for key, layer_name in layer_config.items():
         used_layer_list += layer_name
     total = msp_plan.Count
     progress(
-        f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+        f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
     count = 0
     for msp_object in msp_plan:
         object_list = []
         error_count = 0
         count += 1
         if count % 1000 == 0 or count == total:
-            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+            progress(f'平面圖已讀取{count}/{total}個物件')
         while error_count <= 3 and not object_list:
             try:
                 if msp_object.Layer not in used_layer_list:
@@ -189,7 +205,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
         while error_count <= 3 and object_list:
             count += 1
             if count % 1000 == 0:
-                progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+                progress(f'平面圖已讀取{count}/{total}個物件')
             object = object_list.pop()
             try:
                 if object.Layer == '0':
@@ -273,14 +289,17 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                 time.sleep(5)
                 error(
                     f'read_plan error in step 7: {ex}, error_count = {error_count}.')
-    progress('平面圖讀取進度 7/11', progress_file)
+    progress('平面圖讀取進度 7/11')
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
-    if error_count > 10:
+    error_count = 0
+    while error_count < 3:
         try:
             doc_plan.Close(SaveChanges=False)
+            break
         except:
-            pass
+            time.sleep(3)
+            error_count += 1
         # return False
     return {
         'coor_to_floor_set': coor_to_floor_set,
@@ -356,7 +375,7 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
                 if sizes:
                     floor_table_size_dict[floor].update({text: sizes[0]})
 
-    progress('平面圖讀取進度 8/11', progress_file)
+    progress('平面圖讀取進度 8/11')
 
     # Step 9. 算出Bmax, Fmax, Rmax
     # 此處可能報錯的地方在於turn_floor_to_float，但函式本身return false時就會報錯，所以此處不另外再報錯
@@ -398,7 +417,7 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
                 Fmax = x
             elif x > 1000 and x != 2000:
                 Rmax = x
-    progress('平面圖讀取進度 9/11', progress_file)
+    progress('平面圖讀取進度 9/11')
 
     # 先把不合理的樓層踢掉
     new_floor_to_coor_list = []
@@ -465,7 +484,7 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
         else:
             col_size_coor_set.add(
                 (col_name, '', (col_full_coor[0][0], col_full_coor[1][0], col_full_coor[1][1], col_full_coor[0][1])))
-    progress('平面圖讀取進度 10/11', progress_file)
+    progress('平面圖讀取進度 10/11')
     # # DEBUG: 檢查col跟size有沒有被圈在一起，或者被亂圈到其他地方
     # for x in col_size_coor_set:
     #     coor = x[2]
@@ -527,21 +546,23 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
         else:
             error('read_plan error in step 11: min_floor cannot be found.')
 
-    progress('平面圖讀取進度 11/11', progress_file)
-    progress('平面圖讀取完畢。', progress_file)
+    progress('平面圖讀取進度 11/11')
+    progress('平面圖讀取完畢。')
     # try:
     #     doc_plan.Close(SaveChanges=False)
     # except:
     #     error('read_plan error in step 12: cannot close.')
 
     # plan.txt單純debug用，不想多新增檔案可以註解掉
-    f = open(result_filename, "w", encoding='utf-8')
-    f.write("in plan: \n")
-    l = list(set_plan)
-    l.sort()
-    for x in l:
-        f.write(f'{x}\n')
-    f.close()
+    with open(result_filename, "w", encoding='utf-8') as f:
+        # f = open(result_filename, "w", encoding='utf-8')
+        f.write("in plan: \n")
+        l = list(set_plan)
+        l.sort()
+        for x in l:
+            f.write(f'{x}\n')
+
+    error_count = 0
 
     return (set_plan, dic_plan)
 
@@ -555,7 +576,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     text_layer = layer_config['text_layer']
     line_layer = layer_config['line_layer']
     error_count = 0
-    progress('開始讀取柱配筋圖', progress_file)
+    progress('開始讀取柱配筋圖')
     # Step 1. 打開應用程式
     flag = 0
     while not flag and error_count <= 10:
@@ -567,7 +588,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
             time.sleep(5)
             error(
                 f'read_col error in step 1: {ex}, error_count = {error_count}.')
-    progress('柱配筋圖讀取進度 1/10', progress_file)
+    progress('柱配筋圖讀取進度 1/10')
 
     # Step 2. 匯入檔案
     flag = 0
@@ -580,7 +601,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
             time.sleep(5)
             error(
                 f'read_col error in step 2: {ex}, error_count = {error_count}.')
-    progress('柱配筋圖讀取進度 2/10', progress_file)
+    progress('柱配筋圖讀取進度 2/10')
 
     # Step 3. 匯入modelspace
     flag = 0
@@ -593,7 +614,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
             time.sleep(5)
             error(
                 f'read_col error in step 3: {ex}, error_count = {error_count}.')
-    progress('柱配筋圖讀取進度 3/10', progress_file)
+    progress('柱配筋圖讀取進度 3/10')
 
     # Step 4. 解鎖所有圖層 -> 不然不能刪東西
     flag = 0
@@ -611,7 +632,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
             msp_col = doc_col.Modelspace
             error(
                 f'read_col error in step 4: {e}, error_count = {error_count}.')
-    progress('柱配筋圖讀取進度 4/10', progress_file)
+    progress('柱配筋圖讀取進度 4/10')
 
     # Step 5. 遍歷所有物件 -> 炸圖塊
     # flag = 0
@@ -638,7 +659,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     #             pass
     #         error(
     #             f'read_col error in step 5: {ex}, error_count = {error_count}.')
-    progress('柱配筋圖讀取進度 5/10', progress_file)
+    progress('柱配筋圖讀取進度 5/10')
 
     # Step 6. 重新匯入modelspace
     # flag = 0
@@ -654,7 +675,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     # progress('柱配筋圖讀取進度 6/10', progress_file)
 
     # Step 7. 遍歷所有物件 -> 完成一堆座標對應的set跟list
-    progress('正在遍歷柱配筋圖上所有物件並篩選出有效信息，運行時間取決於柱配筋圖大小，請耐心等候', progress_file)
+    progress('正在遍歷柱配筋圖上所有物件並篩選出有效信息，運行時間取決於柱配筋圖大小，請耐心等候')
     coor_to_floor_set = set()  # set(coor, floor)
     coor_to_col_set = set()  # set(coor, col)
     coor_to_size_set = set()  # set(coor, size)
@@ -664,7 +685,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     total = msp_col.Count
     count = 0
     progress(
-        f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
+        f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
     used_layer_list = []
     for key, layer_name in layer_config.items():
         used_layer_list += layer_name
@@ -673,7 +694,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
         error_count = 0
         count += 1
         if count % 1000 == 0 or count == total:
-            progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
+            progress(f'柱配筋圖已讀取{count}/{total}個物件')
         while error_count <= 3 and not object_list:
             try:
                 if msp_object.Layer not in used_layer_list:
@@ -745,15 +766,18 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
                     f'read_col error in step 7: {ex}, error_count = {error_count}.')
     coor_to_col_line_list.sort(key=lambda x: x[0])
     coor_to_floor_line_list.sort(key=lambda x: x[0])
-    progress('柱配筋圖讀取進度 7/10', progress_file)
+    progress('柱配筋圖讀取進度 7/10')
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
-    if error_count > 10:
+    error_count = 0
+    while error_count < 3:
         try:
             doc_col.Close(SaveChanges=False)
+            break
         except:
-            pass
-        # return False
+            time.sleep(3)
+            error_count += 1
+
     return {
         'coor_to_col_set': coor_to_col_set,
         'coor_to_col_line_list': coor_to_col_line_list,
@@ -789,7 +813,7 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
             if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
                 col_to_line_set.add(
                     (col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
-    progress('柱配筋圖讀取進度 8/10', progress_file)
+    progress('柱配筋圖讀取進度 8/10')
 
     # Step 9. 完成floor_to_line_set 格式:(floor, down, up, left)
     floor_to_line_set = set()
@@ -816,7 +840,7 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
                         (floor, new_coor_to_floor_line_list[y-1][0], new_coor_to_floor_line_list[y+1][0], coor[0][0]))
         except:
             pass
-    progress('柱配筋圖讀取進度 9/10', progress_file)
+    progress('柱配筋圖讀取進度 9/10')
 
     # Step 10. 完成set_col和dic_col
     dic_col = {}
@@ -865,24 +889,31 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
                                                        min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
 
     # doc_col.Close(SaveChanges=False)
-    progress('柱配筋圖讀取進度 10/10', progress_file)
-    progress('柱配筋圖讀取完成。', progress_file)
+    progress('柱配筋圖讀取進度 10/10')
+    progress('柱配筋圖讀取完成。')
     # col.txt單純debug用，不想多新增檔案可以註解掉
-    f = open(result_filename, "w", encoding='utf-8')
-    f.write("in col: \n")
-    l = list(set_col)
-    l.sort()
-    for x in l:
-        f.write(f'{x}\n')
-    f.close()
+    with open(result_filename, "w", encoding='utf-8') as f:
+        f.write("in col: \n")
+        l = list(set_col)
+        l.sort()
+        for x in l:
+            f.write(f'{x}\n')
 
     return (set_col, dic_col)
 
 
 # 完成 in plan but not in col 的部分並在圖上mark有問題的部分
-def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, result_filename, date, drawing, progress_file):
+def write_plan(plan_filename,
+               plan_new_filename,
+               set_plan,
+               set_col,
+               dic_plan,
+               result_filename,
+               date, drawing, progress_file, client_id):
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     error_count = 0
-    progress("開始標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'。", progress_file)
+    progress("開始標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'。")
     pythoncom.CoInitialize()
     set1 = set_plan - set_col
     list1 = list(set1)
@@ -906,7 +937,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 time.sleep(5)
                 error(
                     f'write_plan error in step 1, {e}, error_count = {error_count}.')
-        progress('平面圖標註進度 1/5', progress_file)
+        progress('平面圖標註進度 1/5')
         # Step 2. 匯入檔案
         flag = 0
         while not flag and error_count <= 10:
@@ -918,7 +949,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 time.sleep(5)
                 error(
                     f'write_plan error in step 2, {e}, error_count = {error_count}.')
-        progress('平面圖標註進度 2/5', progress_file)
+        progress('平面圖標註進度 2/5')
         # Step 3. 載入modelspace(還要畫圖)
         flag = 0
         while not flag and error_count <= 10:
@@ -931,7 +962,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 error(
                     f'write_plan error in step 3, {e}, error_count = {error_count}.')
         time.sleep(5)
-        progress('平面圖標註進度 3/5', progress_file)
+        progress('平面圖標註進度 3/5')
         # Step 4. 設定mark的圖層
         flag = 0
         while not flag and error_count <= 10:
@@ -947,7 +978,7 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
                 time.sleep(5)
                 error(
                     f'write_plan error in step 4, {e}, error_count = {error_count}.')
-        progress('平面圖標註進度 4/5', progress_file)
+        progress('平面圖標註進度 4/5')
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
@@ -1008,15 +1039,22 @@ def write_plan(plan_filename, plan_new_filename, set_plan, set_col, dic_plan, re
         error(f'write_plan error in step 5, there are no col in plan.txt?')
 
     f.close()
-    progress('平面圖標註進度 5/5', progress_file)
-    progress("標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'完成。", progress_file)
+    progress('平面圖標註進度 5/5')
+    progress("標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'完成。")
     return rate
 
 
 # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
-def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result_filename, date, drawing, progress_file):
+def write_col(col_filename,
+              col_new_filename,
+              set_plan,
+              set_col,
+              dic_col,
+              result_filename, date, drawing, progress_file, client_id):
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     error_count = 0
-    progress("開始標註柱配筋圖及輸出核對結果至'column.txt'。", progress_file)
+    progress("開始標註柱配筋圖及輸出核對結果至'column.txt'。")
     pythoncom.CoInitialize()
     set1 = set_plan - set_col
     list1 = list(set1)
@@ -1039,7 +1077,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
                 time.sleep(5)
                 error(
                     f'write_col error in step 1, {ex}, error_count = {error_count}.')
-        progress('柱配筋圖標註進度 1/5', progress_file)
+        progress('柱配筋圖標註進度 1/5')
         # Step 2. 匯入檔案
         flag = 0
         while not flag and error_count <= 10:
@@ -1051,7 +1089,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
                 time.sleep(5)
                 error(
                     f'write_col error in step 2, {ex}, error_count = {error_count}.')
-        progress('柱配筋圖標註進度 2/5', progress_file)
+        progress('柱配筋圖標註進度 2/5')
         # Step 3. 載入modelspace(還要畫圖)
         flag = 0
         while not flag and error_count <= 10:
@@ -1064,7 +1102,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
                 error(
                     f'write_col error in step 3, {ex}, error_count = {error_count}.')
         time.sleep(5)
-        progress('柱配筋圖標註進度 3/5', progress_file)
+        progress('柱配筋圖標註進度 3/5')
         # Step 4. 設定mark的圖層
         flag = 0
         while not flag and error_count <= 10:
@@ -1080,7 +1118,7 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
                 time.sleep(5)
                 error(
                     f'write_col error in step 4, {e}, error_count = {error_count}.')
-        progress('柱配筋圖標註進度 4/5', progress_file)
+        progress('柱配筋圖標註進度 4/5')
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
     if error_count > 10:
@@ -1142,8 +1180,8 @@ def write_col(col_filename, col_new_filename, set_plan, set_col, dic_col, result
             f'write_col error in step 5, there are no col in col.txt? ex:{ex}')
 
     f.close()
-    progress('柱配筋圖標註進度 5/5', progress_file)
-    progress("標註柱配筋圖及輸出核對結果至'column.txt'完成。", progress_file)
+    progress('柱配筋圖標註進度 5/5')
+    progress("標註柱配筋圖及輸出核對結果至'column.txt'完成。")
     return rate
 
 
@@ -1165,7 +1203,13 @@ def write_result_log(excel_file, task_name, plan_not_col, col_not_plan, date, ru
     return
 
 
-def run_plan(plan_filename: str, layer_config: dict, result_filename: str, progress_file: str):
+def run_plan(plan_filename: str,
+             layer_config: dict,
+             result_filename: str,
+             progress_file: str,
+             client_id: str):
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     if True:
         plan_col_set = read_plan(plan_filename=plan_filename,
                                  layer_config=layer_config,
@@ -1182,7 +1226,13 @@ def run_plan(plan_filename: str, layer_config: dict, result_filename: str, progr
     return (set_plan, dic_plan)
 
 
-def run_col(col_filename: str, layer_config: dict, result_filename: str, progress_file: str):
+def run_col(col_filename: str,
+            layer_config: dict,
+            result_filename: str,
+            progress_file: str,
+            client_id: str):
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     if True:
         floor_col_set = read_col(col_filename=col_filename,
                                  layer_config=layer_config,

@@ -19,8 +19,9 @@ def setup_custom_logger(name, client_id):
     handler.setFormatter(formatter)
 
     logger = logging.getLogger(name)
+    if not logger.handlers:
+        logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
 
     # logger.addFilter(ContextualFilter())
     return logger

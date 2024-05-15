@@ -22,8 +22,10 @@ from multiprocessing.pool import ThreadPool as Pool
 from collections import Counter
 from item.rebar import isRebarSize, readRebarExcel
 from item.pdf import create_scan_pdf
+from logger import setup_custom_logger
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 one_side = False
+global main_logger
 
 
 def vtFloat(l):  # 要把點座標組成的list轉成autocad看得懂的樣子？
@@ -44,10 +46,11 @@ def error(error_message):  # 把錯誤訊息印到error.log裡面
     return
 
 
-def progress(message, progress_file):  # 把進度印到progress裡面，在app.py會對這個檔案做事
-    f = open(progress_file, 'a', encoding='utf-8')
-    f.write(f'{message}\n')
-    f.close()
+def progress(message, progress_file=""):  # 把進度印到progress裡面，在app.py會對這個檔案做事
+    main_logger.info(message)
+    # f = open(progress_file, 'a', encoding='utf-8')
+    # f.write(f'{message}\n')
+    # f.close()
     return
 
 
@@ -370,7 +373,8 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
     # return new_coor_to_arrow_dic,no_arrow_line_list
     coor_to_rebar_list.sort()
     for i, rebar in enumerate(coor_to_rebar_list):
-        print(rebar)
+        if i % 100 == 0:
+            progress(f"整理直線鋼筋與標示 進度:{i}/{len(coor_to_rebar_list)}")
         head_coor = rebar[0]
         tail_coor = rebar[1]
         mid_coor = (round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])
@@ -431,7 +435,9 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                             (line_1_point[0] + line_2_point[0])/2, head_coor[1])
                 new_coor_to_arrow_dic.update(
                     {rebar_coor1: (rebar_coor2, length, mid_coor, with_dim)})
-    for bend_rebar in coor_to_bend_rebar_list:
+    for i, bend_rebar in enumerate(coor_to_bend_rebar_list):
+        if i % 100 == 0:
+            progress(f"整理彎鉤鋼筋與標示 進度:{i}/{len(coor_to_rebar_list)}")
         arrow_dict = {}
         bend_coor = bend_rebar[0]
         line_coor = bend_rebar[1]
@@ -543,7 +549,10 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
 
     # method 2
     # 腰筋會抓到上層筋
-    for arrow_head, arrow_data in coor_to_arrow_dic.items():
+    for i, data in enumerate(coor_to_arrow_dic.items()):
+        if i % 100 == 0:
+            progress(f"整理箭頭與鋼筋文字對應 進度:{i}/{len(coor_to_arrow_dic.items())}")
+        arrow_head, arrow_data = data
         arrow_tail, rebar_length, line_coor, with_dim = arrow_data
         rebar_data_temp = []
         if arrow_head[1] > arrow_tail[1]:
@@ -612,7 +621,9 @@ def sort_noconcat_line(no_concat_line_list, head_to_data_dic: dict, tail_to_data
         return sqrt((pt1[0]-pt2[0])**2 + (pt1[1]-pt2[1])**2)
 
     def _concat_line(line_list: list):
-        for line in line_list[:]:
+        for i, line in enumerate(line_list[:]):
+            if i % 100 == 0:
+                progress(f"搭接直線鋼筋 進度:{i}/{len(line_list)}")
             head_coor = min([line[0], line[1]], key=lambda l: l[0])
             tail_coor = max([line[0], line[1]], key=lambda l: l[0])
             head_rebar = {}
@@ -689,7 +700,9 @@ def sort_noconcat_line(no_concat_line_list, head_to_data_dic: dict, tail_to_data
 def sort_noconcat_bend(no_concat_bend_list: list, head_to_data_dic: dict, tail_to_data_dic: dict):
     # start = time.time()
     coor_to_bend_rebar_list = []
-    for bend in no_concat_bend_list:
+    for i, bend in enumerate(no_concat_bend_list):
+        if i % 100 == 0:
+            progress(f"搭接彎鉤鋼筋 進度:{i}/{len(no_concat_bend_list)}")
         horz_coor = bend[1]
         vert_coor = bend[0]
         line_length = bend[2]
@@ -731,7 +744,9 @@ def sort_rebar_bend_line(rebar_bend_list: list, rebar_line_list: list):
             return True
         if _between_pt(start_pt, end_pt, line[1]) and _outer_pt(start_pt, end_pt, line[0]):
             return True
-    for bend in rebar_bend_list[:]:
+    for i, bend in enumerate(rebar_bend_list[:]):
+        if i % 100 == 0:
+            progress(f"整理彎折與直線鋼筋 進度:{i}/{len(rebar_bend_list)}")
         vert_coor = bend[0]
         horz_coor = bend[1]
         bend_length = bend[2]
@@ -857,7 +872,9 @@ def combine_beam_boundingbox(coor_to_block_list: list[tuple[tuple[tuple, tuple],
     #     beam[4] = nearest_block[0]
     same_block_rc_block_list = []
 
-    for beam in class_beam_list:
+    for i, beam in enumerate(class_beam_list):
+        if i % 100 == 0:
+            progress(f"整理梁與梁邊框 進度:{i}/{len(class_beam_list)}")
         if beam.beam_type == BeamType.FB:
             accept_y_diff = 50
         else:
@@ -940,7 +957,10 @@ def combine_beam_tie(coor_sorted_tie_list: list, coor_to_beam_list: list, class_
     #     else:
     #         nearest_beam[3][size] = count
 
-    for tie, coor, tie_num, count, size in coor_sorted_tie_list:
+    for i, data in enumerate(coor_sorted_tie_list):
+        if i % 100 == 0:
+            progress(f"整理梁與箍筋 進度:{i}/{len(coor_sorted_tie_list)}")
+        tie, coor, tie_num, count, size = data
         bounding_box = [beam for beam in class_beam_list if inblock(
             block=beam.get_bounding_box(), pt=coor)]
         if len(bounding_box) == 0:
@@ -957,7 +977,7 @@ def combine_beam_tie(coor_sorted_tie_list: list, coor_to_beam_list: list, class_
         if match_obj:
             nearest_beam.add_tie(tie, coor, tie_num, count, size)
         else:
-            print(f'{tie} does not match tie type')
+            progress(f'{tie} does not match tie type')
 # 截斷主筋
 
 
@@ -966,7 +986,9 @@ def break_down_rebar(coor_to_arrow_dic: dict, class_beam_list: list[Beam]):
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
     add_list = []
 
-    for arrow_head in list(coor_to_arrow_dic.keys()):
+    for i, arrow_head in enumerate(list(coor_to_arrow_dic.keys())):
+        if i % 100 == 0:
+            progress(f"截斷直線鋼筋 進度:{i}/{len(coor_to_arrow_dic.keys())}")
         nearest_beam = None
         # try:
         #     assert arrow_head != (7439.0, 2504.36)
@@ -1063,7 +1085,10 @@ def combine_beam_rebar(coor_to_arrow_dic: dict, coor_to_rebar_list_straight: lis
     #         else:
     #             nearest_beam[6][size] = int(number)*length
 
-    for arrow_head, arrow_item in coor_to_arrow_dic.items():
+    for i, data in enumerate(coor_to_arrow_dic.items()):
+        if i % 100 == 0:
+            progress(f"結合梁與直線鋼筋 進度:{i}/{len(coor_to_arrow_dic.keys())}")
+        arrow_head, arrow_item = data
         tail_coor, length, line_mid_coor, with_dim, number, size, text_coor = arrow_item
         bounding_box = [beam for beam in class_beam_list if inblock(
             block=beam.get_bounding_box(), pt=arrow_head)]
@@ -1950,7 +1975,10 @@ def count_beam_multiprocessing(beam_filenames: list,
                                floor_parameter_xlsx='',
                                progress_file='',
                                plan_filename='',
-                               plan_layer_config=''):
+                               plan_layer_config='',
+                               client_id="temp"):
+    global main_logger
+    main_logger = setup_custom_logger(__name__, client_id=client_id)
     if progress_file == '':
         progress_file = './result/tmp'
     cad_counter = Counter()
@@ -2068,11 +2096,9 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
                 dim for dim in coor_to_dim_list if inblock(block[0], dim[0])]
             beam_list = [beam for beam in class_beam_list if inblock(
                 block[0], beam.get_coor())]
-            for beam in beam_list:
-                try:
-                    assert beam.floor != 'R1F' or beam.serial != 'BR8'
-                except:
-                    print('')
+            for i, beam in enumerate(beam_list):
+                if i % 100 == 0:
+                    progress(f"比較鋼筋與標註線 進度:{i}/{len(beam_list)}")
                 for rebar in beam.rebar_list:
                     try:
                         temp_dim = [dim for dim in dim_list if round(rebar.start_pt.x, 2) ==
@@ -2113,7 +2139,7 @@ def compare_line_with_dim(coor_to_dim_list: list[tuple[tuple[float, float], floa
                                     rebar.end_pt.x = rebar.start_pt.x + rebar.length
                                 else:
                                     rebar.start_pt.x = rebar.end_pt.x - rebar.length
-                    except:
+                    except Exception:
                         progress(
                             f'{beam.floor}:{beam.serial} compare_line_with_dim error', progress_file)
                         # new_rebar_arrow,_ = sort_arrow_line(coor_to_rebar_list=[((origin_start_pt_x,rebar.start_pt.y),
@@ -2174,6 +2200,7 @@ if __name__ == '__main__':
         'rc_block_layer': ['S-RC'],  # 支承端圖層
         's_dim_layer': ['S-DIM']  # 標註線圖層
     }
+    main_logger = setup_custom_logger(__name__, client_id=project_name)
     # layer_config = {
     #     'rebar_data_layer': ['P1'],  # 箭頭和鋼筋文字的塗層
     #     'rebar_layer': ['P2'],  # 鋼筋和箍筋的線的塗層

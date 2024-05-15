@@ -385,7 +385,7 @@
             // })
             document.getElementById("loader").style.display = "block";
             if (project_count === 1) {
-                startNotifications()
+                startNotifications('/stream-logs')
             }
             fetch("/count_beam", { method: 'post', processData: false, contentType: false, cache: 'no-cache', credentials: 'same-origin', body: formData })
                 .then(response => response.text())
@@ -413,7 +413,7 @@
             document.getElementById("loader").style.display = "block";
             if (project_count === 1) {
                 console.log(project_count)
-                startNotifications()
+                startNotifications('/stream-logs')
             }
             fetch("/count_column", { method: 'post', processData: false, contentType: false, cache: 'no-cache', credentials: 'same-origin', body: formData })
                 .then(response => response.text())
