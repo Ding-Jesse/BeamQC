@@ -86,7 +86,7 @@ class MlineObject:
 
     def check(self) -> None:
         self.beam_serial = (self.beam_serial[0],
-                            re.sub(r"\(.*\)", "", self.beam_serial[1]), self.beam_serial[2])
+                            re.sub(r"\(.*\)", "", self.beam_serial[1]).strip(), self.beam_serial[2])
 
         if self.xy_direction == 'x':
             column_pos = 0
@@ -443,6 +443,8 @@ def match_beam_mline(data: dict):
             string_pattern, entity[1])]
         closet_mline = None
         for coor, beam_name, rotation in beam_name_text_list:
+            beam_name: str
+            beam_name = beam_name.strip()
             if rotation == 0:
                 closet_mline = min(
                     [mline for mline in mline_list if mline.xy_direction == "x"], key=lambda mline: get_distance(coor, mline.mid))
@@ -475,6 +477,8 @@ def match_column_block(data: dict):
         if not column_block_list:
             continue
         for coor, column_name_text in column_name_text_list:
+            column_name_text: str
+            column_name_text = column_name_text.strip()
             closest_block = min(column_block_list, key=lambda column_block: get_distance(
                 coor, column_block.start) + get_distance(coor, column_block.end))
 
@@ -523,15 +527,15 @@ def output_match_result(data: dict):
     return df
 
 
-def match_column_beam_plan(plan_filename, layer_config):
+def match_column_beam_plan(plan_filename, layer_config, pkl):
 
-    if True:
+    if pkl == "":
         cad_result = read_column_beam_plan(plan_filename, layer_config)
         save_temp_file.save_pkl(
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'TEST\2024-0514\XS-PLAN_plan_set.pkl')
+            tmp_file=pkl)
 
     # seperate entity to floor block
     sort_floor_block = sort_entity_to_floor(cad_result)
@@ -555,7 +559,8 @@ def joint_scan_main(plan_filename,
                     beam_pkl,
                     column_pkl,
                     column_beam_joint_xlsx,
-                    client_id="temp"):
+                    client_id="temp",
+                    pkl=""):
     def concat_list(input_list):
         result = []
         for l in input_list:
@@ -564,7 +569,8 @@ def joint_scan_main(plan_filename,
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     sort_floor_block, column_beam_df = match_column_beam_plan(plan_filename=plan_filename,
-                                                              layer_config=layer_config)
+                                                              layer_config=layer_config,
+                                                              pkl=pkl)
 
     joint_df, beams_df, column_list, excel_filename = column_joint_main(output_folder=output_folder,
                                                                         project_name=project_name,
@@ -574,6 +580,7 @@ def joint_scan_main(plan_filename,
                                                                         column_beam_joint_xlsx=column_beam_joint_xlsx
                                                                         )
 
+    return
     # output plan view
     match_rebar_data_with_object(data=sort_floor_block,
                                  beams_df=beams_df,
@@ -643,6 +650,7 @@ def summary_column_joint_df(joint_df: pd.DataFrame):
         return result_list
     # Assume df is your DataFrame loaded with the appropriate data
     # Create 'X_DCR' and 'Y_DCR' columns before grouping
+    joint_df = joint_df.copy()
     joint_df['X_DCR'] = joint_df.apply(
         lambda row: row['DCR'] if row['pos'] == 'X' else None, axis=1)
     joint_df['Y_DCR'] = joint_df.apply(
@@ -656,19 +664,47 @@ def summary_column_joint_df(joint_df: pd.DataFrame):
     }).reset_index()
 
     joint_df['type'] = np.where(
-        joint_df['beams_rebar'].apply(len) < 8, 'Outer', 'Inner')
+        joint_df['beams_rebar'].apply(len) < 8, '外柱', '內柱')
     group_df = joint_df.groupby(['story', 'type'])
-    # Aggregate on two columns with the same conditions
-    result = group_df.agg({
+    # Define aggregation functions for counts
+    agg_funcs = {
         'X_DCR': [
-            ('>=1', lambda x: (x >= 1).sum()),  # Counts values >= 1 in DCR
-            ('<1', lambda x: (x < 1).sum())    # Counts values < 1 in DCR
+            ('DCR >= 1.5', lambda x: (x >= 1.5).sum()),
+            ('1.5 > DCR >= 1.25', lambda x: ((x >= 1.25) & (x < 1.5)).sum()),
+            ('1.25 > DCR >= 1', lambda x: ((x >= 1) & (x < 1.25)).sum()),
+            ('DCR < 1', lambda x: (x < 1).sum()),
+            ('Count', 'count')
         ],
         'Y_DCR': [
-            ('>=1', lambda x: (x >= 1).sum()),  # Counts values >= 1 in LCR
-            ('<1', lambda x: (x < 1).sum())    # Counts values < 1 in LCR
+            ('DCR >= 1.5', lambda x: (x >= 1.5).sum()),
+            ('1.5 > DCR >= 1.25', lambda x: ((x >= 1.25) & (x < 1.5)).sum()),
+            ('1.25 > DCR >= 1', lambda x: ((x >= 1) & (x < 1.25)).sum()),
+            ('DCR < 1', lambda x: (x < 1).sum()),
+            ('Count', 'count')
         ]
-    })
+    }
+
+    # Perform the aggregation
+    result = group_df.agg(agg_funcs)
+
+    # Calculate the proportions
+    result[('X_DCR (%)', 'DCR >= 1.5 (%)')] = (
+        result[('X_DCR', 'DCR >= 1.5')] / result[('X_DCR', 'Count')] * 100).round(2)
+    result[('X_DCR (%)', '1.5 > DCR >= 1.25 (%)')] = (
+        result[('X_DCR', '1.5 > DCR >= 1.25')] / result[('X_DCR', 'Count')] * 100).round(2)
+    result[('X_DCR (%)', '1.25 > DCR >= 1 (%)')] = (
+        result[('X_DCR', '1.25 > DCR >= 1')] / result[('X_DCR', 'Count')] * 100).round(2)
+    result[('X_DCR (%)', 'DCR < 1 (%)')] = (
+        result[('X_DCR', 'DCR < 1')] / result[('X_DCR', 'Count')] * 100).round(2)
+
+    result[('Y_DCR (%)', 'DCR >= 1.5 (%)')] = (
+        result[('Y_DCR', 'DCR >= 1.5')] / result[('Y_DCR', 'Count')] * 100).round(2)
+    result[('Y_DCR (%)', '1.5 > DCR >= 1.25 (%)')] = (
+        result[('Y_DCR', '1.5 > DCR >= 1.25')] / result[('Y_DCR', 'Count')] * 100).round(2)
+    result[('Y_DCR (%)', '1.25 > DCR >= 1 (%)')] = (
+        result[('Y_DCR', '1.25 > DCR >= 1')] / result[('Y_DCR', 'Count')] * 100).round(2)
+    result[('Y_DCR (%)', 'DCR < 1 (%)')] = (
+        result[('Y_DCR', 'DCR < 1')] / result[('Y_DCR', 'Count')] * 100).round(2)
 
     return result
 
@@ -730,7 +766,8 @@ if __name__ == "__main__":
                     project_name=project_name,
                     beam_pkl=beam_pkl,
                     column_pkl=column_pkl,
-                    column_beam_joint_xlsx=column_beam_joint_xlsx)
+                    column_beam_joint_xlsx=column_beam_joint_xlsx,
+                    pkl=r'TEST\2024-0514\XS-PLAN_plan_set.pkl')
     # match_column_beam_plan(plan_filename=plan_filename,
     #                        layer_config=layer_config)
 

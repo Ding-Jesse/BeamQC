@@ -528,7 +528,7 @@ class Beam():
 
     def sort_rebar_table(self):
         try:
-            assert self.floor != 'R1F' or self.serial != 'BR8'
+            assert self.floor != '9F' or self.serial != 'G5-12'
         except:
             print('')
         min_diff = 30

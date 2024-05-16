@@ -116,6 +116,7 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
         try:
             connect_beams = column_beam_df.loc[column.floor, column.serial]
         except KeyError:
+            print(f"{column.floor + column.serial}:no beam data")
             continue
         H1 = column.floor_object.height
         column.connect_beams = connect_beams
@@ -180,6 +181,7 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                     rebar_type1=RebarType.Top, rebar_type2=RebarType.Left) * 1.25 * fy
                 Mpr2 += Ts2 * (d - 0.5*(Ts2/(0.85*fc*b)))
             if not bj:
+                print(f"{column.floor + column.serial}:no {pos} beam data")
                 continue
             bij = sum(bj) / len(bj)
             Aj = bij * hj

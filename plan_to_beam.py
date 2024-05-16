@@ -472,7 +472,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                                         coor_to_size_beam.add((coor, 'g'))
                         if 'x' in object.TextString or 'X' in object.TextString or 'x' in object.TextString:
                             string = (object.TextString.replace(
-                                ' ', '')).replace('X', 'x')
+                                ' ', '')).replace('X', 'x').strip()
                             try:
                                 first = string.split('x')[0]
                                 second = string.split('x')[1]
@@ -502,7 +502,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
                 if object_layer in floor_layer and object.EntityName in text_object_type and '(' in object.TextString and object.InsertionPoint[1] >= 0:
-                    floor = object.TextString
+                    floor = object.TextString.strip()
                     floor = re.search(r'\(([^)]+)', floor).group(1)  # 取括號內的樓層數
                     coor = (round(object.InsertionPoint[0], 2), round(
                         object.InsertionPoint[1], 2))  # 不取概數的話後面抓座標會出問題，例如兩個樓層在同一格
@@ -530,10 +530,10 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                         size = re.search(r'(\d+(x|X)\d+)', beam)
                         if size:
                             none_concat_size_text_list.append(
-                                ((coor1, coor2), size.group(0)))
+                                ((coor1, coor2), size.group(0).strip()))
                             continue
                         else:
-                            print(object.TextString)
+                            progress(object.TextString)
                 if object.Layer in beam_text_layer and object.EntityName in text_object_type\
                         and object.TextString != '' and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
 
@@ -553,9 +553,9 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                         beam_size = re.search(r'((\d+)[x|X](\d+))', beam)
                         beam_name = re.search(r'(.+\b(?=\(|\uff08))', beam)
                         if beam_size:
-                            size = beam_size.group(0).replace('X', 'x')
+                            size = beam_size.group(0).replace('X', 'x').strip()
                         if beam_name:
-                            beam = beam_name.group(0)
+                            beam = beam_name.group(0).strip()
                             # beam = beam.replace('X','x')
                     # if '(' in beam:
                     #     size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
@@ -588,7 +588,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                 # 為了排版好看的怪產物，目前看到的格式為'{\W0.7;B4-2\P(80x100)}'，所以使用分號及反斜線來切
                 # 切爛了也不會報錯，直接反映在結果
                 if object_layer in beam_text_layer and object.ObjectName == "AcDbMText":
-                    beam = object.TextString
+                    beam = object.TextString.strip()
                     semicolon = beam.count(';')
                     size = ''
                     for i in range(semicolon + 1):

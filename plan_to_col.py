@@ -233,8 +233,12 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                         error(
                             'read_plan error in step 7: floor is an empty string. ')
                 # 取col的字串
-                if object_layer in col_layer and object.ObjectName in text_entity_name and object.TextString != '' and (object.TextString[0] == 'C' or ('¡æ' in object.TextString and 'C' in object.TextString)) and 'S' not in object.TextString:
-                    col = f"C{object.TextString.split('C')[1]}"
+                if object_layer in col_layer and \
+                    object.ObjectName in text_entity_name and \
+                        object.TextString != '' and \
+                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                'S' not in object.TextString:
+                    col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -256,7 +260,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                         object.GetBoundingBox()[1][1], 2))
                     if 'x' in size:
-                        coor_to_size_set.add(((coor1, coor2), size))
+                        coor_to_size_set.add(((coor1, coor2), size.strip()))
                     else:
                         coor_to_size_set.add(((coor1, coor2), '另詳'))
 
@@ -274,7 +278,8 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                 if object_layer in size_layer and object.EntityName in text_entity_name:
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
-                    table_to_size_set.append((coor1, object.TextString))
+                    table_to_size_set.append(
+                        (coor1, object.TextString.strip()))
 
                 if object_layer in table_line_layer and (object.EntityName == "AcDbLine" or object.EntityName == "AcDbPolyline"):
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
@@ -728,14 +733,14 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
                             ((coor1, coor2), object.TextString))
 
                     elif 'x' in object.TextString or 'X' in object.TextString:
-                        size = object.TextString.replace('X', 'x')
+                        size = object.TextString.replace('X', 'x').strip()
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                             object.GetBoundingBox()[1][1], 2))
                         coor_to_size_set.add(((coor1, coor2), size))
                     elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString:  # 可能有樓層
-                        floor = object.TextString
+                        floor = object.TextString.strip()
                         if '_' in floor:  # 可能有B_6F表示B棟的6F
                             floor = floor.split('_')[1]
                         if turn_floor_to_float(floor):
