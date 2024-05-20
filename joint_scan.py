@@ -13,6 +13,7 @@ from item.beam import Beam
 from item.column import Column
 from item.floor import Floor
 from item.floor import read_parameter_df
+from utils.create_calculate_sheet import create_calculate_sheet
 from column_count import floor_parameter as column_floor_parameter
 from column_count import sort_floor_column
 from beam_count import floor_parameter as beam_floor_parameter
@@ -128,6 +129,7 @@ class MlineObject:
 
 
 def check_column_joint(excel_filename: str,
+                       docx_filename: str,
                        column_beam_df: pd.DataFrame,
                        column_list: list[Column],
                        beam_list: list[Beam],
@@ -139,9 +141,12 @@ def check_column_joint(excel_filename: str,
         column_beam_df, [f.floor_name for f in floor_list], 'Floor', [c.serial for c in column_list], 'Column')
     no_rebar_data = sort_dataframe_by_floor(
         no_rebar_data, [f.floor_name for f in floor_list], '樓層')
-    summary_df = summary_column_joint_df(joint_df)
+    summary_df = summary_column_joint_df(joint_df, 'DCR')
+    fine_summary_df = summary_column_joint_df(joint_df, 'Fine DCR')
     summary_df = sort_dataframe_by_floor(
         summary_df, [f.floor_name for f in floor_list], 'story')
+    fine_summary_df = sort_dataframe_by_floor(
+        fine_summary_df, [f.floor_name for f in floor_list], 'story')
 
     OutputExcel(df_list=[joint_df],
                 file_path=excel_filename, sheet_name='梁柱接頭剪力表')
@@ -151,6 +156,9 @@ def check_column_joint(excel_filename: str,
                 file_path=excel_filename, sheet_name='梁柱接頭統整表')
     OutputExcel(df_list=[summary_df],
                 file_path=excel_filename, sheet_name='統整表')
+    OutputExcel(df_list=[fine_summary_df],
+                file_path=excel_filename, sheet_name='考量圍束統整表')
+    # create_calculate_sheet(doc_filename=docx_filename, column_list=column_list)
     return joint_df, beams_df
 
 
@@ -179,7 +187,12 @@ def match_rebar_data_with_object(data: dict, beams_df: pd.DataFrame, column_list
                     continue
 
 
-def column_joint_main(output_folder: str, project_name: str, beam_pkl: str, column_pkl: str, column_beam_df: pd.DataFrame, column_beam_joint_xlsx: str):
+def column_joint_main(output_folder: str,
+                      project_name: str,
+                      beam_pkl: str,
+                      column_pkl: str,
+                      column_beam_df: pd.DataFrame,
+                      column_beam_joint_xlsx: str):
     user_define = False
 
     beam_list = save_temp_file.read_temp(beam_pkl)
@@ -202,8 +215,15 @@ def column_joint_main(output_folder: str, project_name: str, beam_pkl: str, colu
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'Joint_Result.xlsx'
     )
+    docx_filename = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'Joint_Result.docx'
+    )
 
     joint_df, beams_df = check_column_joint(excel_filename=excel_filename,
+                                            docx_filename=docx_filename,
                                             column_beam_df=column_beam_df,
                                             column_list=column_list,
                                             beam_list=beam_list,
@@ -527,7 +547,7 @@ def output_match_result(data: dict):
     return df
 
 
-def match_column_beam_plan(plan_filename, layer_config, pkl):
+def match_column_beam_plan(plan_filename, layer_config, pkl=""):
 
     if pkl == "":
         cad_result = read_column_beam_plan(plan_filename, layer_config)
@@ -642,7 +662,7 @@ def joint_scan_main(plan_filename,
     return os.path.basename(new_plan_view), os.path.basename(excel_filename)
 
 
-def summary_column_joint_df(joint_df: pd.DataFrame):
+def summary_column_joint_df(joint_df: pd.DataFrame, column_dcr: str):
     def merge_lists_of_dicts(series):
         result_list = []
         for lst in series:
@@ -652,9 +672,9 @@ def summary_column_joint_df(joint_df: pd.DataFrame):
     # Create 'X_DCR' and 'Y_DCR' columns before grouping
     joint_df = joint_df.copy()
     joint_df['X_DCR'] = joint_df.apply(
-        lambda row: row['DCR'] if row['pos'] == 'X' else None, axis=1)
+        lambda row: row[column_dcr] if row['pos'] == 'X' else None, axis=1)
     joint_df['Y_DCR'] = joint_df.apply(
-        lambda row: row['DCR'] if row['pos'] == 'Y' else None, axis=1)
+        lambda row: row[column_dcr] if row['pos'] == 'Y' else None, axis=1)
 
     # Group by 'story' and 'column'
     joint_df = joint_df.groupby(['story', 'column']).agg({

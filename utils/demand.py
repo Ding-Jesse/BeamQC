@@ -5,7 +5,7 @@ from item.beam import Beam
 from item.beam import RebarType
 from item.column import Column
 from math import sqrt, pow
-from utils.column_beam_joint import cal_rebar_As, determine_design_code
+from utils.column_beam_joint import cal_rebar_As, determine_design_code, get_design_code_value
 
 
 def calculate_beam_gravity_load(beam: Beam):
@@ -128,62 +128,89 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
         for pos, hj, column_width in [('X', column.x_size, column.y_size), ('Y', column.y_size, column.x_size)]:
             bj = []
             beams_rebar = []
-            Mpr1 = 0
-            Mpr2 = 0
-            Ts1 = Ts2 = Cc1 = Cc2 = 0
+            Mpr1_top = Mpr1_bot = Mpr2_top = Mpr2_bot = 0
+            Ts1_top = Ts2_top = Ts1_bot = Ts2_bot = 0
+            As1_top = As2_top = As1_bot = As2_bot = 0
+            x11 = x12 = x21 = x22 = 0
+            bj1 = bj2 = 0
+            b1 = b2 = d1 = d2 = 0
+            left_beam_serial = right_beam_serial = "X"
 
             if not connect_beams['Beam'][f'{pos}_Left'] is None:
                 beam_serial = connect_beams['Beam'][f'{pos}_Left']
                 beam: Beam = beams_df.loc[(column.floor, beam_serial), 'beam']
-                fy, fc = beam.fy, beam.fc
-                d = beam.depth
-                b = beam.width
+                left_beam_serial = beam_serial
+                fc = beam.fc
+                d1 = beam.depth
+                b1 = beam.width
 
-                x1 = min(hj/4, (column_width - b) / 2 -
-                         connect_beams['Offset'][f'{pos}_Left'])
-                x2 = min(hj/4, (column_width - b) / 2 +
-                         connect_beams['Offset'][f'{pos}_Left'])
-                bj.append(x1 + x2 + b)
+                x11 = (column_width - b1) / 2 - \
+                    connect_beams['Offset'][f'{pos}_Left']
+                x12 = (column_width - b1) / 2 + \
+                    connect_beams['Offset'][f'{pos}_Left']
+
                 beams_rebar.append(
                     {f"左梁{beam.serial}上層鋼筋": beam.rebar_table[RebarType.Top.value][RebarType.Right.value]})
-                Ts1 = beam.get_rebar_table(
-                    rebar_type1=RebarType.Top, rebar_type2=RebarType.Right) * 1.25 * fy
-                Cc1 = Ts1
-                Mpr1 += Ts1 * (d - 0.5*(Ts1/(0.85*fc*b)))
+
+                As1_top = beam.get_rebar_table(
+                    rebar_type1=RebarType.Top, rebar_type2=RebarType.Right)
+                Ts1_top = As1_top * 1.25 * \
+                    beam.rebar_table[RebarType.Top.value][RebarType.Right.value][0].fy if As1_top != 0 else beam.fy
+
+                As1_bot = beam.get_rebar_table(
+                    rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Right)
+                Ts1_bot = As1_bot * 1.25 * \
+                    beam.rebar_table[RebarType.Bottom.value][RebarType.Right.value][0].fy if As1_bot != 0 else beam.fy
+
                 beams_rebar.append(
                     {f"左梁{beam.serial}下層鋼筋": beam.rebar_table[RebarType.Bottom.value][RebarType.Right.value]})
-                Ts2 = beam.get_rebar_table(
-                    rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Right) * 1.25 * fy
-                Cc2 = Ts2
-                Mpr2 += Ts2 * (d - 0.5*(Ts2/(0.85*fc*b)))
 
-            Ts1 = Ts2 = 0
+                Mpr1_top += Ts1_top * (d1 - 0.5*(Ts1_top/(0.85*fc*b1)))
+                Mpr1_bot += Ts1_bot * (d1 - 0.5*(Ts1_bot/(0.85*fc*b1)))
+
+                bj1 = min(hj / 4, x11) + min(hj / 4, x12) + b1
+                bj.append(bj1)
+
             if not connect_beams['Beam'][f'{pos}_Right'] is None:
                 beam_serial = connect_beams['Beam'][f'{pos}_Right']
                 beam: Beam = beams_df.loc[(column.floor, beam_serial), 'beam']
+                right_beam_serial = beam_serial
 
-                fy, fc = beam.fy, beam.fc
-                d = beam.depth
-                b = beam.width
-                x1 = min(hj/4, (column_width - b) / 2 -
-                         connect_beams['Offset'][f'{pos}_Right'])
-                x2 = min(hj/4, (column_width - b) / 2 +
-                         connect_beams['Offset'][f'{pos}_Right'])
-                bj.append(x1 + x2 + b)
+                fc = beam.fc
+                d2 = beam.depth
+                b2 = beam.width
+                x21 = (column_width - b1) / 2 - \
+                    connect_beams['Offset'][f'{pos}_Right']
+                x22 = (column_width - b1) / 2 + \
+                    connect_beams['Offset'][f'{pos}_Right']
+
                 beams_rebar.append(
                     {f"右梁{beam.serial}下層鋼筋": beam.rebar_table[RebarType.Bottom.value][RebarType.Left.value]})
-                Ts1 = beam.get_rebar_table(
-                    rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Left) * 1.25 * fy
-                Mpr1 += Ts1 * (d - 0.5*(Ts1/(0.85*fc*b)))
+                As2_bot = beam.get_rebar_table(
+                    rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Left)
+                Ts2_bot = As2_bot * \
+                    beam.rebar_table[RebarType.Bottom.value][RebarType.Left.value][0].fy if As2_bot != 0 else beam.fy
+
+                Mpr2_bot = Ts2_bot * (d2 - 0.5*(Ts2_bot/(0.85*fc*b2)))
+
                 beams_rebar.append(
                     {f"右梁{beam.serial}上層鋼筋": beam.rebar_table[RebarType.Top.value][RebarType.Left.value]})
-                Ts2 = beam.get_rebar_table(
-                    rebar_type1=RebarType.Top, rebar_type2=RebarType.Left) * 1.25 * fy
-                Mpr2 += Ts2 * (d - 0.5*(Ts2/(0.85*fc*b)))
+                As2_top = beam.get_rebar_table(
+                    rebar_type1=RebarType.Top, rebar_type2=RebarType.Left)
+                Ts2_top = As2_top * \
+                    beam.rebar_table[RebarType.Top.value][RebarType.Left.value][0].fy if As2_top != 0 else beam.fy
+
+                Mpr2_top = Ts2_top * (d2 - 0.5*(Ts2_top/(0.85*fc*b2)))
+
+                bj2 = min(hj / 4, x21) + min(hj / 4, x22) + b2
+                bj.append(bj2)
+
             if not bj:
                 print(f"{column.floor + column.serial}:no {pos} beam data")
                 continue
+
             bij = sum(bj) / len(bj)
+            bij = min(bij, column_width)
             Aj = bij * hj
             design_code, detail_design_code = determine_design_code(top_floor=column.up_column is None,
                                                                     joint_beams=connect_beams['Beam'],
@@ -191,12 +218,21 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                                                                     floor=column.floor,
                                                                     hj=hj,
                                                                     dir=pos)
+            # Conside if confine is fine with all beam
+            consider_confine_code = get_design_code_value(detail_design_code[0] == "V",
+                                                          detail_design_code[0] == "V",
+                                                          True)
             Vn = 0.85 * design_code * sqrt(column.fc) * Aj
-            Vu = max(Ts1 + Cc2 - Mpr1 / ((H1 + H2)/2),
-                     Ts2 + Cc1 - Mpr2 / ((H1 + H2)/2))
+            Vh1 = (Mpr1_bot + Mpr2_top) / ((H1 + H2)/2)
+            Vh2 = (Mpr2_bot + Mpr1_top) / ((H1 + H2)/2)
+            Vu = max(Ts1_top + Ts2_bot - Vh1,
+                     Ts1_bot + Ts2_top - Vh2)
+            new_Vn = 0.85 * consider_confine_code * sqrt(column.fc) * Aj
             cal_result = {
                 'story': column.floor,
                 'column': column.serial,
+                'left_beam': left_beam_serial,
+                'right_beam': right_beam_serial,
                 'beams_rebar': beams_rebar,
                 'pos': pos,
                 'design_code': design_code,
@@ -204,20 +240,35 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                 '_code_15_2_7': detail_design_code[1],
                 '_code_15_2_8': detail_design_code[2],
                 'column_width': column_width,
-                'Ts1': Ts1,
-                'Cc1': Cc1,
-                'Ts2': Ts2,
-                'Cc2': Cc2,
+                'x11': x11,
+                'x12': x12,
+                'x21': x21,
+                'x22': x22,
+                'bj1': bj1,
+                'bj2': bj2,
+                'As1_top': As1_top,
+                'As1_bot': As1_bot,
+                'As2_top': As2_top,
+                'As2_bot': As2_bot,
+                'Ts1_top': Ts1_top / 1000,
+                'Ts1_bot': Ts1_bot / 1000,
+                'Ts2_top': Ts2_top / 1000,
+                'Ts2_bot': Ts2_bot / 1000,
                 'H1': H1,
                 'H2': H2,
-                'hj': hj,
+                'hc': hj,
                 'bj': bij,
                 'Aj': Aj,
-                'Mpr1(tf-m)': Mpr1 / 1000 / 100,
-                'Mpr2(tf-m)': Mpr2 / 1000 / 100,
+                'Mpr1+(tf-m)': Mpr1_bot / 1000 / 100,
+                'Mpr1-(tf-m)': Mpr1_top / 1000 / 100,
+                'Mpr2+(tf-m)': Mpr2_bot / 1000 / 100,
+                'Mpr2-(tf-m)': Mpr2_top / 1000 / 100,
+                'Vh1(tf)': Vh1 / 1000,
+                'Vh2(tf)': Vh2 / 1000,
                 'Vu(tf)': Vu / 1000,
                 'Vn(tf)': Vn / 1000,
-                'DCR': round(Vu/Vn, 2)
+                'DCR': round(Vu/Vn, 2),
+                'Fine DCR': round(Vu/new_Vn, 2),
             }
             result.append(cal_result)
             column.joint_result.update({pos: cal_result})

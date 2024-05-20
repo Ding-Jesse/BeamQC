@@ -347,7 +347,7 @@ def sort_col_cad(msp_column,
     try:
         doc_column.Close(SaveChanges=False)
     except:
-        pass
+        error('Cant Close Dwg File')
 
 
 def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):

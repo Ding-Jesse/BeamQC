@@ -130,6 +130,13 @@ def determine_design_code(top_floor: bool, joint_beams: pd.DataFrame, beams_df: 
                 _code_15_2_8 = True
     if not top_floor:
         _code_15_2_6 = True
+    design_code = get_design_code_value(
+        _code_15_2_6, _code_15_2_7, _code_15_2_8)
+    return design_code, ["V" if code else "X" for code in (_code_15_2_6, _code_15_2_7, _code_15_2_8)]
+
+
+def get_design_code_value(_code_15_2_6, _code_15_2_7, _code_15_2_8):
+    design_code = 0
     if (_code_15_2_6, _code_15_2_7, _code_15_2_8) == (True, True, True):
         design_code = 5.3
     if (_code_15_2_6, _code_15_2_7, _code_15_2_8) == (True, True, False):
@@ -146,7 +153,7 @@ def determine_design_code(top_floor: bool, joint_beams: pd.DataFrame, beams_df: 
         design_code = 3.2
     if (_code_15_2_6, _code_15_2_7, _code_15_2_8) == (False, False, False):
         design_code = 2.1
-    return design_code, ["V" if code else "X" for code in (_code_15_2_6, _code_15_2_7, _code_15_2_8)]
+    return design_code
 
 
 def cal_rebar_As(rebars: list[str]):

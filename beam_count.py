@@ -39,11 +39,12 @@ def vtPnt(x, y, z=0):
 
 def error(error_message):  # 把錯誤訊息印到error.log裡面
     # f = open(error_file, 'a', encoding='utf-8')
-    localtime = time.asctime(time.localtime(time.time()))
-    with open(error_file, 'a', encoding='utf-8') as f:
-        f.write(f'{localtime} | {error_message}\n')
-    # f.close()
-    return
+    main_logger.error(error_message)
+    # localtime = time.asctime(time.localtime(time.time()))
+    # with open(error_file, 'a', encoding='utf-8') as f:
+    #     f.write(f'{localtime} | {error_message}\n')
+    # # f.close()
+    # return
 
 
 def progress(message, progress_file=""):  # 把進度印到progress裡面，在app.py會對這個檔案做事
@@ -312,6 +313,10 @@ def sort_beam_cad(msp_beam, layer_config: dict, entity_config: dict, progress_fi
                              'coor_to_rc_block_list': coor_to_rc_block_list,
                              'coor_to_dim_list': coor_to_dim_list
                              }, temp_file)
+    try:
+        doc_beam.Close(SaveChanges=False)
+    except:
+        error('Cant Close Dwg File')
 
 # 整理箭頭與直線對應
 
@@ -1674,7 +1679,7 @@ def draw_rebar_line(class_beam_list: list[Beam], msp_beam: object, doc_beam: obj
                         line2.color = 101
                         break
                     except Exception:
-                        print('write rebar error')
+                        error(f'{beam.floor}{beam.serial} write rebar error')
                         error_count += 1
                         time.sleep(5)
         for pos, tie in beam.tie.items():
@@ -1691,7 +1696,7 @@ def draw_rebar_line(class_beam_list: list[Beam], msp_beam: object, doc_beam: obj
                     line1.color = 1
                     break
                 except Exception:
-                    print('write tie error')
+                    error(f'{beam.floor}{beam.serial} write tie error')
                     error_count += 1
                     time.sleep(5)
         for middle_tie in beam.middle_tie:
@@ -1706,7 +1711,7 @@ def draw_rebar_line(class_beam_list: list[Beam], msp_beam: object, doc_beam: obj
                     line1.color = 240
                     break
                 except Exception:
-                    print('write middle tie error')
+                    error(f'{beam.floor}{beam.serial} write middle tie error')
                     error_count += 1
                     time.sleep(5)
         try:
@@ -1721,7 +1726,7 @@ def draw_rebar_line(class_beam_list: list[Beam], msp_beam: object, doc_beam: obj
             block.SetWidth(0, 1, 1)
             block.color = 50
         except Exception:
-            print('write block error')
+            error(f'{beam.floor}{beam.serial} write block error')
             error_count += 1
             time.sleep(5)
             # coor_list2 = [beam.coor.x, beam.coor.y, 0, rebar.end_pt.x, rebar.end_pt.y, 0]
@@ -1730,7 +1735,7 @@ def draw_rebar_line(class_beam_list: list[Beam], msp_beam: object, doc_beam: obj
         doc_beam.SaveAs(output_dwg)
         doc_beam.Close(SaveChanges=True)
     except:
-        print(project_name)
+        error(f'{project_name} cant save file')
     return output_dwg
 
 
@@ -2027,7 +2032,7 @@ def count_beam_multiprocessing(beam_filenames: list,
                                      plan_layer_config=plan_layer_config)
     end = time.time()
     progress(f'執行時間：{end - start}s', progress_file)
-    print("執行時間：%f 秒" % (end - start))
+    progress("執行時間：%f 秒" % (end - start))
     # return os.path.basename(excel_filename),os.path.basename(excel_filename_rcad),output_dwg_list
     output_file_list = [os.path.basename(file) for file in output_file_list]
     return output_file_list, output_dwg_list, f'{temp_new}-beam_list.pkl'
