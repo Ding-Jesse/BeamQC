@@ -11,7 +11,7 @@ import traceback
 from flask import Flask, request, redirect, url_for, render_template, send_from_directory, session, Response, jsonify, stream_with_context
 from flask_mail import Mail, Message
 from flask_session import Session
-from main import main_functionV3, main_col_function, storefile, Output_Config
+from main import main_functionV3, main_col_function, storefile, Upload_Error_log
 from auth import sendPhoneMessage
 from beam_count import count_beam_multiprocessing
 from column_count import count_column_multiprocessing
@@ -42,6 +42,17 @@ def write_result_log(file_path, result_content: dict):
 @app.route('/')
 def home():
     return render_template('home.html')
+
+
+@app.route('/test_url', methods=['POST'])
+def test_url():
+    try:
+        Upload_Error_log({
+            'temp': 'test'
+        })
+        print('success')
+    except Exception as ex:
+        print(ex)
 
 
 def login_required(view):
@@ -103,23 +114,15 @@ def send_error_response(warning_message: str):
 def upload_file():
     if request.method == 'POST':
         try:
-            # if session.get('post_status','accept') == 'disable':raise TabError
-            # if time.time() - session['last_post_time'] < 60:
-            #     raise ConnectionRefusedError
-            # else:
-            #     session['last_post_time'] = time.time()
-
+            status = 'progress'
             uploaded_beams = request.files.getlist("file1")
             uploaded_plans = request.files.getlist("file2")
             uploaded_columns = request.files.getlist("file_col")
             email_address = request.form['email_address']
-            beam_type = '大梁'
-            sbeam_type = '小梁'
             beam_file = []
             plan_file = []
             column_file = []
             txt_file = ''
-            dwg_type = 'single'
             project_name = request.form['project_name']
             text_col_layer = request.form['text_col_layer']
             line_layer = request.form['line_layer']
@@ -164,15 +167,10 @@ def upload_file():
             plan_ok = False
             column_ok = False
             filenames = []
-            project_name = time.strftime(
-                "%Y-%m-%d-%H-%M", time.localtime())+project_name
-            print(
-                f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
+            project_name = f'{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}_{project_name}'
+            start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
             progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
-            if len(uploaded_beams) > 1:
-                dwg_type = 'muti'
-            Output_Config(project_name=project_name, layer_config=layer_config,
-                          file_new_directory=app.config['OUTPUT_FOLDER'])
 
             client_id = session.get('client_id', None)
             if client_id:
@@ -184,27 +182,22 @@ def upload_file():
                 if uploaded_beam and allowed_file(uploaded_beam.filename) and xs_beam:
                     beam_ok, beam_new_file, input_beam_file = storefile(
                         uploaded_beam, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], project_name)
-                    # filename_beam = secure_filename(uploaded_beam.filename)
-                    # beam_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_beam}'))
-                    # print(input_beam_file)
+
                     beam_file.append(input_beam_file)
             for uploaded_column in uploaded_columns:
                 if uploaded_column and allowed_file(uploaded_column.filename) and xs_col:
                     column_ok, column_new_file, input_column_file = storefile(
                         uploaded_column, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], project_name)
-                    # filename_column = secure_filename(uploaded_column.filename)
-                    # column_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_column}'))
+
                     column_file.append(input_column_file)
             for uploaded_plan in uploaded_plans:
                 if uploaded_plan and allowed_file(uploaded_plan.filename):
                     plan_ok, plan_new_file, input_plan_file = storefile(
                         uploaded_plan, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], project_name)
-                    # filename_plan = secure_filename(uploaded_plan.filename)
-                    # plan_file.append(os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}'))
+
                     plan_file.append(input_plan_file)
                     col_plan_new_file = f'{os.path.splitext(plan_new_file)[0]}_column.dwg'
-                    # print(col_plan_new_file)
-                    # col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-column-{uploaded_plan.filename}')
+
             if beam_ok and len(plan_file) == 1:
                 filenames.append(os.path.split(plan_new_file)[1])
             if len(beam_file) == 1:
@@ -213,17 +206,9 @@ def upload_file():
                 filenames.append(os.path.split(column_new_file)[1])
             if column_ok and len(plan_file) == 1:
                 filenames.append(os.path.split(col_plan_new_file)[1])
-            # return
-              # filename_plan = secure_filename(uploaded_plan.filename)
-              # plan_file = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{filename_plan}')
-              # plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_MARKON-{filename_plan}')
-              # col_plan_new_file = os.path.join(app.config['OUTPUT_FOLDER'], f'{project_name}_COL_MARKON-{filename_plan}')
-              # uploaded_plan.save(plan_file)
-              # plan_ok = True
+
             if beam_ok and plan_ok:
-                # main function
-                # txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{beam_type}.txt')
-                # sb_txt_file = os.path.join(app.config['OUTPUT_FOLDER'],f'{project_name}-{sbeam_type}.txt')
+
                 output_file = main_functionV3(beam_filenames=beam_file,
                                               plan_filenames=plan_file,
                                               beam_new_filename=beam_new_file,
@@ -231,11 +216,10 @@ def upload_file():
                                               output_directory=app.config['OUTPUT_FOLDER'],
                                               project_name=project_name,
                                               layer_config=layer_config,
-                                              progress_file=progress_file,
                                               sizing=sizing,
                                               mline_scaling=mline_scaling,
                                               client_id=client_id)
-                filenames_beam = output_file
+                filenames_beam = [output_file]
                 filenames.extend(filenames_beam)
             if column_ok and plan_ok:
                 # main function
@@ -268,25 +252,39 @@ def upload_file():
             response.data = json.dumps({'validate': '完成，請至輸出結果查看'})
             response.content_type = 'application/json'
             time.sleep(1)
+            status = 'success'
         except ConnectionRefusedError:
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate': '發送請求過於頻繁，請稍等'})
             response.content_type = 'application/json'
+            status = 'error'
         except Exception:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             detailed_traceback = traceback.extract_tb(exc_traceback)
+            error_detail = {}
             for entry in detailed_traceback:
-                print("Filename:", entry.filename)
-                print("Line:", entry.lineno)
-                print("Function:", entry.name)
-                print("Code Context:", entry.line)
+                error_detail.update({entry.filename: {
+                    "Line": entry.lineno,
+                    "Function": entry.name,
+                    "Code Context": entry.line
+                }})
+            Upload_Error_log(data=error_detail,
+                             collection_name="Error Log")
+
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate': '發生錯誤'})
             response.content_type = 'application/json'
-        print(
-            f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} end {project_name}')
+
+        end_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        Upload_Error_log(data={
+            'email address': email_address,
+            'start_time': start_time,
+            'end_time': end_time,
+            'project name': project_name,
+            'status': status
+        }, collection_name="App Log")
         connected_clients[client_id].remove(project_name)
         return response
     return 400
@@ -378,26 +376,41 @@ def tool5():
                 'beam_mline_layer': request.form['beam_mline_layer'].split('\r\n'),
                 'column_block_layer': request.form['column_block_layer'].split('\r\n'),
             }
-            new_plan_view, excel_filename = joint_scan_main(plan_filename=plan_filename,
-                                                            layer_config=layer_config,
-                                                            output_folder=app.config['OUTPUT_FOLDER'],
-                                                            project_name=project_name,
-                                                            beam_pkl=beam_pkl,
-                                                            column_pkl=column_pkl,
-                                                            column_beam_joint_xlsx=xlsx_filename,
-                                                            client_id=session.get('client_id'))
+            output_floor = request.form['docx_output_floor'].split('\r\n')
+            output_serial = request.form['docx_output_serial'].split('\r\n')
+            new_plan_view, excel_filename, docx_filename = joint_scan_main(plan_filename=plan_filename,
+                                                                           layer_config=layer_config,
+                                                                           output_folder=app.config['OUTPUT_FOLDER'],
+                                                                           project_name=project_name,
+                                                                           beam_pkl=beam_pkl,
+                                                                           column_pkl=column_pkl,
+                                                                           column_beam_joint_xlsx=xlsx_filename,
+                                                                           client_id=session.get(
+                                                                               'client_id'),
+                                                                           output_floor=output_floor,
+                                                                           output_serial=output_serial)
             if 'count_filenames' in session:
                 session['count_filenames'].extend(
-                    [new_plan_view, excel_filename])
+                    [new_plan_view, excel_filename, docx_filename])
             else:
-                session['count_filenames'] = [new_plan_view, excel_filename]
+                session['count_filenames'] = [
+                    new_plan_view, excel_filename, docx_filename]
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate': f'計算完成，請至輸出結果查看'})
             response.content_type = 'application/json'
-        except Exception as ex:
-            # result_log_content['status'] = f'error, {ex}'
-            print(ex.args)
+        except Exception:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            detailed_traceback = traceback.extract_tb(exc_traceback)
+            error_detail = {}
+            for entry in detailed_traceback:
+                error_detail.update({entry.filename: {
+                    "Line": entry.lineno,
+                    "Function": entry.name,
+                    "Code Context": entry.line
+                }})
+            Upload_Error_log(data=error_detail,
+                             collection_name="Error Log")
             response = Response()
             response.status_code = 200
             response.data = json.dumps({'validate': f'發生錯誤'})
@@ -480,7 +493,6 @@ def admin_login():
         response.content_type = 'application/json'
         session['isverify'] = 'expire'
         return response
-    pass
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -785,50 +797,50 @@ def page_not_found(e):
     return redirect(url_for('NOT_FOUND'))
 
 
-def read_last_line(file_path):
-    error_count = 0
-    while error_count < 3:
-        try:
-            with open(file_path, 'r', encoding="utf-8") as f:
-                lines = f.readlines()
-                if lines:
-                    return lines[-1].strip()
-                else:
-                    return ""
-        except FileNotFoundError:
-            with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
-                error_log.write(
-                    f'{file_path} Not Exists , error_count = {error_count} \n')
-            error_count += 1
-            time.sleep(10)
-    raise FileExistsError
+# def read_last_line(file_path):
+#     error_count = 0
+#     while error_count < 3:
+#         try:
+#             with open(file_path, 'r', encoding="utf-8") as f:
+#                 lines = f.readlines()
+#                 if lines:
+#                     return lines[-1].strip()
+#                 else:
+#                     return ""
+#         except FileNotFoundError:
+#             with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
+#                 error_log.write(
+#                     f'{file_path} Not Exists , error_count = {error_count} \n')
+#             error_count += 1
+#             time.sleep(10)
+#     raise FileExistsError
 
 
-def generate_notifications(client_id):
-    if client_id not in connected_clients:
-        yield "data:No Project Running\n\n"
-        return
-    message = f'Client:{client_id}:正在執行專案:{connected_clients[client_id]}'
-    yield f"data:{message}\n\n"
-    while True:
-        # Simulate a process that takes time to complete (Replace this with your actual process)
-        time.sleep(5)
-        message = f'Now Time:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}'
-        yield f"data:{message}\n\n"
-        for project_name in connected_clients[client_id]:
-            try:
-                last_notification = read_last_line(
-                    f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress')
-                message = f"Client {project_name}: {last_notification}"
-                # print(message)
-                yield f"data: {message}\n\n"
-                time.sleep(1)
-            except FileExistsError:
-                localtime = time.asctime(time.localtime(time.time()))
-                connected_clients[client_id].remove(project_name)
-                with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
-                    error_log.write(
-                        f'{localtime} | {project_name} Not Exists , remove from session \n')
+# def generate_notifications(client_id):
+#     if client_id not in connected_clients:
+#         yield "data:No Project Running\n\n"
+#         return
+#     message = f'Client:{client_id}:正在執行專案:{connected_clients[client_id]}'
+#     yield f"data:{message}\n\n"
+#     while True:
+#         # Simulate a process that takes time to complete (Replace this with your actual process)
+#         time.sleep(5)
+#         message = f'Now Time:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}'
+#         yield f"data:{message}\n\n"
+#         for project_name in connected_clients[client_id]:
+#             try:
+#                 last_notification = read_last_line(
+#                     f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress')
+#                 message = f"Client {project_name}: {last_notification}"
+#                 # print(message)
+#                 yield f"data: {message}\n\n"
+#                 time.sleep(1)
+#             except FileExistsError:
+#                 localtime = time.asctime(time.localtime(time.time()))
+#                 connected_clients[client_id].remove(project_name)
+#                 with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
+#                     error_log.write(
+#                         f'{localtime} | {project_name} Not Exists , remove from session \n')
 
 
 def tail_logs(filename):
@@ -871,11 +883,11 @@ def clear_session():
     return 'Session data cleared.'
 
 
-@app.route('/notify')
-def notify():
-    client_id = session.get('client_id')
-    print(f"Client {client_id}")
-    return Response(generate_notifications(client_id), content_type='text/event-stream')
+# @app.route('/notify')
+# def notify():
+#     client_id = session.get('client_id')
+#     print(f"Client {client_id}")
+#     return Response(generate_notifications(client_id), content_type='text/event-stream')
 
 
 if __name__ == '__main__':

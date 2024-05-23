@@ -19,6 +19,7 @@ from numpy import object_
 from openpyxl import load_workbook
 from collections import Counter
 from logger import setup_custom_logger
+from utils.algorithm import match_points, for_loop_min_match
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡B']
@@ -217,7 +218,7 @@ def mycmp(a, b):  # a, b 皆為 tuple , 可能是 ((floor, beam), 0, correct) �
             return -1
 
 
-def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_scaling):
+def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
     def _cal_ratio(pt1, pt2):
         if abs(pt1[1]-pt2[1]) == 0:
             return 1000
@@ -406,7 +407,10 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                     object_layer = object.Layer
                 # 找size
                 if sizing or mline_scaling:
-                    if object_layer in size_layer and object.EntityName in text_object_type and object.TextString != '' and object.GetBoundingBox()[0][1] >= 0:
+                    if object_layer in size_layer and \
+                            object.EntityName in text_object_type and \
+                        object.TextString != '' and \
+                            object.GetBoundingBox()[0][1] >= 0:
                         coor = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         if 'FGn' in object.TextString:
@@ -470,7 +474,9 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
                                         coor_to_size_beam.add((coor, 'cg'))
                                     else:
                                         coor_to_size_beam.add((coor, 'g'))
-                        if 'x' in object.TextString or 'X' in object.TextString or 'x' in object.TextString:
+                        if 'x' in object.TextString or \
+                            'X' in object.TextString or \
+                                'x' in object.TextString:
                             string = (object.TextString.replace(
                                 ' ', '')).replace('X', 'x').strip()
                             try:
@@ -666,7 +672,7 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
     try:
         doc_plan.Close(SaveChanges=False)
     except Exception as ex:
-        pass
+        error('Fail To Close Plan File')
     # return False
     progress('平面圖讀取進度 7/13')
     # doc_plan.Close(SaveChanges=False)
@@ -679,13 +685,53 @@ def read_plan(plan_filename, layer_config: dict, progress_file, sizing, mline_sc
             'beam_direction_mid_scale_set': beam_direction_mid_scale_set}
 
 
-def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, plan_data: dict, sizing: bool, mline_scaling: bool, big_file: str, sml_file: str, result_filename: str, progress_file: str, date, fbeam_file: str):
+def sort_plan(plan_filename: str,
+              plan_new_filename: str,
+              layer_config: dict,
+              plan_data: dict,
+              sizing: bool,
+              mline_scaling: bool,
+              date):
+    '''
+    dic = {
+        'mline':{
+            '大梁':[],
+            '小梁':[],
+            '地梁':[],
+        },
+        'size':{
+            '大梁':[],
+            '小梁':[],
+            '地梁':[],
+        },
+        'no_size':{
+            '大梁':[],
+            '小梁':[],
+            '地梁':[],
+        },
+        'not_found':{
+            '大梁':[],
+            '小梁':[],
+            '地梁':[],
+        },
+        'duplicate':{
+            '大梁':[],
+            '小梁':[],
+            '地梁':[],
+        }
+        'plan':[],
+        'warning':[]
+    }
+    '''
     error_count = 0
     warning_list = []
+    error_list = []
 
     def get_distance(coor1, coor2):
-        if isinstance(coor1, tuple) and isinstance(coor2, tuple):
+        if isinstance(coor1[0], tuple) and isinstance(coor2[0], tuple):
             return abs(coor1[0][0]-coor2[0][0]) + abs(coor1[0][1]-coor2[0][1])
+        if isinstance(coor1, tuple) and isinstance(coor2, tuple):
+            return abs(coor1[0]-coor2[0]) + abs(coor1[1]-coor2[1])
         return 10000
     # 2023-0308
     # set (字串的coor, floor)，Ex. 求'1F'這個字串的座標在哪
@@ -696,9 +742,9 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
     none_concat_size_text_list = plan_data['none_concat_size_text_list']
     # for sizing
     # set (coor, size_beam)，Ex. 紀錄表格中'Bn'這個字串的座標
-    coor_to_size_beam = plan_data['coor_to_size_beam']
+    coor_to_size_beam: set = plan_data['coor_to_size_beam']
     # set (coor, size_string)，Ex. 紀錄表格中'25x50'這個字串的座標
-    coor_to_size_string = plan_data['coor_to_size_string']
+    coor_to_size_string: set = plan_data['coor_to_size_string']
 
     big_beam_layer = layer_config['big_beam_layer']
     sml_beam_layer = layer_config['sml_beam_layer']
@@ -719,21 +765,32 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
     # Step 8. 完成size_coor_set (size_beam, size_string, size_coor), Ex. 把表格中的 'Bn' 跟 '50x70' 連起來
 
     if sizing or mline_scaling:
+        # 2024-0520 method update
         size_coor_set = set()
-        for x in coor_to_size_beam:
-            coor = x[0]
-            size_beam = x[1]
-            min_size = ''
-            min_dist = inf
-            for y in coor_to_size_string:
-                coor2 = y[0]
-                size_string = y[1]
-                dist = abs(coor[0]-coor2[0]) + abs(coor[1] - coor2[1])
-                if dist < min_dist:
-                    min_size = size_string
-                    min_dist = dist
-            if min_size != '':
-                size_coor_set.add((size_beam, min_size, coor))
+        match_results, _ = for_loop_min_match(points1=[x[0] for x in coor_to_size_beam],
+                                              points2=[y[0] for y in coor_to_size_string])
+        coor_to_size_beam_list = list(coor_to_size_beam)
+        coor_to_size_string_list = list(coor_to_size_string)
+        for i, j in match_results:
+            coor, beam_size = coor_to_size_beam_list[i]
+            size_coor, size_string = coor_to_size_string_list[j]
+            size_coor_set.add((beam_size, size_string, coor, size_coor))
+
+        # size_coor_set = set()
+        # for x in coor_to_size_beam:
+        #     coor = x[0]
+        #     size_beam = x[1]
+        #     min_size = ''
+        #     min_dist = inf
+        #     for y in coor_to_size_string:
+        #         coor2 = y[0]
+        #         size_string = y[1]
+        #         dist = abs(coor[0]-coor2[0]) + abs(coor[1] - coor2[1])
+        #         if dist < min_dist:
+        #             min_size = size_string
+        #             min_dist = dist
+        #     if min_size != '':
+        #         size_coor_set.add((size_beam, min_size, coor))
     progress('平面圖讀取進度 8/13')
 
     # Step 9. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor), Ex. '1F' 左下角和右上角的座標分別為(0.0, 0.0) (14275.54, 10824.61)
@@ -748,7 +805,7 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
             x_diff_right = string_coor[0] - block_coor[1][0]  # 和右上角的diff
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:  # 要在框框裡面才算
-                floor_to_coor_set.add((floor, block_coor))
+                floor_to_coor_set.add((floor, block_coor, string_coor))
     progress('平面圖讀取進度 9/13')
 
     # Step 10. 算出Bmax, Fmax, Rmax, 用途: 跑for迴圈的時候，知道哪些是空號
@@ -800,9 +857,11 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
     for x in floor_to_coor_set:
         floor_name = x[0]
         block_coor = x[1]
+        string_coor = x[2]
         floor_list = turn_floor_to_list(floor_name, Bmax, Fmax, Rmax)
         if len(floor_list) != 0:
-            new_floor_to_coor_list.append((floor_list, block_coor))
+            new_floor_to_coor_list.append(
+                (floor_list, block_coor, string_coor))
 
     floor_to_coor_set = new_floor_to_coor_list
 
@@ -827,7 +886,8 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
             size_string = x[1]
             size_beam = x[0]
             min_floor = []
-            for z in floor_to_coor_set:  # list (floor_list, block左下角和右上角的coor)
+            # list (floor_list, block左下角和右上角的coor ,string coor)
+            for z in floor_to_coor_set:
                 floor_list = z[0]
                 block_coor = z[1]
                 x_diff_left = size_coor[0] - block_coor[0][0]  # 和左下角的diff
@@ -866,112 +926,178 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
         beam_name = x[1][0]
         beam_size = x[1][1]
         beam_rotate = x[1][2]
-        min_floor = ''
+        min_floor = None
 
         # 我其實是list歐哈哈 (floor_list, block左下角和右上角的coor)
-        for z in floor_to_coor_set:
-            floor_list = z[0]
-            block_coor = z[1]
-            x_diff_left = beam_coor[0] - block_coor[0][0]  # 和左下角的diff
-            y_diff_left = beam_coor[1] - block_coor[0][1]
-            x_diff_right = beam_coor[0] - block_coor[1][0]  # 和右上角的diff
-            y_diff_right = beam_coor[1] - block_coor[1][1]
-            if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:
-                if min_floor == '' or min_floor == floor_list:
-                    min_floor = floor_list
+        block_list = [(floor_list, block_coor, string_coor) for floor_list, block_coor, string_coor in floor_to_coor_set if
+                      (beam_coor[0] - block_coor[0][0]) * (beam_coor[0] - block_coor[1][0]) < 0 and
+                      (beam_coor[1] - block_coor[0][1]) * (beam_coor[1] - block_coor[1][1]) < 0]
+        if len(block_list) > 1:
+            block_list = [
+                block for block in block_list if block[2][1] < beam_coor[1]]
 
-                else:  # 有很多層在同一個block, 仍然透過字串的coor找樓層 -> 應從已知選項找最適合的，而不是全部重找，這樣會找到框框外面的東西
-                    for y in coor_to_floor_set:  # set(字串的coor, floor)
-                        if y[1] == min_floor:
-                            string_coor = y[0]
-                            x_diff = abs(beam_coor[0] - string_coor[0])
-                            y_diff = beam_coor[1] - string_coor[1]
-                            total = x_diff + y_diff
-                        if y[1] == floor_list:
-                            string_coor = y[0]
-                            new_x_diff = abs(beam_coor[0] - string_coor[0])
-                            new_y_diff = beam_coor[1] - string_coor[1]
-                            new_total = new_x_diff + new_y_diff
-                    if (new_y_diff > 0 and y_diff > 0 and new_total < total) or y_diff < 0:
-                        min_floor = floor_list
+        if len(block_list) > 1:
+            min_floor = min(
+                block_list, key=lambda x: get_distance(x[2], beam_coor))[0]
+        if len(block_list) == 1:
+            min_floor = block_list[0][0]
+
+        # for z in floor_to_coor_set:
+        #     floor_list = z[0]
+        #     block_coor = z[1]
+        #     x_diff_left = beam_coor[0] - block_coor[0][0]  # 和左下角的diff
+        #     y_diff_left = beam_coor[1] - block_coor[0][1]
+        #     x_diff_right = beam_coor[0] - block_coor[1][0]  # 和右上角的diff
+        #     y_diff_right = beam_coor[1] - block_coor[1][1]
+        #     if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:
+        #         if min_floor == '' or min_floor == floor_list:
+        #             min_floor = floor_list
+
+        #         else:  # 有很多層在同一個block, 仍然透過字串的coor找樓層 -> 應從已知選項找最適合的，而不是全部重找，這樣會找到框框外面的東西
+        #             for y in coor_to_floor_set:  # set(字串的coor, floor)
+        #                 if y[1] == min_floor:
+        #                     string_coor = y[0]
+        #                     x_diff = abs(beam_coor[0] - string_coor[0])
+        #                     y_diff = beam_coor[1] - string_coor[1]
+        #                     total = x_diff + y_diff
+        #                 if y[1] == floor_list:
+        #                     string_coor = y[0]
+        #                     new_x_diff = abs(beam_coor[0] - string_coor[0])
+        #                     new_y_diff = beam_coor[1] - string_coor[1]
+        #                     new_total = new_x_diff + new_y_diff
+        #             if (new_y_diff > 0 and y_diff > 0 and new_total < total) or y_diff < 0:
+        #                 min_floor = floor_list
 
         floor_list = min_floor
 
         # 樓層找到之後要去表格對自己的size多大(如果size = ''的話)
+        if floor_list is None:
+            continue
+        for beam_floor in floor_list:
 
-        if floor_list != '':
-            for floor in floor_list:
-                if sizing or mline_scaling:
-                    if beam_size == '':
-                        min_diff = inf
-                        min_size = ''
-                        for y in floor_beam_size_coor_set:
-                            if y[0] == floor and y[1] == beam_name:  # 先看有沒有像g1, g2完全吻合的
-                                tmp_coor = y[3]
-                                diff = abs(
-                                    beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
-                                if diff < min_diff:
-                                    min_diff = diff
-                                    min_size = y[2]
-                        if min_size != '':
-                            beam_size = min_size
-                        else:
-                            header = beam_name
-                            for char in header:
-                                if char.isdigit():
-                                    header = header.split(char)[0]
-                                    break
-                            for y in floor_beam_size_coor_set:
-                                # 再看頭一不一樣(去掉數字的頭)
-                                if y[0] == floor and y[1] == header:
-                                    tmp_coor = y[3]
-                                    diff = abs(
-                                        beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
-                                    if diff < min_diff:
-                                        min_diff = diff
-                                        min_size = y[2]
-                        if min_size != '':
-                            beam_size = min_size
-                        else:
-                            for y in floor_beam_size_coor_set:
-                                # 再看頭有沒有包含到(ex. GA-1 算在 G)
-                                if y[0] == floor and y[1] in header:
-                                    tmp_coor = y[3]
-                                    diff = abs(
-                                        beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
-                                    if diff < min_diff:
-                                        min_diff = diff
-                                        min_size = y[2]
-                            beam_size = min_size
-                    # if floor=='10F' and beam_name =='B1-4':
-                    #     print(check_list)
-                    if beam_size != '':
-                        if (floor, beam_name, '', beam_rotate) in dic_plan:
-                            set_plan.remove(
-                                (floor, beam_name, '', beam_rotate))
-                            dic_plan.pop((floor, beam_name, '', beam_rotate))
-                            error(
-                                f'read_plan error in step 12: {floor} {beam_name} duplicate. ')
-                            warning_list.append(
-                                f'{floor} {beam_name} duplicate. ')
-                        set_plan.add(
-                            (floor, beam_name, beam_size, beam_rotate))
-                        dic_plan[(floor, beam_name, beam_size,
-                                  beam_rotate)] = full_coor
-                        check_list.append((floor, beam_name))
-                    else:
-                        if (floor, beam_name) not in check_list:
-                            set_plan.add((floor, beam_name, '', beam_rotate))
-                            dic_plan[(floor, beam_name, '',
-                                      beam_rotate)] = full_coor
-                            error(
-                                f'read_plan error in step 12: {floor} {beam_name} cannot find size. ')
-                            warning_list.append(
-                                f'{floor} {beam_name} cannot find size. ')
+            if not (sizing and mline_scaling):
+                set_plan.add((beam_floor, beam_name))
+                dic_plan[(beam_floor, beam_name)] = full_coor
+                continue
+            if beam_size == "":
+                # (floor, size_beam, size_string, size_coor)
+                beam_size_coor_table = [(floor, size_beam, size_string, size_coor) for floor, size_beam, size_string, size_coor in
+                                        floor_beam_size_coor_set if floor == beam_floor]
+                # full match:g1,g2 ;
+                # header before "-" include number:GA,GB,DB1,B1
+                # header only include char:GA,GB
+                # header with first char:Gn,Bn
+                for string_pattern in [r".*", r"^\w*", r"^[a-zA-z]*", r"^[a-zA-Z]{2}", r"^[a-zA-z]"]:
+                    header_string = re.search(string_pattern, beam_name)
+                    if header_string is None:
+                        continue
 
-                else:  # 不用對尺寸
-                    set_plan.add((floor, beam_name))
-                    dic_plan[(floor, beam_name)] = full_coor
+                    header_match = [
+                        table for table in beam_size_coor_table if table[1] == header_string.group(0)]
+                    if header_match:
+                        min_header_match = min(
+                            header_match, key=lambda table: get_distance(table[3], beam_coor[0]))
+                        beam_size = min_header_match[2]
+                        break
+
+            # check is duplicate in plan
+            if beam_size != '':
+                if (beam_floor, beam_name, '', beam_rotate) in set_plan:
+                    set_plan.remove(
+                        (beam_floor, beam_name, '', beam_rotate))
+                    dic_plan.pop((beam_floor, beam_name, '', beam_rotate))
+                    error(
+                        f'read_plan error in step 12: {beam_floor} {beam_name} duplicate. ')
+                    warning_list.append(
+                        f'{beam_floor} {beam_name} duplicate. ')
+                set_plan.add(
+                    (beam_floor, beam_name, beam_size, beam_rotate))
+                dic_plan[(beam_floor, beam_name, beam_size,
+                          beam_rotate)] = full_coor
+                check_list.append((beam_floor, beam_name))
+            else:
+                if (beam_floor, beam_name) not in check_list:
+                    set_plan.add((beam_floor, beam_name, '', beam_rotate))
+                    dic_plan[(beam_floor, beam_name, '',
+                              beam_rotate)] = full_coor
+                    error(
+                        f'read_plan error in step 12: {beam_floor} {beam_name} cannot find size. ')
+                    warning_list.append(
+                        f'{beam_floor} {beam_name} cannot find size. ')
+
+        # if not floor_list is None:
+        #     for floor in floor_list:
+        #         if sizing or mline_scaling:
+        #             if beam_size == '':
+        #                 min_diff = inf
+        #                 min_size = ''
+        #                 for y in floor_beam_size_coor_set: #(floor, size_beam, size_string, size_coor)
+        #                     if y[0] == floor and y[1] == beam_name:  # 先看有沒有像g1, g2完全吻合的
+        #                         tmp_coor = y[3]
+        #                         diff = abs(
+        #                             beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
+        #                         if diff < min_diff:
+        #                             min_diff = diff
+        #                             min_size = y[2]
+        #                 if min_size != '':
+        #                     beam_size = min_size
+        #                 else:
+        #                     header = beam_name
+        #                     for char in header:
+        #                         if char.isdigit():
+        #                             header = header.split(char)[0]
+        #                             break
+        #                     for y in floor_beam_size_coor_set:
+        #                         # 再看頭一不一樣(去掉數字的頭)
+        #                         if y[0] == floor and y[1] == header:
+        #                             tmp_coor = y[3]
+        #                             diff = abs(
+        #                                 beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
+        #                             if diff < min_diff:
+        #                                 min_diff = diff
+        #                                 min_size = y[2]
+        #                 if min_size != '':
+        #                     beam_size = min_size
+        #                 else:
+        #                     for y in floor_beam_size_coor_set:
+        #                         # 再看頭有沒有包含到(ex. GA-1 算在 G)
+        #                         if y[0] == floor and y[1] in header:
+        #                             tmp_coor = y[3]
+        #                             diff = abs(
+        #                                 beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
+        #                             if diff < min_diff:
+        #                                 min_diff = diff
+        #                                 min_size = y[2]
+        #                     beam_size = min_size
+        #             # if floor=='10F' and beam_name =='B1-4':
+        #             #     print(check_list)
+        #             if beam_size != '':
+        #                 if (floor, beam_name, '', beam_rotate) in dic_plan:
+        #                     set_plan.remove(
+        #                         (floor, beam_name, '', beam_rotate))
+        #                     dic_plan.pop((floor, beam_name, '', beam_rotate))
+        #                     error(
+        #                         f'read_plan error in step 12: {floor} {beam_name} duplicate. ')
+        #                     warning_list.append(
+        #                         f'{floor} {beam_name} duplicate. ')
+        #                 set_plan.add(
+        #                     (floor, beam_name, beam_size, beam_rotate))
+        #                 dic_plan[(floor, beam_name, beam_size,
+        #                           beam_rotate)] = full_coor
+        #                 check_list.append((floor, beam_name))
+        #             else:
+        #                 if (floor, beam_name) not in check_list:
+        #                     set_plan.add((floor, beam_name, '', beam_rotate))
+        #                     dic_plan[(floor, beam_name, '',
+        #                               beam_rotate)] = full_coor
+        #                     error(
+        #                         f'read_plan error in step 12: {floor} {beam_name} cannot find size. ')
+        #                     warning_list.append(
+        #                         f'{floor} {beam_name} cannot find size. ')
+
+        #         else:  # 不用對尺寸
+        #             set_plan.add((floor, beam_name))
+        #             dic_plan[(floor, beam_name)] = full_coor
 
     # doc_plan.Close(SaveChanges=False)
     progress('平面圖讀取進度 12/13')
@@ -1033,54 +1159,36 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
                     f'read_plan error in step 13-4, {ex}, error_count = {error_count}')
 
         # Step 13-5. 找最近的複線，有錯要畫圖 -> 中點找中點
-        error_list = []
-        for x, item in dic_plan.items():
-            if 'x' in x[2]:
-                beam_scale = float(x[2].split('x')[0])
-                beam_coor = item
-                beam_layer = sml_beam_layer
-                if x[1][0].isupper():
-                    beam_layer = big_beam_layer
-                if 'Fb' in x[1]:
-                    beam_layer = sml_beam_layer
-                beam_rotate = x[3]
-                midpoint = ((beam_coor[0][0] + beam_coor[1][0]) / 2,
-                            (beam_coor[0][1] + beam_coor[1][1]) / 2)
-                min_diff = inf
-                min_scale = ''
-                min_coor = ''
-                if abs(beam_rotate - 1.57) < 0.1:  # 橫的 or 歪的，90度 = pi / 2 = 1.57 (前面有取round到後二位)
-                    temp_list = [
-                        mline for mline in beam_direction_mid_scale_set if mline[1] == 1 and mline[0] in beam_layer]
-                elif abs(beam_rotate - 0) < 0.1:  # 直的 or 歪的
-                    temp_list = [
-                        mline for mline in beam_direction_mid_scale_set if mline[1] == 0 and mline[0] in beam_layer]
-                else:
-                    temp_list = [
-                        mline for mline in beam_direction_mid_scale_set if mline[0] in beam_layer]
-                if len(temp_list) != 0:
-                    closet_mline = min(temp_list, key=lambda m: abs(
-                        midpoint[0] - m[2][0]) + abs(midpoint[1]-m[2][1]))
-                    min_scale = closet_mline[3]
-                    min_coor = closet_mline[2]
-                    # for y in beam_direction_mid_scale_set:
-                    #     if y[0] == beam_layer and y[1] == 0:
-                    #         coor = y[2]
-                    #         diff = abs(midpoint[0] - coor[0]) + abs(midpoint[1] - coor[1])
-                    #         if diff < min_diff:
-                    #             min_diff = diff
-                    #             min_scale = y[3]
-                    #             min_coor = coor
 
-                # if beam_rotate != 0: # 直的 or 歪的
-                #     for y in beam_direction_mid_scale_set:
-                #         if y[0] == beam_layer and y[1] == 1:
-                #             coor = y[2]
-                #             diff = abs(midpoint[0] - coor[0]) + abs(midpoint[1] - coor[1])
-                #             if diff < min_diff:
-                #                 min_diff = diff
-                #                 min_scale = y[3]
-                #                 min_coor = coor
+        for x, item in dic_plan.items():
+            if 'x' not in x[2]:
+                continue
+            beam_scale = float(x[2].split('x')[0])
+            beam_coor = item
+            beam_layer = sml_beam_layer
+            if x[1][0].isupper():
+                beam_layer = big_beam_layer
+            if 'Fb' in x[1]:
+                beam_layer = sml_beam_layer
+            beam_rotate = x[3]
+            midpoint = ((beam_coor[0][0] + beam_coor[1][0]) / 2,
+                        (beam_coor[0][1] + beam_coor[1][1]) / 2)
+            min_scale = ''
+            min_coor = ''
+            if abs(beam_rotate - 1.57) < 0.1:  # 橫的 or 歪的，90度 = pi / 2 = 1.57 (前面有取round到後二位)
+                temp_list = [
+                    mline for mline in beam_direction_mid_scale_set if mline[1] == 1 and mline[0] in beam_layer]
+            elif abs(beam_rotate - 0) < 0.1:  # 直的 or 歪的
+                temp_list = [
+                    mline for mline in beam_direction_mid_scale_set if mline[1] == 0 and mline[0] in beam_layer]
+            else:
+                temp_list = [
+                    mline for mline in beam_direction_mid_scale_set if mline[0] in beam_layer]
+            if len(temp_list) != 0:
+                closet_mline = min(temp_list, key=lambda m: abs(
+                    midpoint[0] - m[2][0]) + abs(midpoint[1]-m[2][1]))
+                min_scale = closet_mline[3]
+                min_coor = closet_mline[2]
 
                 # 全部連線
                 # coor_list = [min_coor[0], min_coor[1], 0, midpoint[0], midpoint[1], 0]
@@ -1088,10 +1196,10 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
                 # line = msp_plan.AddPolyline(points)
                 # line.SetWidth(0, 3, 3)
                 # line.color = 200
-
+            try:
                 if min_scale == '' or min_scale != beam_scale:
                     error_list.append(
-                        (x[0], x[1], f'寬度有誤：文字為{beam_scale}，圖上為{min_scale}。\n'))
+                        ((x[0], x[1]), 'mline', f'寬度有誤：文字為{beam_scale}，圖上為{min_scale}。\n'))
                     coor = dic_plan[x]
                     # 畫框框
                     coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] +
@@ -1109,25 +1217,18 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
                         line = msp_plan.AddPolyline(points)
                         line.SetWidth(0, 3, 3)
                         line.color = 200
+            except:
+                continue
 
-        doc_plan.SaveAs(plan_new_filename)
-        doc_plan.Close(SaveChanges=True)
+        try:
+            doc_plan.SaveAs(plan_new_filename)
+            doc_plan.Close(SaveChanges=True)
+        except:
+            error(f'Cant Save Output {plan_new_filename} File')
 
         # Step 13.6 寫入txt_filename
-        f_fbeam = open(fbeam_file, "w", encoding='utf-8')
-        f_big = open(big_file, "w", encoding='utf-8')
-        f_sml = open(sml_file, "w", encoding='utf-8')
+
         error_list.sort(key=lambda x: turn_floor_to_float(x[0]))
-        f_big.write('核對mline寬度結果\n')
-        f_sml.write('核對mline寬度結果\n')
-        f_fbeam.write('核對mline寬度結果\n')
-        for x in error_list:
-            if x[1][0] == "B" or x[1][0] == "G" or x[1][0] == "C":
-                f_big.write(f"('{x[0]}', '{x[1]}'): {x[2]}")
-            elif x[1][0] == "F":
-                f_fbeam.write(f"('{x[0]}', '{x[1]}'): {x[2]}")
-            else:
-                f_sml.write(f"('{x[0]}', '{x[1]}'): {x[2]}")
 
     # Step 13.7 把set_plan跟dic_plan調回去
     new_set_plan = set()
@@ -1145,23 +1246,19 @@ def sort_plan(plan_filename: str, plan_new_filename: str, layer_config: dict, pl
 
     progress('平面圖讀取進度 13/13')
     progress('平面圖讀取完畢。')
-    # plan.txt單純debug用，不想多新增檔案可以註解掉
-    f = open(result_filename, "w")
-    f.write("in plan: \n")
-    l = list(set_plan)
-    l.sort()
-    for x in l:
-        f.write(f'{x}\n')
-    f.close()
 
-    return (set_plan, dic_plan, warning_list)
+    # result_dict['plan'] = sorted(list(set_plan))
+    # result_dict['warning'] = warning_list
+
+    return (set_plan, dic_plan, warning_list, error_list)
 
 
-def read_beam(beam_filename, text_layer, progress_file):
+def read_beam(beam_filename, layer_config):
     error_count = 0
     progress('開始讀取梁配筋圖')
     # Step 1. 打開應用程式
     flag = 0
+    text_layer = layer_config['text_layer']
     while not flag and error_count <= 10:
         try:
             wincad_beam = win32com.client.Dispatch("AutoCAD.Application")
@@ -1216,67 +1313,14 @@ def read_beam(beam_filename, text_layer, progress_file):
                 f'read_beam error in step 4: {e}, error_count = {error_count}.')
     progress('梁配筋圖讀取進度 4/9')
 
-    # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         count = 0
-    #         total = msp_beam.Count
-    #         progress(
-    #             f'正在炸梁配筋圖的圖塊及篩選判斷用的物件，梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-    #         for object in msp_beam:
-    #             count += 1
-    #             explode_fail = 0
-    #             while explode_fail <= 3:
-    #                 try:
-    #                     if object.EntityName == "AcDbBlockReference" and object.Layer == text_layer:
-    #                         object.Explode()
-    #                     if object.Layer != text_layer:
-    #                         object.Delete()
-    #                     if count % 1000 == 0:
-    #                         progress(
-    #                             f'梁配筋圖已讀取{count}/{total}個物件', progress_file)
-    #                     break
-    #                 except:
-    #                     explode_fail += 1
-    #                     try:
-    #                         msp_beam = doc_beam.Modelspace
-    #                     except:
-    #                         pass
-    #         flag = 1
-
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_beam error in step 5: {e}, error_count = {error_count}.')
-    #         try:
-    #             msp_beam = doc_beam.Modelspace
-    #         except:
-    #             pass
-    # progress('梁配筋圖讀取進度 5/9', progress_file)
-
-    # Step 6. 重新匯入modelspace
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         msp_beam = doc_beam.Modelspace
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_beam error in step 6: {e}, error_count = {error_count}.')
-    # progress('梁配筋圖讀取進度 6/9', progress_file)
-
     # Step 7. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
     progress('正在遍歷梁配筋圖上的物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候')
     floor_to_beam_set = set()
     flag = 0
     count = 0
-    used_layer_list = text_layer
-    # for key, layer_name in layer_config.items():
-    #     used_layer_list += layer_name
+    used_layer_list = []
+    for key, layer_name in layer_config.items():
+        used_layer_list += layer_name
     total = msp_beam.Count
     progress(
         f'梁配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
@@ -1365,7 +1409,12 @@ def read_beam(beam_filename, text_layer, progress_file):
     return floor_to_beam_set
 
 
-def sort_beam(floor_to_beam_set: set, result_filename: str, progress_file: str, sizing: bool):
+def sort_beam(floor_to_beam_set: set, sizing: bool):
+    '''
+        result_dict = {
+            'beam':[]
+        }
+    '''
     # Step 8. 算出Bmax, Fmax, Rmax
     Bmax = 0
     Fmax = 0
@@ -1428,7 +1477,7 @@ def sort_beam(floor_to_beam_set: set, result_filename: str, progress_file: str, 
                         if floor_exist(i, Bmax, Fmax, Rmax):
                             floor_list.append(turn_floor_to_string(i))
                 except Exception:
-                    error(f'read_beam error in step 9: The error above is from here.')
+                    error('read_beam error in step 9: The error above is from here.')
                 to_bool = True
                 break
 
@@ -1459,13 +1508,14 @@ def sort_beam(floor_to_beam_set: set, result_filename: str, progress_file: str, 
                 set_beam.add((floor, beam))
                 dic_beam[(floor, beam)] = coor
 
+    # result_dict['beam'] = sorted(list(set_beam))
     # beam.txt單純debug用，不想多新增檔案可以註解掉
-    with open(result_filename, "w") as f:
-        f.write("in beam: \n")
-        l = list(set_beam)
-        l.sort()
-        for x in l:
-            f.write(f'{x}\n')
+    # with open(result_filename, "w") as f:
+    #     f.write("in beam: \n")
+    #     l = list(set_beam)
+    #     l.sort()
+    #     for x in l:
+    #         f.write(f'{x}\n')
 
     return (set_beam, dic_beam)
 
@@ -1476,13 +1526,14 @@ def write_plan(plan_filename,
                set_plan,
                set_beam,
                dic_plan,
-               big_file,
-               sml_file,
-               date, drawing, progress_file, sizing, mline_scaling, fbeam_file, client_id):
+               date,
+               drawing,
+               mline_scaling,
+               client_id) -> list:
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     error_count = 0
-    progress("開始標註平面圖(核對項目: 梁配筋)及輸出核對結果至'大梁.txt'和'小梁.txt'。")
+    progress("開始標註平面圖(核對項目: 梁配筋)及輸出核對結果。")
     pythoncom.CoInitialize()
     set_in_plan = set_plan - set_beam
     list_in_plan = list(set_in_plan)
@@ -1491,14 +1542,6 @@ def write_plan(plan_filename,
     list_in_beam = list(set_in_beam)
     list_in_beam = [beam for beam in list_in_beam if beam[2] != 'replicate']
     list_in_beam.sort()
-
-    f_fbeam = open(fbeam_file, "a", encoding='utf-8')
-    f_big = open(big_file, "a", encoding='utf-8')
-    f_sml = open(sml_file, "a", encoding='utf-8')
-
-    f_fbeam.write("in plan but not in beam: \n")
-    f_big.write("in plan but not in beam: \n")
-    f_sml.write("in plan but not in beam: \n")
 
     if drawing:
         # Step 1. 開啟應用程式
@@ -1566,7 +1609,7 @@ def write_plan(plan_filename,
         try:
             doc_plan.Close(SaveChanges=False)
         except:
-            pass
+            error('Close File Error')
         return False
 
     # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
@@ -1585,48 +1628,6 @@ def write_plan(plan_filename,
         else:
             beam_drawing = 1
             error_list.append((plan_beam, 'no_beam', ''))
-        # if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G' :
-        #     wrong_data = 0
-        #     if sizing:
-        #         error_beam = [beam_beam for beam_beam in list_in_beam if plan_beam[0] == beam_beam[0] and plan_beam[1] == beam_beam[1]]
-        #         if error_beam:
-        #             pass
-        #         else:
-        #             pass
-        #         for beam_beam in list_in_beam:
-        #             if plan_beam[0] == beam_beam[0] and plan_beam[1] == beam_beam[1] and plan_beam[2] != beam_beam[2]:
-        #                 if plan_beam[2] != '':
-        #                     err_list_big.append((plan_beam, 0, beam_beam[2])) # type(tuple of floor and wrong beam, err_message, correct) 0是尺寸錯誤
-        #                     drawing = 1
-        #                 else:
-        #                     err_list_big_size.append(f'{(plan_beam[0], plan_beam[1])}\n')
-        #                     drawing = 0
-        #                 wrong_data = 1
-        #                 break
-        #     if not wrong_data:
-        #         err_list_big.append((plan_beam, 1)) # type(tuple of floor and wrong beam, err_message) 1是找不到梁
-        #     big_error += 1
-        # elif x[1][0] == 'F':
-        #     wrong_data = 0
-        #     if sizing:
-        #         pass
-        # else:
-        #     wrong_data = 0
-        #     if sizing:
-        #         for y in list2: # 去另一邊找有沒有floor跟beam相同但尺寸不同的東西
-        #             if x[0] == y[0] and x[1] == y[1] and x[2] != y[2]:
-        #                 if x[2] != '':
-        #                     err_list_sml.append((x, 0, y[2])) # type(tuple of floor and wrong beam, err_message, correct)
-        #                     drawing = 1doc_plan
-        #                 else:
-        #                     err_list_sml_size.append(f'{(x[0], x[1])}\n')
-        #                     drawing = 0
-        #                 wrong_data = 1
-        #                 break
-        #     if not wrong_data:
-        #         err_list_sml.append((x, 1)) # type(tuple of floor and wrong beam, err_message)
-        #         # f_sml.write(f'{x}: 找不到這根梁\n')
-        #     sml_error += 1
 
         if drawing and beam_drawing:
             coor = dic_plan[plan_beam]
@@ -1639,18 +1640,71 @@ def write_plan(plan_filename,
     if drawing:
         doc_plan.SaveAs(plan_new_filename)
         doc_plan.Close(SaveChanges=True)
-    return error_list, f_fbeam, f_big, f_sml
+    return error_list
 
 
-def output_error_list(error_list: list, f_big: TextIOWrapper, f_sml: TextIOWrapper, f_fbeam: TextIOWrapper, title_text='XS-BEAM', set_item=set, progress_file='./result/tmp'):
-    beam_error_size_list = []
-    beam_no_beam_list = []
-    sbeam_error_size_list = []
-    sbeam_no_beam_list = []
-    fbeam_error_size_list = []
-    fbeam_no_beam_list = []
+def output_error_list(error_list: list, title_text: str, set_item=set, cad_data=[]):
+    result_dict = {
+        'mline': {
+            '大梁': [],
+            '小梁': [],
+            '地梁': [],
+        },
+        'size': {
+            '大梁': [],
+            '小梁': [],
+            '地梁': [],
+        },
+        'no_size': {
+            '大梁': [],
+            '小梁': [],
+            '地梁': [],
+        },
+        'not_found': {
+            '大梁': [],
+            '小梁': [],
+            '地梁': [],
+        },
+        'duplicate': {
+            '大梁': [],
+            '小梁': [],
+            '地梁': [],
+        },
+        'summary': {
+            '大梁': {},
+            '小梁': {},
+            '地梁': {}
+        },
+        'item': [],
+        'warning': [],
+        'cad_data': []
+    }
+    error_counter = {
+        '大梁': {
+            'mline': [],
+            'size': [],
+            'not_found': [],
+            'no_size': [],
+            'duplicate': []
+        },
+        '小梁': {
+            'mline': [],
+            'size': [],
+            'not_found': [],
+            'no_size': [],
+            'duplicate': []
+        },
+        '地梁': {
+            'mline': [],
+            'size': [],
+            'not_found': [],
+            'no_size': [],
+            'duplicate': []
+        }
+    }
 
     # error_list = sorted(error_list,key = cmp_to_key(mycmp))
+    mline_error = [e for e in error_list if e[1] == 'mline']
     error_size = [e for e in error_list if e[1] == 'error_size']
     no_size = [e for e in error_list if e[1] == 'no_size']
     no_beam = [e for e in error_list if e[1] == 'no_beam']
@@ -1666,170 +1720,59 @@ def output_error_list(error_list: list, f_big: TextIOWrapper, f_sml: TextIOWrapp
     fbeam_list = [b for b in set_item if b[1][0] == 'F']
     sbeam_list = [
         b for b in set_item if b not in beam_list and b not in fbeam_list]
-    error_rate = 0
-    sb_error_rate = 0
-    fb_error_rate = 0
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write(f'========================\n')
-        f.write(f'尺寸錯誤:\n')
 
-    for e in error_size:
-        beam = e[0]
-        beam_name = beam[1]
-        if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G':
-            beam_error_size_list.append(e)
-            f_big.write(f'{beam}: 尺寸有誤，在{title_text}那邊是{e[2]}\n')
-        elif beam_name[0] == 'F':
-            fbeam_error_size_list.append(e)
-            f_fbeam.write(f'{beam}: 尺寸有誤，在{title_text}那邊是{e[2]}\n')
+    for error_type, error_result in [('mline', mline_error), ('size', error_size), ('not_found', no_beam), ('no_size', no_size), ('duplicate', replicate_beam)]:
+
+        for e in error_result:
+            beam = e[0]
+            beam_name = beam[1]
+            beam_type = ""
+
+            if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G':
+                beam_type = "大梁"
+            elif beam_name[0] == 'F':
+                beam_type = "地梁"
+            else:
+                beam_type = "小梁"
+            if error_type == 'mline':
+                error_message = e[2]
+            if error_type == 'size':
+                error_message = f"在{title_text}是{e[2]}"
+            if error_type == 'not_found':
+                error_message = f"在{title_text}找不到這根梁"
+            if error_type == 'no_size':
+                error_message = "找不到尺寸"
+            if error_type == 'duplicate':
+                error_message = "重複配筋"
+            error_counter[beam_type][error_type].append(error_result)
+            result_dict[error_type][beam_type].append(
+                (beam[0], beam_name, error_message))
+
+    if cad_data:
+        result_dict['cad_data'] = cad_data
+
+    if set_item:
+        result_dict['item'] = sorted(
+            list(set_item), key=lambda item: turn_floor_to_float(item[0]))
+
+    for (item_list, type_name) in zip([beam_list, sbeam_list, fbeam_list], ['大梁', '小梁', '地梁']):
+        if item_list:
+            error_count = len(
+                error_counter[type_name]['size']) + len(error_counter[type_name]['not_found'])
+            result_dict['summary'].update({type_name: {
+                '尺寸錯誤': len(error_counter[type_name]['size']),
+                '缺少配筋': len(error_counter[type_name]['not_found']),
+                '總共': len(item_list),
+                '錯誤率': f'{round(error_count / len(item_list),2) * 100}%'
+            }})
         else:
-            sbeam_error_size_list.append(e)
-            f_sml.write(f'{beam}: 尺寸有誤，在{title_text}那邊是{e[2]}\n')
+            result_dict['summary'].update({type_name: {
+                '備註': f'平面圖中無{type_name}'
+            }})
 
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write(f'========================\n')
-        f.write(f'{title_text}缺少:\n')
-    for e in no_beam:
-        beam = e[0]
-        beam_name = e[0][1]
-        if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G':
-            beam_no_beam_list.append(e)
-            f_big.write(f'{beam}: 找不到這根梁\n')
-        elif beam_name[0] == 'F':
-            fbeam_no_beam_list.append(e)
-            f_fbeam.write(f'{beam}: 找不到這根梁\n')
-        else:
-            sbeam_no_beam_list.append(e)
-            f_sml.write(f'{beam}: 找不到這根梁\n')
-
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write('========================\n')
-
-    if beam_list:
-        error_rate = round((len(beam_error_size_list) +
-                           len(beam_no_beam_list)) / len(beam_list) * 100, 2)
-        f_big.write(f'error rate = {error_rate} %\n')
-        f_big.write(
-            f'error rate = ({len(beam_error_size_list)}+{len(beam_no_beam_list)})/{len(beam_list)}={error_rate} %\n')
-    else:
-        f_big.write('平面圖中無大梁(B、G、C開頭)\n')
-
-    if sbeam_list:
-        sb_error_rate = round(
-            (len(sbeam_error_size_list) + len(sbeam_no_beam_list)) / len(sbeam_list) * 100, 2)
-        f_sml.write(
-            f'error rate = ({len(sbeam_error_size_list)}+{len(sbeam_no_beam_list)})/{len(sbeam_list)}={sb_error_rate} %\n')
-    else:
-        f_sml.write('平面圖中無小梁\n')
-
-    if fbeam_list:
-        fb_error_rate = round(
-            (len(fbeam_error_size_list) + len(fbeam_no_beam_list)) / len(fbeam_list) * 100, 2)
-        f_fbeam.write(
-            f'error rate = ({len(fbeam_error_size_list)}+{len(fbeam_no_beam_list)})/{len(fbeam_list)}={fb_error_rate} %\n')
-    else:
-        f_fbeam.write('平面圖中無地梁(F開頭)\n')
-
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write('========================\n')
-
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write('備註: (平面圖找不到尺寸)\n')
-
-    for e in no_size:
-        beam = e[0]
-        beam_name = e[0][1]
-        if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G':
-            f_big.write(f'{beam}: 找不到尺寸\n')
-        elif beam_name[0] == 'F':
-            f_fbeam.write(f'{beam}: 找不到尺寸\n')
-        else:
-            f_sml.write(f'{beam}: 找不到尺寸\n')
-
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write('========================\n')
-
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write('備註: (重複配筋)\n')
-
-    for e in replicate_beam:
-        beam = e[0]
-        beam_name = e[0][1]
-        if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G':
-            f_big.write(f'{beam}: 重複配筋\n')
-        elif beam_name[0] == 'F':
-            f_fbeam.write(f'{beam}: 重複配筋\n')
-        else:
-            f_sml.write(f'{beam}: 重複配筋\n')
-
-    for f in [f_big, f_sml, f_fbeam]:
-        f.write('========================\n')
-
-    # error_size_beam = [e for e in error_list if e[0][1][0] == 'error_size']
-    # error_size_sbeam = [e for e in error_list if e[1] == 'error_size']
-    # error_size_fbeam = [e for e in error_list if e[1] == 'error_size']
-    # err_list_big = sorted(err_list_big, key = cmp_to_key(mycmp))
-    # err_list_sml = sorted(err_list_sml, key = cmp_to_key(mycmp))
-
-    # for y in err_list_big:
-    #     if y[1] == 0:
-    #         f_big.write(f'{y[0]}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
-    #     else:
-    #         f_big.write(f'{y[0]}: 找不到這根梁\n')
-
-    # for y in err_list_sml:
-    #     if y[1] == 0:
-    #         f_sml.write(f'{y[0]}: 尺寸有誤，在XS-BEAM那邊是{y[2]}\n')
-    #     else:
-    #         f_sml.write(f'{y[0]}: 找不到這根梁\n')
-
-    # 算分母
-    # fb_count = 0
-    # big_count = 0
-    # sml_count = 0
-    # for x in set_plan:
-    #     if x[1][0] == 'B' or x[1][0] == 'C' or x[1][0] == 'G':
-    #         big_count += 1
-    #     elif x[1][0] == 'F':
-    #         fb_count += 1
-    #     else:
-    #         sml_count += 1
-
-    # # 計算錯誤率可能會噴錯，因為分母為0
-    # try:
-    #     big_rate = round(big_error / big_count * 100, 2)
-    #     f_big.write(f'error rate = {big_rate} %\n')
-
-    # except:
-    #     big_rate = 'unfinish'
-    #     error(f'write_plan error in step 5, there are no big beam in plan.txt?')
-
-    # if len(err_list_big_size):
-    #     f_big.write(f'備註: (平面圖找不到尺寸)\n')
-    #     for y in err_list_big_size:
-    #         f_big.write(y)
-    # f_big.write(f'\n')
-
-    # try:
-    #     sml_rate = round(sml_error / sml_count * 100, 2)
-    #     f_sml.write(f'error rate = {sml_rate} %\n')
-
-    # except:
-    #     sml_rate = 'unfinish'
-    #     error(f'write_plan error in step 5, there are no small beam in plan.txt?')
-
-    # if len(err_list_sml_size):
-    #     f_sml.write(f'備註: (平面圖找不到尺寸)\n')
-    #     for y in err_list_sml_size:
-    #         f_sml.write(y)
-    # f_sml.write(f'\n')
-
-    f_big.close()
-    f_sml.close()
-    f_fbeam.close()
     progress('平面圖標註進度 5/5')
-    progress("標註平面圖(核對項目: 梁配筋)及輸出核對結果至'大梁.txt'和'小梁.txt'完成。")
-    return (error_rate, sb_error_rate, fb_error_rate)
+    progress("標註平面圖(核對項目: 梁配筋)及輸出核對結果完成。")
+    return error_counter, result_dict
 
 
 # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
@@ -1838,13 +1781,14 @@ def write_beam(beam_filename,
                set_plan,
                set_beam,
                dic_beam,
-               big_file,
-               sml_file, date, drawing, progress_file, sizing, fbeam_file, client_id):
+               date,
+               drawing,
+               client_id):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     try:
         error_count = 0
-        progress("開始標註梁配筋圖及輸出核對結果至'大梁.txt'和'小梁.txt'。")
+        progress("開始標註梁配筋圖及輸出核對結果")
         pythoncom.CoInitialize()
         set1 = set_plan - set_beam
         list_in_plan = list(set1)
@@ -1853,13 +1797,13 @@ def write_beam(beam_filename,
         list_in_beam = list(set2)
         list_in_beam.sort()
         error_list = []
-        f_fbeam = open(fbeam_file, "a", encoding='utf-8')
-        f_big = open(big_file, "a", encoding='utf-8')
-        f_sml = open(sml_file, "a", encoding='utf-8')
+        # f_fbeam = open(fbeam_file, "a", encoding='utf-8')
+        # f_big = open(big_file, "a", encoding='utf-8')
+        # f_sml = open(sml_file, "a", encoding='utf-8')
 
-        f_fbeam.write("in beam but not in plan: \n")
-        f_big.write("in beam but not in plan: \n")
-        f_sml.write("in beam but not in plan: \n")
+        # f_fbeam.write("in beam but not in plan: \n")
+        # f_big.write("in beam but not in plan: \n")
+        # f_sml.write("in beam but not in plan: \n")
 
         if drawing:
             # Step 1. 開啟應用程式
@@ -1963,10 +1907,54 @@ def write_beam(beam_filename,
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
 
-    return (error_list, f_fbeam, f_big, f_sml)
+    return error_list
 
 
-def write_result_log(excel_file, task_name, plan_result, beam_result, date, runtime, other):
+def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[str, dict]):
+    plan_beam_df_list = []
+    plan_sbeam_df_list = []
+    plan_fbeam_df_list = []
+    for error_type in ['mline', 'not_found', 'no_size', 'duplicate']:
+        for beam_type, content in plan_result[error_type].items():
+            if not content:
+                continue
+            df = pd.DataFrame(content, columns=['樓層', '編號', '錯誤'])
+            if beam_type == '大梁':
+                plan_beam_df_list.append(df)
+            if beam_type == '小梁':
+                plan_sbeam_df_list.append(df)
+            if beam_type == '地梁':
+                plan_fbeam_df_list.append(df)
+
+    beam_beam_df_list = []
+    beam_sbeam_df_list = []
+    beam_fbeam_df_list = []
+    for error_type in ['not_found', 'no_size', 'duplicate']:
+        for beam_type, content in beam_result[error_type].items():
+            if not content:
+                continue
+            df = pd.DataFrame(content, columns=['樓層', '編號', '錯誤'])
+            if beam_type == '大梁':
+                beam_beam_df_list.append(df)
+            if beam_type == '小梁':
+                beam_sbeam_df_list.append(df)
+            if beam_type == '地梁':
+                beam_fbeam_df_list.append(df)
+
+    return {
+        'XS-PLAN 統整': [pd.DataFrame.from_dict(plan_result['summary'], orient='index')],
+        'XS-PLAN 大梁結果': plan_beam_df_list,
+        'XS-PLAN 小梁結果': plan_sbeam_df_list,
+        'XS-PLAN 地梁結果': plan_fbeam_df_list,
+        'XS-BEAM 統整': [pd.DataFrame.from_dict(plan_result['summary'], orient='index')],
+        'XS-BEAM 大梁結果': beam_beam_df_list,
+        'XS-BEAM 小梁結果': beam_sbeam_df_list,
+        'XS-BEAM 地梁結果': beam_fbeam_df_list,
+        'XS-PLAN 詳細內容': [pd.DataFrame(plan_result['item'], columns=['floor', 'serial', 'size'])],
+        'XS-BEAM 詳細內容': [pd.DataFrame(beam_result['item'], columns=['floor', 'serial', 'size'])],
+        'CAD data': [pd.DataFrame.from_dict(plan_result['cad_data'], orient='columns')]
+    }
+
     sheet_name = 'result_log_new'
     if not plan_result:
         plan_result = ['', '', '']
@@ -2003,241 +1991,88 @@ def write_result_log(excel_file, task_name, plan_result, beam_result, date, runt
 
 def run_plan(plan_filename,
              plan_new_filename,
-             big_file,
-             sml_file,
              layer_config: dict,
-             result_filename,
-             progress_file,
              sizing,
              mline_scaling,
              date,
-             fbeam_file,
-             client_id):
+             client_id,
+             pkl=""):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
-    if True:
+    if pkl == "":
         plan_data = read_plan(plan_filename=plan_filename,
                               layer_config=layer_config,
-                              progress_file=progress_file,
                               sizing=sizing,
                               mline_scaling=mline_scaling)
         save_temp_file.save_pkl(
             data=plan_data, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_set.pkl')
     else:
         plan_data = save_temp_file.read_temp(
-            tmp_file=r'TEST\2024-0412\2024-04-12-16-332024-0412 茂德新莊-XS-PLAN_plan_set.pkl')
-    set_plan, dic_plan, warning_list = sort_plan(plan_filename=plan_filename,
-                                                 plan_new_filename=plan_new_filename,
-                                                 plan_data=plan_data,
-                                                 layer_config=layer_config,
-                                                 sizing=sizing,
-                                                 mline_scaling=mline_scaling,
-                                                 big_file=big_file,
-                                                 sml_file=sml_file,
-                                                 fbeam_file=fbeam_file,
-                                                 result_filename=result_filename,
-                                                 progress_file=progress_file,
-                                                 date=date)
-    output_txt = f'{os.path.splitext(plan_new_filename)[0]}_result.txt'
+            tmp_file=pkl)
+    set_plan, dic_plan, warning_list, mline_error_list = sort_plan(plan_filename=plan_filename,
+                                                                   plan_new_filename=plan_new_filename,
+                                                                   plan_data=plan_data,
+                                                                   layer_config=layer_config,
+                                                                   sizing=sizing,
+                                                                   mline_scaling=mline_scaling,
+                                                                   date=date)
     end_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    output_progress_report(output_filename=output_txt,
-                           layer_config=layer_config,
-                           start_date=start_date,
-                           end_date=end_date,
-                           project_name=plan_filename,
-                           warning_list=warning_list,
-                           plan_filename=plan_filename,
-                           plan_data=plan_data)
-    return (set_plan, dic_plan)
+    cad_data = output_progress_report(layer_config=layer_config,
+                                      start_date=start_date,
+                                      end_date=end_date,
+                                      project_name=plan_filename,
+                                      warning_list=warning_list,
+                                      plan_filename=plan_filename,
+                                      plan_data=plan_data)
+    return (set_plan, dic_plan, mline_error_list, cad_data)
 
 
 def run_beam(beam_filename,
-             text_layer,
-             result_filename,
-             progress_file,
+             layer_config,
              sizing,
-             client_id):
+             client_id,
+             pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
-    if True:
+    if pkl == "":
         floor_to_beam_set = read_beam(
-            beam_filename=beam_filename, text_layer=text_layer, progress_file=progress_file)
+            beam_filename=beam_filename, layer_config=layer_config)
         save_temp_file.save_pkl(data=floor_to_beam_set,
                                 tmp_file=f'{os.path.splitext(beam_filename)[0]}_beam_set.pkl')
     else:
-        floor_to_beam_set = save_temp_file.read_temp(
-            r'TEST\2023-1114\2023-11-14-14-47台電竹園-XS-BEAM_beam_set.pkl')
+        floor_to_beam_set = save_temp_file.read_temp(pkl)
     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-                                   result_filename=result_filename,
-                                   progress_file=progress_file,
                                    sizing=sizing)
     return (set_beam, dic_beam)
 
 
-def output_progress_report(output_filename: str, layer_config: dict, start_date, end_date, plan_data: dict, project_name: str, plan_filename: str, warning_list: list):
+def output_progress_report(layer_config: dict, start_date, end_date, plan_data: dict, project_name: str, plan_filename: str, warning_list: list):
     delimiter = '\n'
     cad_data = {
+        '專案名稱': project_name,
+        '平面圖名稱': plan_filename,
+        '開始時間': start_date,
+        '結束時間': end_date,
+        '圖層參數': layer_config,
+        '平面圖樓層': plan_data["coor_to_floor_set"],
+        '錯誤訊息': delimiter.join(warning_list),
         '圖框': len(plan_data['block_coor_list']),
         '平面圖梁編號': len(plan_data['coor_to_beam_set']),
         '表格梁編號': len(plan_data['coor_to_size_beam']),
         '表格梁尺寸': len(plan_data['coor_to_size_string'])
     }
-    with open(output_filename, 'w') as f:
-        f.write(
-            f'專案名稱:{project_name}\n平面圖名稱:{plan_filename}\n開始時間:{start_date} \n結束時間:{end_date} \n')
-        f.write(f'圖層參數:{layer_config} \n')
-        f.write(f'CAD資料:{cad_data}]\n')
-        f.write(f'平面圖樓層:{plan_data["coor_to_floor_set"]}]\n')
-        f.write(f'==========================\n')
-        f.write('錯誤訊息:\n')
-        f.write(f'{delimiter.join(warning_list)}')
+    return cad_data
+    # with open(output_filename, 'w') as f:
+    #     f.write(
+    #         f'專案名稱:{project_name}\n平面圖名稱:{plan_filename}\n開始時間:{start_date} \n結束時間:{end_date} \n')
+    #     f.write(f'圖層參數:{layer_config} \n')
+    #     f.write(f'CAD資料:{cad_data}]\n')
+    #     f.write(f'平面圖樓層:{plan_data["coor_to_floor_set"]}]\n')
+    #     f.write(f'==========================\n')
+    #     f.write('錯誤訊息:\n')
+    #     f.write(f'{delimiter.join(warning_list)}')
 
-
-error_file = './result/error_log.txt'  # error_log.txt的路徑
 
 if __name__ == '__main__':
-    start = time.time()
-    # plan_data = save_temp_file.read_temp('plan_to_beam_0307-2.pkl')
-    # 檔案路徑區
-    # 跟AutoCAD有關的檔案都要吃絕對路徑
-    # beam_filename = r"D:/Desktop/BeamQC/TEST/INPUT\2023-03-03-15-45temp-temp.dwg"#sys.argv[1] # XS-BEAM的路徑
-    # beam_filenames = [r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0224 UPBBR.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0224_UPBBL.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0224_UPsbR_v2.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0302_UPsbL_v2.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\1F 小梁.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\1F大樑.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 FB.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1大樑.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\B1小梁.dwg",
-    #                   r"D:\Desktop\BeamQC\TEST\2023-0303\2023-0303 小地梁.dwg"]
-    beam_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1016\2023-10-16-10-11中德三重-XS-BEAM.dwg']
-    # sys.argv[2] # XS-PLAN的路徑
-    plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1016\1017-B1F.dwg']
-    # sys.argv[3] # XS-BEAM_new的路徑
-    beam_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-XS-BEAM_new.dwg"
-    # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r"D:\Desktop\BeamQC\TEST\2023-1016\1016-XS_PLAN_new.dwg"
-    # sys.argv[5] # 大梁結果
-    big_file = r"TEST\2023-1114\1114-big.txt"
-    # sys.argv[6] # 小梁結果
-    sml_file = r"TEST\2023-1114\1114-sml.txt"
-    # sys.argv[6] # 地梁結果
-    fbeam_file = r"TEST\2023-1114\1114-fb.txt"
-    # 在beam裡面自訂圖層
-    text_layer = ['S-RC']  # sys.argv[7]
-
-    # 在plan裡面自訂圖層
-    block_layer = ['0', 'DwFm', 'DEFPOINTS']  # sys.argv[8] # 框框的圖層
-    floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
-    size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
-    line_layer = ['S-TABLE']  # 梁表格圖層
-    # beam_layer = ['S-RCBMG', 'S-RCBMG(FB)', 'S-RCBMB', 'S-RCBMB(FB)']  # 大樑複線圖層
-    # beam_text_layer = ['S-TEXTG', 'S-TEXTB']  # 大樑文字圖層
-    sml_beam_layer = ['S-RCBMB', 'S-RCBMB(FB)']  # 小梁複線圖層
-    sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
-    big_beam_layer = ['S-RCBMG', 'S-RCBMG(FB)']
-    big_beam_text_layer = ['S-TEXTG']  # 小梁文字圖層
-    task_name = '1017-B1F-temp'  # sys.argv[13]
-
-    progress_file = './result/tmp'  # sys.argv[14]
-
-    sizing = 1  # 要不要對尺寸
-    mline_scaling = 1  # 要不要對複線寬度
-
-    plan_file = './result/plan.txt'  # plan.txt的路徑
-    beam_file = './result/beam.txt'  # beam.txt的路徑
-    excel_file = './result/result_log.xlsx'  # result_log.xlsx的路徑
-
-    date = time.strftime("%Y-%m-%d", time.localtime())
-    layer_config = {
-        # 'line_layer':line_layer,
-        'text_layer': text_layer,
-        'block_layer': block_layer,
-        'floor_layer': floor_layer,
-        # 'beam_layer': beam_layer,
-        # 'beam_text_layer': beam_text_layer,
-        'big_beam_text_layer': big_beam_text_layer,
-        'sml_beam_text_layer': sml_beam_text_layer,
-        'big_beam_layer': big_beam_layer,
-        'sml_beam_layer': sml_beam_layer,
-        'size_layer': size_layer,
-        'line_layer': line_layer,
-        # 'col_layer':col_layer
-    }
-    # 多檔案用','來連接，不用空格。Ex. 'file1,file2,file3'
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-
-    res_plan = []
-    res_beam = []
-    set_plan = set()
-    dic_plan = {}
-    set_beam = set()
-    dic_beam = {}
-
-    for plan_filename in plan_filenames:
-        # run_plan(plan_filename=plan_filename,
-        #          plan_new_filename=plan_new_filename,
-        #          big_file=big_file,
-        #          sml_file=sml_file,
-        #          layer_config=layer_config,
-        #          result_filename=plan_file,
-        #          progress_file= progress_file,
-        #          sizing= sizing,
-        #          mline_scaling= mline_scaling,
-        #          date = date,
-        #          fbeam_file= fbeam_file)
-        #     # res_plan.append(pool.apply_async(read_plan, (plan_filename, plan_new_filename, big_file, sml_file, floor_layer, big_beam_layer, big_beam_text_layer, sml_beam_layer, sml_beam_text_layer, block_layer, size_layer, plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)))
-        res_plan.append(pool.apply_async(run_plan, (plan_filename, plan_new_filename, big_file,
-                        sml_file, layer_config, plan_file, progress_file, sizing, mline_scaling, date, fbeam_file)))
-    for beam_filename in beam_filenames:
-        # res_beam.append(pool.apply_async(read_beam, (beam_filename, text_layer, beam_file, progress_file, sizing)))
-        res_beam.append(pool.apply_async(run_beam, (beam_filename,
-                        layer_config['text_layer'], beam_file, progress_file, sizing)))
-    # plan_filename = plan_filenames[0]
-    # beam_filename = beam_filenames[0]
-    # run_plan(plan_filenames[0], plan_new_filename, big_file, sml_file,layer_config , plan_file, progress_file, sizing, mline_scaling, date,fbeam_file)
-    plan_drawing = 0
-    if len(plan_filenames) == 1:
-        plan_drawing = 1
-    beam_drawing = 0
-    if len(beam_filenames) == 1:
-        beam_drawing = 1
-
-    for plan in res_plan:
-        plan = plan.get()
-        if plan:
-            set_plan = set_plan | plan[0]
-            if plan_drawing:
-                dic_plan = plan[1]
-        else:
-            end = time.time()
-            write_result_log(excel_file, task_name, '', '', '', '',
-                             f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
-
-    for beam in res_beam:
-        beam = beam.get()
-        if beam:
-            set_beam = set_beam | beam[0]
-            if beam_drawing:
-                dic_beam = beam[1]
-        else:
-            end = time.time()
-            write_result_log(excel_file, task_name, '', '', '', '',
-                             f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
-    plan_error_list, f_fbeam, f_big, f_sml = write_plan(plan_filename, plan_new_filename, set_plan, set_beam,
-                                                        dic_plan, big_file, sml_file, date, plan_drawing, progress_file, sizing, mline_scaling, fbeam_file=fbeam_file)
-    plan_result = output_error_list(error_list=plan_error_list, f_fbeam=f_fbeam,
-                                    f_big=f_big, f_sml=f_sml, title_text='XS-BEAM', set_item=set_plan)
-    beam_error_list, f_fbeam, f_big, f_sml = write_beam(
-        beam_filename, beam_new_filename, set_plan, set_beam, dic_beam, big_file, sml_file, date, beam_drawing, progress_file, sizing, fbeam_file=fbeam_file)
-    beam_result = output_error_list(error_list=beam_error_list, f_sml=f_sml,
-                                    f_big=f_big, f_fbeam=f_fbeam, title_text='XS-PLAN', set_item=set_beam)
-    end = time.time()
-    print(end - start)
-    write_result_log(excel_file=excel_file, task_name=task_name, plan_result=plan_result, beam_result=beam_result,
-                     runtime=f'{round(end - start, 2)}(s)', date=time.strftime("%Y-%m-%d %H:%M", time.localtime()), other='none')
+    pass

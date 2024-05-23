@@ -939,9 +939,9 @@ if __name__ == '__main__':
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'TEST\INPUT\2024-0513 test-2024-05-13-09-05-2024-0417_.xlsx'
-    output_folder = r'TEST\2024-0417'
-    project_name = '0513-test'
+    floor_parameter_xlsx = r'TEST\2024-0522\427\基本資料表 _ 三重427.xlsx'
+    output_folder = r'TEST\2024-0522\427'
+    project_name = '0522-427'
     plan_filename = r'TEST\2024-0415\XS-PLAN.dwg'
     # plan_layer_config = {
     #     'block_layer': ['DwFm'],
@@ -991,7 +991,7 @@ if __name__ == '__main__':
     main_logger = setup_custom_logger(__name__, client_id=project_name)
     msp_column = None
     doc_column = None
-    msp_column, doc_column = read_column_cad(col_filename)
+    # msp_column, doc_column = read_column_cad(col_filename)
 
     # sort_col_cad(msp_column=msp_column,
     #              doc_column=doc_column,
@@ -1003,11 +1003,13 @@ if __name__ == '__main__':
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-05-temp-0.pkl'),
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0522\427\2024-0522 427-2024-05-22-11-50-temp-0.pkl'),
                                    rebar_excel_path=floor_parameter_xlsx,
                                    progress_file=r'result\tmp')
+    # column_list = save_temp_file.read_temp(
+    #     r'TEST\2024-0522\427\2024-0522 427-2024-05-22-11-41-temp-column_list.pkl')
     save_temp_file.save_pkl(
-        column_list, r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-03-temp-column_list.pkl')
+        column_list, r'D:\Desktop\BeamQC\TEST\2024-0522\427\2024-0522_temp-column_list.pkl')
     create_report(output_column_list=column_list,
                   output_folder=output_folder,
                   project_name=project_name,

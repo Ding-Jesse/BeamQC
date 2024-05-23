@@ -9,6 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from copy import deepcopy
 from typing import Union
+from item.column import Column
 
 from PIL import Image
 from docx.shared import Inches, Cm
@@ -242,9 +243,8 @@ def add_scaled_image(doc: DocumentObject, image_path):
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 
-def create_calculate_sheet(doc_filename, column_list):
-    # from item.column import Column
-    # column_list: list[Column]
+def create_calculate_sheet(doc_filename, column_list: list[Column], output_serial: list = [], output_floor: list = []):
+
     doc = docx.Document()
     chinese_font = '微軟正黑體'
     style = doc.styles['Normal']
@@ -362,6 +362,8 @@ def create_calculate_sheet(doc_filename, column_list):
     add_image_to_doc(doc=doc, image_path='assets\column_joint_code.png')
     count = 0
     for column in column_list:
+        if not (column.serial in output_serial or column.floor in output_floor):
+            continue
         for pos, result in column.joint_result.items():
             create_case_result_sheet(doc=doc,
                                      chinese_font=chinese_font,

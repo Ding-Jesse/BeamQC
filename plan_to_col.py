@@ -236,8 +236,8 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                'S' not in object.TextString:
+                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                    'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -1212,10 +1212,11 @@ def run_plan(plan_filename: str,
              layer_config: dict,
              result_filename: str,
              progress_file: str,
-             client_id: str):
+             client_id: str,
+             pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
-    if True:
+    if pkl == "":
         plan_col_set = read_plan(plan_filename=plan_filename,
                                  layer_config=layer_config,
                                  progress_file=progress_file)
@@ -1223,7 +1224,7 @@ def run_plan(plan_filename: str,
             data=plan_col_set, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_to_col.pkl')
     else:
         plan_col_set = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-PLAN__plan_to_col.pkl')
+            tmp_file=pkl)
     set_plan, dic_plan = sort_plan(plan_data=plan_col_set,
                                    result_filename=result_filename,
                                    progress_file=progress_file)
@@ -1235,10 +1236,11 @@ def run_col(col_filename: str,
             layer_config: dict,
             result_filename: str,
             progress_file: str,
-            client_id: str):
+            client_id: str,
+            pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
-    if True:
+    if pkl == "":
         floor_col_set = read_col(col_filename=col_filename,
                                  layer_config=layer_config,
                                  result_filename=result_filename,
@@ -1247,7 +1249,7 @@ def run_col(col_filename: str,
             data=floor_col_set, tmp_file=f'{os.path.splitext(col_filename)[0]}_col_set.pkl')
     else:
         floor_col_set = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-SCOL_col_set.pkl')
+            tmp_file=pkl)
     set_col, dic_col = sort_col(col_data=floor_col_set,
                                 result_filename=result_filename,
                                 progress_file=progress_file)
@@ -1257,117 +1259,4 @@ def run_col(col_filename: str,
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 
 if __name__ == '__main__':
-    start = time.time()
-
-    # 檔案路徑區
-    # 跟AutoCAD有關的檔案都要吃絕對路徑
-    # col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2023-03-03-17-28temp-2023-0301_.dwg,D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'#sys.argv[1] # XS-COL的路徑
-    col_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-SCOL.dwg']
-    # print(col_filename.split(','))
-    # col_filename = r'D:\Desktop\BeamQC\TEST\2023-0303\2023-0301 左棟主配筋圖.dwg'
-    # sys.argv[2] # XS-PLAN的路徑
-    plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2023-1017\2023-10-17-09-25temp-XS-PLAN_.dwg']
-    # sys.argv[3] # XS-COL_new的路徑
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1017\XS_new.dwg'
-    # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2023-1017\XS-PLAN_col_new.dwg'
-    # sys.argv[5] # 柱配筋結果
-    result_file = r'D:\Desktop\BeamQC\TEST\2023-1017\column.txt'
-
-    # 在col裡面自訂圖層
-    layer_config = {
-        'text_layer': ['S-TEXT'],
-        'line_layer': ['S-TABLE'],
-        'block_layer': ['0', 'DwFm'],
-        'floor_layer': ['S-TITLE'],
-        'col_layer': ['S-TEXTC'],
-        'size_layer': ['S-TEXT'],
-        'table_line_layer': ['S-TABLE']
-    }
-    # text_layer = 'SS'#sys.argv[6] # 文字的圖層
-    # line_layer = 'S-TABLE'#sys.argv[7] # 線的圖層
-
-    # 在plan裡面自訂圖層
-    # block_layer = 'ss-dwfm'#sys.argv[8] # 圖框的圖層
-    # floor_layer = 'S-TITLE'#sys.argv[9] # 樓層字串的圖層
-    # col_layer = 'ss-dim'#sys.argv[10] # col的圖層
-
-    task_name = 'tmp'  # sys.argv[11]
-
-    progress_file = './result/tmp'  # sys.argv[12]
-    plan_file = './result/col_plan.txt'  # plan.txt的路徑
-    col_file = './result/col.txt'  # col.txt的路徑
-    excel_file = './result/result_log_col.xlsx'  # result_log.xlsx的路徑
-
-    date = time.strftime("%Y-%m-%d", time.localtime())
-
-    multiprocessing.freeze_support()
-    pool = multiprocessing.Pool()
-
-    # plan_file_count = plan_filename.count(',') + 1
-    # col_file_count = col_filename.count(',') + 1
-    plan_file_count = len(plan_filenames)
-    col_file_count = len(col_filenames)
-    res_plan = []
-    res_col = []
-    set_plan = set()
-    dic_plan = {}
-    set_col = set()
-    dic_col = {}
-    # read_col(col_filename = col_filenames[0],
-    #          text_layer = text_layer,
-    #          line_layer = line_layer,
-    #          result_filename = result_file,
-    #          progress_file = progress_file)
-
-    for plan_dwg_file in plan_filenames:
-        res_plan.append(pool.apply_async(
-            run_plan, (plan_dwg_file, layer_config, plan_file, progress_file)))
-
-    for col_dwg_file in col_filenames:
-        res_col.append(pool.apply_async(
-            run_col, (col_dwg_file, layer_config, col_file, progress_file)))
-
-    plan_drawing = 0
-    if len(plan_filenames) == 1:
-        plan_drawing = 1
-    col_drawing = 0
-    if len(col_filenames) == 1:
-        col_drawing = 1
-
-    for plan in res_plan:
-        plan = plan.get()
-        if plan:
-            set_plan = set_plan | plan[0]
-            if plan_drawing:
-                dic_plan = plan[1]
-        else:
-            end = time.time()
-            write_result_log(excel_file, task_name, 'plan_result', 'col_result',
-                             f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-    for col in res_col:
-        col = col.get()
-        if col:
-            set_col = set_col | col[0]
-            if col_drawing:
-                dic_col = col[1]
-        else:
-            end = time.time()
-            write_result_log(excel_file, task_name, 'plan_result', 'col_result',
-                             f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-
-    drawing = 0
-    if plan_file_count == 1 and col_file_count == 1:
-        drawing = 1
-
-    plan_result = write_plan(plan_filenames[0], plan_new_filename, set_plan,
-                             set_col, dic_plan, result_file, date, drawing, progress_file)
-    col_result = write_col(col_filenames[0], col_new_filename, set_plan,
-                           set_col, dic_col, result_file, date, drawing, progress_file)
-
-    end = time.time()
-    print(end - start)
-
-    # write_result_log(excel_file,task_name,'plan_result','col_result',f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
+    pass

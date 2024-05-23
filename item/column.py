@@ -198,7 +198,7 @@ class Column:
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'端部': confine_text})
                 self.confine_tie = Tie(self.tie_dict['端部'][1], 0)
-            if '中央' in tie_text or 'TIE' in tie_text:
+            if '一般' in tie_text or '中央' in tie_text or 'TIE' in tie_text:
                 middle_text = min(
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'中央': middle_text})

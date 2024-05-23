@@ -168,7 +168,11 @@ def sort_floor_text(data: dict[str, Counter]):
     for floor in data.keys():
         if re.findall(r'\W', floor):
             for new_floor in turn_floor_to_list(floor=re.sub(r'\(|\)', '', floor), Bmax=Bmax, Fmax=Fmax, Rmax=Rmax):
-                sort_dict.update({new_floor: data[floor]})
+                if new_floor in sort_dict:
+                    for key, item in data[floor].items():
+                        sort_dict[new_floor][key].extend(item)
+                else:
+                    sort_dict.update({new_floor: data[floor]})
         else:
             sort_dict.update({re.sub(r'\(|\)', '', floor): data[floor]})
     return sort_dict

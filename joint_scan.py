@@ -25,6 +25,7 @@ from typing import Literal
 from joint_draw import create_joint_plan_view
 from enum import Enum
 from logger import setup_custom_logger
+from utils.algorithm import match_points
 tol = 50
 global main_logger
 
@@ -133,7 +134,9 @@ def check_column_joint(excel_filename: str,
                        column_beam_df: pd.DataFrame,
                        column_list: list[Column],
                        beam_list: list[Beam],
-                       floor_list: list[Floor]):
+                       floor_list: list[Floor],
+                       output_floor: list,
+                       output_serial: list):
     result, no_rebar_data, column_beam_df, beams_df = calculate_column_beam_joint_shear(
         column_list=column_list, beam_list=beam_list, column_beam_df=column_beam_df)
     joint_df = pd.DataFrame(result)
@@ -158,7 +161,8 @@ def check_column_joint(excel_filename: str,
                 file_path=excel_filename, sheet_name='統整表')
     OutputExcel(df_list=[fine_summary_df],
                 file_path=excel_filename, sheet_name='考量圍束統整表')
-    # create_calculate_sheet(doc_filename=docx_filename, column_list=column_list)
+    create_calculate_sheet(doc_filename=docx_filename, column_list=column_list,
+                           output_serial=output_serial, output_floor=output_floor)
     return joint_df, beams_df
 
 
@@ -192,7 +196,9 @@ def column_joint_main(output_folder: str,
                       beam_pkl: str,
                       column_pkl: str,
                       column_beam_df: pd.DataFrame,
-                      column_beam_joint_xlsx: str):
+                      column_beam_joint_xlsx: str,
+                      output_floor: list,
+                      output_serial: list):
     user_define = False
 
     beam_list = save_temp_file.read_temp(beam_pkl)
@@ -227,9 +233,11 @@ def column_joint_main(output_folder: str,
                                             column_beam_df=column_beam_df,
                                             column_list=column_list,
                                             beam_list=beam_list,
-                                            floor_list=floor_list)
+                                            floor_list=floor_list,
+                                            output_floor=output_floor,
+                                            output_serial=output_serial)
 
-    return joint_df, beams_df, column_list, excel_filename
+    return joint_df, beams_df, column_list, excel_filename, docx_filename
 
 
 def read_column_beam_plan(plan_filename, layer_config: dict):
@@ -446,10 +454,13 @@ def sort_entity_to_floor(data: dict):
 
 
 def get_distance(coor1, coor2):
+    from math import sqrt
     if isinstance(coor1, tuple) and isinstance(coor2, tuple):
         try:
+            return sqrt((coor1[0][0]-coor2[0][0]) ** 2 + (coor1[0][1]-coor2[0][1]) ** 2)
             return abs(coor1[0][0]-coor2[0][0]) + abs(coor1[0][1]-coor2[0][1])
         except TypeError:
+            return sqrt((coor1[0]-coor2[0]) ** 2 + (coor1[1]-coor2[1]) ** 2)
             return abs(coor1[0]-coor2[0]) + abs(coor1[1]-coor2[1])
     return 10000
 
@@ -496,18 +507,35 @@ def match_column_block(data: dict):
             entity for entity in column_name_text_list if re.search(string_pattern, entity[1])]
         if not column_block_list:
             continue
-        for coor, column_name_text in column_name_text_list:
-            column_name_text: str
-            column_name_text = column_name_text.strip()
-            closest_block = min(column_block_list, key=lambda column_block: get_distance(
-                coor, column_block.start) + get_distance(coor, column_block.end))
+        start = time.time()
+        match_result, _ = match_points(points1=[coor for coor, column_name_text in column_name_text_list],
+                                       points2=[block.mid for block in column_block_list])
+        total_distance = 0
+        for i, j in match_result:
+            coor, column_name_text = column_name_text_list[i]
+            closest_block = column_block_list[j]
+            closest_block.column_serial = (coor, column_name_text)
+            total_distance += get_distance(coor, closest_block.mid)
+        print(
+            f"Cost time {time.time() - start}s , min distance:{_} , total distance:{total_distance}")
+        # for coor, column_name_text in column_name_text_list:
+        #     column_name_text: str
+        #     column_name_text = column_name_text.strip()
+        #     try:
+        #         assert column_name_text != "C124"
+        #     except:
+        #         pass
+        #     closest_block = min(column_block_list, key=lambda column_block: get_distance(
+        #         coor, column_block.start) + get_distance(coor, column_block.end))
 
-            if closest_block.column_serial is not None:
-                if get_distance(closest_block.column_serial[0], closest_block.start) + get_distance(closest_block.column_serial[0], closest_block.end) > \
-                        get_distance(coor, closest_block.start) + get_distance(coor, closest_block.end):
-                    closest_block.column_serial = (coor, column_name_text)
-            else:
-                closest_block.column_serial = (coor, column_name_text)
+        #     if closest_block.column_serial is not None:
+        #         if get_distance(closest_block.column_serial[0], closest_block.start) + get_distance(closest_block.column_serial[0], closest_block.end) > \
+        #                 get_distance(coor, closest_block.start) + get_distance(coor, closest_block.end):
+        #             origin_block = closest_block.column_serial
+        #             closest_block.column_serial = (coor, column_name_text)
+
+        #     else:
+        #         closest_block.column_serial = (coor, column_name_text)
         # for column_block in column_block_list:
         #     column_block.column_serial = min(column_name_text_list, key=lambda entity: get_distance(
         #         entity[0], column_block.start) + get_distance(entity[0], column_block.end))
@@ -543,7 +571,7 @@ def output_match_result(data: dict):
                            round(mline.right_offset) if mline.right_column else "",
                            mline.xy_direction.upper()]
             row += 1
-    # OutputExcel([df], excel_filename, "梁柱接頭表")
+    OutputExcel([df], "scipy_test.xlsx", "梁柱接頭表test")
     return df
 
 
@@ -580,7 +608,9 @@ def joint_scan_main(plan_filename,
                     column_pkl,
                     column_beam_joint_xlsx,
                     client_id="temp",
-                    pkl=""):
+                    pkl="",
+                    output_floor: list = [],
+                    output_serial: list = []):
     def concat_list(input_list):
         result = []
         for l in input_list:
@@ -592,15 +622,15 @@ def joint_scan_main(plan_filename,
                                                               layer_config=layer_config,
                                                               pkl=pkl)
 
-    joint_df, beams_df, column_list, excel_filename = column_joint_main(output_folder=output_folder,
-                                                                        project_name=project_name,
-                                                                        beam_pkl=beam_pkl,
-                                                                        column_pkl=column_pkl,
-                                                                        column_beam_df=column_beam_df,
-                                                                        column_beam_joint_xlsx=column_beam_joint_xlsx
-                                                                        )
+    joint_df, beams_df, column_list, excel_filename, docx_filename = column_joint_main(output_folder=output_folder,
+                                                                                       project_name=project_name,
+                                                                                       beam_pkl=beam_pkl,
+                                                                                       column_pkl=column_pkl,
+                                                                                       column_beam_df=column_beam_df,
+                                                                                       column_beam_joint_xlsx=column_beam_joint_xlsx,
+                                                                                       output_floor=output_floor,
+                                                                                       output_serial=output_serial)
 
-    return
     # output plan view
     match_rebar_data_with_object(data=sort_floor_block,
                                  beams_df=beams_df,
@@ -659,7 +689,7 @@ def joint_scan_main(plan_filename,
                            },
                            client_id=client_id)
     main_logger.info("EOF")
-    return os.path.basename(new_plan_view), os.path.basename(excel_filename)
+    return os.path.basename(new_plan_view), os.path.basename(excel_filename), os.path.basename(docx_filename)
 
 
 def summary_column_joint_df(joint_df: pd.DataFrame, column_dcr: str):
@@ -764,13 +794,13 @@ def sort_dataframe_by_floor(df: pd.DataFrame, floor_list: list[str], column1: st
 
 
 if __name__ == "__main__":
-    output_folder = r"TEST\2024-0514"
-    project_name = r"0514_chengming"
-    beam_pkl = r"TEST\2024-0514\2024-0513 test-2024-05-14-17-14-temp-beam_list.pkl"
-    column_pkl = r"TEST\2024-0514\2024-0513 test-2024-05-14-16-53-temp-column_list.pkl"
-    column_beam_joint_xlsx = r"TEST\2024-0514\2024-0417 茂德新莊.xlsx"
+    output_folder = r"D:\Desktop\BeamQC\TEST\2024-0522"
+    project_name = r"0522_427"
+    beam_pkl = r"TEST\2024-0522\427\2024-0522 247-2024-05-22-11-40-temp-beam_list.pkl"
+    column_pkl = r"TEST\2024-0522\427\2024-0522_temp-column_list.pkl"
+    column_beam_joint_xlsx = r"TEST\2024-0522\427\基本資料表 _ 三重427.xlsx"
 
-    plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0514\XS-PLAN.dwg"
+    plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg"
     layer_config = {
         'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
         'beam_name_text_layer': ['S-TEXTG'],
@@ -787,7 +817,7 @@ if __name__ == "__main__":
                     beam_pkl=beam_pkl,
                     column_pkl=column_pkl,
                     column_beam_joint_xlsx=column_beam_joint_xlsx,
-                    pkl=r'TEST\2024-0514\XS-PLAN_plan_set.pkl')
+                    pkl=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN_plan_set.pkl')
     # match_column_beam_plan(plan_filename=plan_filename,
     #                        layer_config=layer_config)
 

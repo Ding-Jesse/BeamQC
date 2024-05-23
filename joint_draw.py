@@ -84,12 +84,21 @@ def setup_drawing_layer(doc_joint_plan, msp_joint_plan, layer_config: dict[str, 
         }
     }
     '''
-    setup_plan_logger = main_logger.getChild('setup_drawing_layer')
-    linetypes = doc_joint_plan.Linetypes
-    text_styles = doc_joint_plan.TextStyles
-    new_style = text_styles.Add("myStandard")
-    new_style.fontFile = "simplex.shx"
-    new_style.BigFontFile = "lsp.shx"
+    error_count = 0
+    while error_count < 3:
+        try:
+            setup_plan_logger = main_logger.getChild('setup_drawing_layer')
+            linetypes = doc_joint_plan.Linetypes
+            text_styles = doc_joint_plan.TextStyles
+            new_style = text_styles.Add("myStandard")
+            new_style.fontFile = "simplex.shx"
+            new_style.BigFontFile = "lsp.shx"
+            break
+        except Exception:
+            error_count += 1
+            setup_plan_logger.error(
+                f'Layer style Add Fail, times = {error_count} , {ex}')
+            time.sleep(5)
     # doc_joint_plan.LinetypeScale = 100
     error_count = 0
     while msp_joint_plan:
@@ -325,7 +334,7 @@ def change_block_ratio(block_list, ratio):
         return ((x2 * m + x1 * n) / (m + n), (y2 * m + y1 * n) / (m + n), 0)
     visited = set()
     for floor, block_data in block_list:
-        block, floor_text = block_data
+        block, floor_text = block_data[0], block_data[1]
         if floor_text in visited:
             continue
         visited.add(floor_text)
@@ -340,7 +349,7 @@ def change_block_ratio(block_list, ratio):
 def draw_block(msp_joint_plan, block_list, summary_dict):
     plot_table = defaultdict(list)
     for floor, block_data in block_list:
-        block, floor_text = block_data
+        block, floor_text = block_data[0], block_data[1]
 
         points = [*block[0],
                   block[0][0], block[1][1], 0,
