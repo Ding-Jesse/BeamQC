@@ -3,101 +3,113 @@
 {% block title %}配筋圖查核_beta 結果{% endblock %}
 
 {% block content %}
+
 <head>
     <style>
     </style>
-  </head>
+</head>
+
 <body>
-<div class="testbox">
-<form action="" method=post enctype=multipart/form-data>
-    <div class = "banner">
-        <h1  class ="header1" >輸出結果<p class="header2">Powered by</p><p class="header3">ELEMENTs Structure Team</p></h1>
-    </div>
-    <div class="container">
-        <div class="header">
-            <h3 class="text-muted">Click on them to load/download them!</h3>
-        </div>
-        <hr/>
-        <p>配筋核對結果</p>
-        <div>     
-            {% for file in filenames %}
-                <a href="{{url_for('result_file', 
+    <div class="testbox">
+        <form action="" method=post enctype=multipart/form-data>
+            <div class="banner">
+                <h1 class="header1">輸出結果<p class="header2">Powered by</p>
+                    <p class="header3">ELEMENTs Structure Team</p>
+                </h1>
+            </div>
+            <div class="container">
+                <div class="header">
+                    <h3 class="text-muted">Click on them to load/download them!</h3>
+                </div>
+                <hr />
+                <p>配筋核對結果</p>
+                <div>
+                    {% for file in filenames %}
+                    <a href="{{url_for('result_file', 
                 filename=file)}}" style='color: #279c96'>{{file}}</a>
-                <br>
-            {% endfor %}
-        </div>
-        <p>梁配筋計算結果</p>
-        <div>     
-            {% for file in count_filenames %}
-                <a href="{{url_for('result_file', 
+                    <br>
+                    {% endfor %}
+                </div>
+                <p>配筋計算結果</p>
+                <div>
+                    {% for file in count_filenames %}
+                    <a href="{{url_for('result_file', 
                 filename=file)}}" style='color: #279c96'>{{file}}</a>
-                <br>
-            {% endfor %}
-        </div>
+                    <br>
+                    {% endfor %}
+                </div>
+            </div>
+        </form>
     </div>
-</form>
-</div>
 
-<div class="banner2">
-<h3>&emsp;📖檔案介紹</h3>
-</div>
-<blockquote>
-<h3>核對XS-BEAM結果</h3>
-<ol>
-<li>
-<h4>大梁.txt</h4>
-內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的大梁。
-<br>
-圖例: 
-<br>
-<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result1.png" alt="image"></p></div>
-<br>
-以in plan but not in beam的('B1F', "GB'-0")為例，表示B1F的GB'-0這根大梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
-</li>
-<li>
-<h4>小梁.txt</h4>
-內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的小梁。
-<br>
-圖例: 
-<br>
-<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result2.png" alt="image"></p></div>
-<br>
-以in plan but not in beam的('B1F', 'b12')為例，表示B1F的b12這根小梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。一樣，如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
-</li>
-<li>
-<h4>MARKON-XS-BEAM.dwg</h4>
-內容: 將出現在XS-BEAM但沒有出現在XS-PLAN的大梁與小梁用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。
-</li>
-<li>
-<h4>MARKON-XS-PLAN.dwg</h4>
-內容: <br>
-1. 將出現在XS-PLAN但沒有出現在XS-BEAM的大梁與小梁用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。<br>
-2. 將XS-PLAN中文字敘述之尺寸和圖中複線寬度不一致的大梁與小梁用<font color="#00d9e0">淺藍色框線</font>標註。
-</li>
-</ol>
-<h3>核對XS-COL結果</h3>
-<ol>
-<li>
-<h4>column.txt</h4>
-內容: 出現在XS-PLAN但沒有出現在XS-COL、出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱。
-<br>
-圖例: 
-<br>
-<div align="center"><img style="max-width: 30%; height: auto;"src="./static/result7.png" alt="image"></p></div>
-有兩種錯誤訊息，分別為'找不到這根柱子'以及'尺寸有誤'。
-</li>
-<li>
-<h4>MARKON-XS-COL.dwg</h4>
-內容: 將出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。
+    <div class="banner2">
+        <h3>&emsp;📖檔案介紹</h3>
+    </div>
+    <blockquote>
+        <h3>核對XS-BEAM結果</h3>
+        <ol>
+            <li>
+                <h4>大梁.txt</h4>
+                內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的大梁。
+                <br>
+                圖例:
+                <br>
+                <div align="center"><img style="max-width: 30%; height: auto;" src="./static/result1.png" alt="image">
+                    </p>
+                </div>
+                <br>
+                以in plan but not in beam的('B1F',
+                "GB'-0")為例，表示B1F的GB'-0這根大梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
+            </li>
+            <li>
+                <h4>小梁.txt</h4>
+                內容: 出現在XS-PLAN但沒有出現在XS-BEAM或出現在XS-BEAM但沒有出現在XS-PLAN的小梁。
+                <br>
+                圖例:
+                <br>
+                <div align="center"><img style="max-width: 30%; height: auto;" src="./static/result2.png" alt="image">
+                    </p>
+                </div>
+                <br>
+                以in plan but not in beam的('B1F',
+                'b12')為例，表示B1F的b12這根小梁有出現在XS-PLAN裡面，卻沒有出現在XS-BEAM。一樣，如果錯誤率過高的話，可以檢查看看圖層有沒有誤填，或者檢查圖是否符合注意事項的規範。
+            </li>
+            <li>
+                <h4>MARKON-XS-BEAM.dwg</h4>
+                內容: 將出現在XS-BEAM但沒有出現在XS-PLAN的大梁與小梁用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。
+            </li>
+            <li>
+                <h4>MARKON-XS-PLAN.dwg</h4>
+                內容: <br>
+                1. 將出現在XS-PLAN但沒有出現在XS-BEAM的大梁與小梁用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。<br>
+                2. 將XS-PLAN中文字敘述之尺寸和圖中複線寬度不一致的大梁與小梁用<font color="#00d9e0">淺藍色框線</font>標註。
+            </li>
+        </ol>
+        <h3>核對XS-COL結果</h3>
+        <ol>
+            <li>
+                <h4>column.txt</h4>
+                內容: 出現在XS-PLAN但沒有出現在XS-COL、出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱。
+                <br>
+                圖例:
+                <br>
+                <div align="center"><img style="max-width: 30%; height: auto;" src="./static/result7.png" alt="image">
+                    </p>
+                </div>
+                有兩種錯誤訊息，分別為'找不到這根柱子'以及'尺寸有誤'。
+            </li>
+            <li>
+                <h4>MARKON-XS-COL.dwg</h4>
+                內容: 將出現在XS-COL但沒有出現在XS-PLAN或兩邊尺寸不相同的柱用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。
 
-</li>
-<li>
-<h4>MARKON-column-XS-PLAN.dwg</h4>
-內容: 將出現在XS-PLAN但沒有出現在XS-COL或兩邊尺寸不相同的柱用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。
+            </li>
+            <li>
+                <h4>MARKON-column-XS-PLAN.dwg</h4>
+                內容: 將出現在XS-PLAN但沒有出現在XS-COL或兩邊尺寸不相同的柱用<font color="red">紅色框線</font>標註(圖層為S-CLOUD後面接當日日期)。
 
-</li>
-</blockquote>
+            </li>
+    </blockquote>
 
-<br>
+    <br>
 </body>
 {% endblock %}

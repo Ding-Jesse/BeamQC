@@ -36,7 +36,7 @@ def main_functionV3(beam_filenames,
     task_name = project_name
     date = time.strftime("%Y%m%d", time.localtime())
     data_excel_file = os.path.join(
-        output_directory, f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_結果.xlsx')
+        output_directory, f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_梁Check_結果.xlsx')
 
     multiprocessing.freeze_support()
     pool = multiprocessing.Pool()
@@ -186,7 +186,7 @@ def main_col_function(col_filenames,
     status = 'progress'
     # text_layer,line_layer,block_layer,floor_layer,col_layer,
     data_excel_file = os.path.join(
-        output_directory, f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_結果.xlsx')
+        output_directory, f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_柱Check_結果.xlsx')
 
     date = time.strftime("%Y-%m-%d", time.localtime())
 
@@ -217,7 +217,7 @@ def main_col_function(col_filenames,
         plan_drawing = 1
     col_drawing = 0
     if len(col_filenames) == 1:
-        col_drawing = 0
+        col_drawing = 1
 
     plan_block_error_list = []
     plan_block_match_result_list = []
@@ -389,7 +389,7 @@ def Output_Config(project_name: str, layer_config: dict, file_new_directory: str
 
 
 def Upload_Error_log(data, collection_name="Log", uri=None):
-    uri = os.environ['MONGO_URL'].replace('"', '')
+    # uri = os.environ['MONGO_URL'].replace('"', '')
     db = get_db('RcCheck', uri=uri)
     add_error_log(db,
                   data=data,
