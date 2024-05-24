@@ -5,7 +5,7 @@ from flask import current_app, g
 
 
 def get_db(database_name, uri=None):
-    # uri = "mongodb+srv://ghjk85692012:MGI3hjs341a7kNWq@cluster0.glspevs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
     if not uri is None:
         client = MongoClient(uri, server_api=ServerApi('1'))
 

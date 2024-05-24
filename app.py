@@ -122,7 +122,7 @@ def upload_file():
             beam_file = []
             plan_file = []
             column_file = []
-            txt_file = ''
+
             project_name = request.form['project_name']
             text_col_layer = request.form['text_col_layer']
             line_layer = request.form['line_layer']
@@ -136,6 +136,7 @@ def upload_file():
             size_layer = request.form['size_layer']
             col_layer = request.form['col_layer']
             table_line_layer = request.form['table_line_layer']
+            column_block_layer = request.form['column_block_layer']
 
             layer_config = {
                 'text_layer': text_layer.split('\r\n'),
@@ -156,6 +157,7 @@ def upload_file():
                 'col_layer': col_layer.split('\r\n'),
                 'size_layer': size_layer.split('\r\n'),
                 'table_line_layer': table_line_layer.split('\r\n'),
+                'column_block_layer': column_block_layer.split('\r\n')
             }
 
             xs_col = request.form.get('xs-col')
@@ -169,8 +171,6 @@ def upload_file():
             filenames = []
             project_name = f'{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}_{project_name}'
             start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-
-            progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
 
             client_id = session.get('client_id', None)
             if client_id:
@@ -223,18 +223,15 @@ def upload_file():
                 filenames.extend(filenames_beam)
             if column_ok and plan_ok:
                 # main function
-                txt_file = os.path.join(
-                    app.config['OUTPUT_FOLDER'], f'{project_name}-column.txt')
-                main_col_function(col_filenames=column_file,
-                                  plan_filenames=plan_file,
-                                  col_new_filename=column_new_file,
-                                  plan_new_filename=col_plan_new_file,
-                                  result_file=txt_file,
-                                  layer_config=col_layer_config,
-                                  task_name=project_name,
-                                  progress_file=progress_file,
-                                  client_id=client_id)
-                filenames_column = [f'{project_name}-column.txt']
+                output_file = main_col_function(col_filenames=column_file,
+                                                plan_filenames=plan_file,
+                                                col_new_filename=column_new_file,
+                                                plan_new_filename=col_plan_new_file,
+                                                output_directory=app.config['OUTPUT_FOLDER'],
+                                                project_name=project_name,
+                                                layer_config=col_layer_config,
+                                                client_id=client_id)
+                filenames_column = [output_file]
                 filenames.extend(filenames_column)
             if column_ok or beam_ok:
                 if 'filenames' in session:

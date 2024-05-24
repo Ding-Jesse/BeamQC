@@ -423,6 +423,9 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                         if 'Fbn' in object.TextString:
                             coor_to_size_beam.add((coor, 'Fb'))
                             continue
+                        if 'DB' in object.TextString:
+                            coor_to_size_beam.add((coor, 'DB'))  # 車道梁特別處理
+                            continue
                         if 'dbn' in object.TextString:
                             coor_to_size_beam.add((coor, 'db'))  # 車道梁特別處理
                             continue

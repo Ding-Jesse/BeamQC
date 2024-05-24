@@ -17,7 +17,8 @@ from itertools import groupby
 from functools import cmp_to_key
 from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, mycmp
 from logger import setup_custom_logger
-
+from collections import defaultdict
+from utils.algorithm import match_points
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡', '、']
 special_char_pattern = r'[、|,]'
@@ -39,7 +40,15 @@ def progress(message):
     main_logger.info(message)
 
 
-def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
+def get_distance(coor1, coor2):
+    if isinstance(coor1[0], tuple) and isinstance(coor2[0], tuple):
+        return abs(coor1[0][0]-coor2[0][0]) + abs(coor1[0][1]-coor2[0][1])
+    if isinstance(coor1, tuple) and isinstance(coor2, tuple):
+        return abs(coor1[0]-coor2[0]) + abs(coor1[1]-coor2[1])
+    return 10000
+
+
+def read_plan(plan_filename: str, layer_config: dict):
     def _cal_ratio(pt1, pt2):
         if abs(pt1[1]-pt2[1]) == 0:
             return 1000
@@ -47,17 +56,18 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     floor_layer = layer_config['floor_layer']
     col_layer = layer_config['col_layer']
     block_layer = layer_config['block_layer']
+    column_block_layer = layer_config['column_block_layer']
     size_layer = layer_config['size_layer']
     table_line_layer = layer_config['table_line_layer']
+    column_block_object_type = ['AcDbBlockReference', "AcDbPolyline"]
     error_count = 0
     text_entity_name = ["AcDbText", 'AcDbAttribute']
     progress('開始讀取平面圖(核對項目: 柱配筋對應)')
     # Step 1. 打開應用程式
-    flag = 0
-    while not flag and error_count <= 10:
+    wincad_plan = None
+    while wincad_plan is None and error_count <= 10:
         try:
             wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
         except Exception as ex:
             error_count += 1
             time.sleep(5)
@@ -66,11 +76,11 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     progress('平面圖讀取進度 1/11')
 
     # Step 2. 匯入檔案
-    flag = 0
-    while not flag and error_count <= 10:
+    doc_plan = None
+    while doc_plan is None and wincad_plan and error_count <= 10:
         try:
             doc_plan = wincad_plan.Documents.Open(plan_filename)
-            flag = 1
+
         except Exception as e:
             error_count += 1
             time.sleep(5)
@@ -79,11 +89,10 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     progress('平面圖讀取進度 2/11')
 
     # Step 3. 匯入modelspace
-    flag = 0
-    while not flag and error_count <= 10:
+    msp_plan = None
+    while msp_plan is None and doc_plan and error_count <= 10:
         try:
             msp_plan = doc_plan.Modelspace
-            flag = 1
         except Exception as ex:
             error_count += 1
             time.sleep(5)
@@ -107,63 +116,6 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                 f'read_plan error in step 4: {ex}, error_count = {error_count}.')
     progress('平面圖讀取進度 4/11')
 
-    # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
-    # flag = 0
-    # layer_list = [floor_layer, col_layer, size_layer, table_line_layer]
-    # non_trash_list = layer_list + [block_layer]
-    # while not flag and error_count <= 10:
-    #     try:
-    #         count = 0
-    #         total = msp_plan.Count
-    #         progress(
-    #             f'正在炸平面圖的圖塊及篩選判斷用的物件，平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-    #         for object in msp_plan:
-    #             explode_fail = 0
-    #             while explode_fail <= 3:
-    #                 try:
-    #                     count += 1
-    #                     if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:  # block 不會自動炸，需要手動修正
-    #                         object.Explode()
-    #                     if object.Layer not in non_trash_list:
-    #                         object.Delete()
-    #                     if count % 1000 == 0:
-    #                         # 每1000個跳一次，確認有在動
-    #                         progress(
-    #                             f'平面圖已讀取{count}/{total}個物件', progress_file)
-    #                     break
-    #                 except Exception:
-    #                     explode_fail += 1
-    #                     time.sleep(5)
-    #                     try:
-    #                         msp_plan = doc_plan.Modelspace
-    #                     except:
-    #                         pass
-    #         flag = 1
-
-    #     except Exception:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_plan error in step 5: {e}, error_count = {error_count}.')
-    #         try:
-    #             msp_plan = doc_plan.Modelspace
-    #         except:
-    #             pass
-    # progress('平面圖讀取進度 5/11', progress_file)
-
-    # Step 6. 重新匯入modelspace
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         msp_plan = doc_plan.Modelspace
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_plan error in step 6: {e}, error_count = {error_count}.')
-    # progress('平面圖讀取進度 6/11', progress_file)
-
     # Step 7. 遍歷所有物件 -> 完成 coor_to_floor_set, coor_to_col_set, block_coor_list
     coor_to_floor_set = set()  # set (字串的coor, floor)
     coor_to_col_set = set()  # set (coor, col)
@@ -171,6 +123,7 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
     table_to_size_set = []  # set (coor, size)
     block_coor_list = []  # 存取方框最左下角的點座標
     table_line_list = []
+    column_block_entity = []
     progress('正在遍歷平面圖上所有物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候...')
     used_layer_list = []
     for key, layer_name in layer_config.items():
@@ -288,6 +241,12 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
                         object.GetBoundingBox()[1][1], 2))
                     table_line_list.append((coor1, coor2))
                 flag = 1
+
+                if object_layer in column_block_layer and object.EntityName in column_block_object_type:
+                    # column_block = ColumnBlock(object.GetBoundingBox()[
+                    #                            0], object.GetBoundingBox()[1])
+                    column_block_entity.append((object.GetBoundingBox()[0],
+                                                object.GetBoundingBox()[1]))
             except Exception as ex:
                 object_list.append(object)
                 error_count += 1
@@ -312,11 +271,12 @@ def read_plan(plan_filename: str, layer_config: dict, progress_file: str):
         'coor_to_size_set': coor_to_size_set,
         'block_coor_list': block_coor_list,
         'table_to_size_list': table_to_size_set,
-        'table_line_list': table_line_list
+        'table_line_list': table_line_list,
+        'column_block_entity': column_block_entity
     }
 
 
-def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
+def sort_plan(plan_data: dict):
     # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
     block_coor_list = plan_data['block_coor_list']
@@ -325,6 +285,7 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
     coor_to_size_set = plan_data['coor_to_size_set']
     table_to_size_list = plan_data['table_to_size_list']
     table_line_list = plan_data['table_line_list']
+    column_block_entity = plan_data['column_block_entity']
     floor_to_coor_set = set()
     floor_table_size_dict: dict[str, dict] = dict()
 
@@ -335,8 +296,8 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
             x_diff_right = string_coor[0] - block_coor[1][0]  # 和右上角的diff
             y_diff_right = string_coor[1] - block_coor[1][1]
             if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:  # 要在框框裡面才算
-                floor_to_coor_set.add((floor, block_coor))
-    for floor, block_coor in floor_to_coor_set:
+                floor_to_coor_set.add((floor, block_coor, string_coor))
+    for floor, block_coor, floor_string_coor in floor_to_coor_set:
         floor_table_size_dict[floor] = {}
         floor_table_size = [(string_coor, text) for string_coor, text in table_to_size_list if string_coor[0] - block_coor[0][0] > 0 and
                             string_coor[1] - block_coor[0][1] > 0 and
@@ -429,9 +390,11 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
     for x in floor_to_coor_set:
         floor_name = x[0]
         block_coor = x[1]
+        floor_string_coor = x[2]
         floor_list = turn_floor_to_list(floor_name, Bmax, Fmax, Rmax)
         if len(floor_list) != 0:
-            new_floor_to_coor_list.append((floor_list, block_coor))
+            new_floor_to_coor_list.append(
+                (floor_list, block_coor, floor_string_coor))
 
     floor_to_coor_set = new_floor_to_coor_list
 
@@ -467,23 +430,6 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
             up = max(col_full_coor[1][1], match_size_coor[1][1])
             down = min(col_full_coor[0][1], match_size_coor[0][1])
 
-        # for y in coor_to_size_set:
-        #     size_coor = y[0][0]
-        #     size_full_coor = y[0]
-        #     size = y[1]
-        #     x_diff = abs(col_coor[0] - size_coor[0])
-        #     y_diff = abs(col_coor[1] - size_coor[1])
-        #     if x_diff + y_diff < min_diff:
-        #         min_diff = x_diff + y_diff
-        #         match_size = size
-        #         match_size_coor = size_full_coor
-
-        # if min_diff != inf and match_size != '' and match_size_coor != '':
-        #     left = min(col_full_coor[0][0], match_size_coor[0][0])
-        #     right = max(col_full_coor[1][0], match_size_coor[1][0])
-        #     up = max(col_full_coor[1][1], match_size_coor[1][1])
-        #     down = min(col_full_coor[0][1], match_size_coor[0][1])
-
             col_size_coor_set.add(
                 (col_name, match_size, (left, right, up, down)))
         else:
@@ -505,76 +451,111 @@ def sort_plan(plan_data: dict, result_filename: str, progress_file: str):
     set_plan = set()  # set元素為 (樓層, col, size)
     dic_plan = {}  # 透過(樓層, col, size)去找col跟size的整體座標
     # set(col, size, the coor of big_block(left, right, up, down))
+    floor_to_col_string_dict = defaultdict(list)
     for x in col_size_coor_set:
         col_coor = (x[2][0], x[2][3])  # 取左下角即可
         full_coor = x[2]  # 左下跟右上都有
         col_name = x[0]
         col_size = x[1]
-        min_floor = ''
-        for z in floor_to_coor_set:  # set (floor, block左下角和右上角的coor)
-            floor_list = z[0]
-            block_coor = z[1]
-            x_diff_left = col_coor[0] - block_coor[0][0]  # 和左下角的diff
-            y_diff_left = col_coor[1] - block_coor[0][1]
-            x_diff_right = col_coor[0] - block_coor[1][0]  # 和右上角的diff
-            y_diff_right = col_coor[1] - block_coor[1][1]
-            if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:
-                if min_floor == '' or min_floor == floor_list:
-                    min_floor = floor_list
+        min_floor = None
 
-                else:  # 有很多層在同一個block, 仍然透過字串的coor找樓層
-                    for y in coor_to_floor_set:
-                        if y[1] == min_floor:
-                            string_coor = y[0]
-                            x_diff = abs(col_coor[0] - string_coor[0])
-                            y_diff = col_coor[1] - string_coor[1]
-                            total = x_diff + y_diff
-                        if y[1] == floor_list:
-                            string_coor = y[0]
-                            new_x_diff = abs(col_coor[0] - string_coor[0])
-                            new_y_diff = col_coor[1] - string_coor[1]
-                            new_total = new_x_diff + new_y_diff
-                    if (new_y_diff > 0 and y_diff > 0 and new_total < total) or y_diff < 0:
-                        min_floor = floor_list
+        block_list = [(floor_list, block_coor, string_coor) for floor_list, block_coor, string_coor in floor_to_coor_set if
+                      (col_coor[0] - block_coor[0][0]) * (col_coor[0] - block_coor[1][0]) < 0 and
+                      (col_coor[1] - block_coor[0][1]) * (col_coor[1] - block_coor[1][1]) < 0]
+        if len(block_list) > 1:
+            block_list = [
+                block for block in block_list if block[2][1] < col_coor[1]]
+
+        if len(block_list) > 1:
+            min_floor = min(
+                block_list, key=lambda x: get_distance(x[2], col_coor))[0]
+        if len(block_list) == 1:
+            min_floor = block_list[0][0]
 
         floor_list = min_floor
 
-        if floor_list != '':
-            for floor in floor_list:
-                if col_size == '' and floor in floor_table_size_dict:
-                    if col_name in floor_table_size_dict[floor]:
-                        col_size = floor_table_size_dict[floor][col_name]
-                    elif 'Cn' in floor_table_size_dict[floor]:
-                        col_size = floor_table_size_dict[floor]['Cn']
-                set_plan.add((floor, col_name, col_size))
-                dic_plan[(floor, col_name, col_size)] = full_coor
+        if floor_list is None:
+            continue
+        for floor in floor_list:
+            if col_size == '' and floor in floor_table_size_dict:
+                if col_name in floor_table_size_dict[floor]:
+                    col_size = floor_table_size_dict[floor][col_name]
+                elif 'Cn' in floor_table_size_dict[floor]:
+                    col_size = floor_table_size_dict[floor]['Cn']
+            floor_to_col_string_dict[floor].append(
+                (col_coor, col_name, col_size))
+            set_plan.add((floor, col_name, col_size))
+            dic_plan[(floor, col_name, col_size)] = full_coor
         else:
             error('read_plan error in step 11: min_floor cannot be found.')
 
     progress('平面圖讀取進度 11/11')
+    # match plan column block and string
+    floor_column_block_entity_dict = defaultdict(list)
+    for column_block in column_block_entity:
+        start_pt = column_block[0]
+        end_pt = column_block[1]
+
+        min_floor = None
+
+        block_list = [(floor_list, block_coor, string_coor) for floor_list, block_coor, string_coor in floor_to_coor_set if
+                      (start_pt[0] - block_coor[0][0]) * (start_pt[0] - block_coor[1][0]) < 0 and
+                      (start_pt[1] - block_coor[0][1]) * (start_pt[1] - block_coor[1][1]) < 0]
+        if len(block_list) > 1:
+            block_list = [
+                block for block in block_list if block[2][1] < start_pt[1]]
+
+        if len(block_list) > 1:
+            min_floor = min(
+                block_list, key=lambda x: get_distance(x[2], start_pt))[0]
+        if len(block_list) == 1:
+            min_floor = block_list[0][0]
+        if min_floor is None:
+            continue
+        for floor in min_floor:
+            mid_pt = ((start_pt[0] + end_pt[0]) / 2,
+                      (start_pt[1] + end_pt[1]) / 2)
+            x_block_length = round(abs(start_pt[0] - end_pt[0]), 2)
+            y_block_length = round(abs(start_pt[1] - end_pt[1]), 2)
+            floor_column_block_entity_dict[floor].append(
+                (mid_pt, (start_pt, end_pt), (x_block_length, y_block_length)))
+
+    col_string_match_col_block = []
+    for floor, col_block_items in floor_column_block_entity_dict.items():
+        if floor not in floor_to_col_string_dict:
+            continue
+        col_items = floor_to_col_string_dict[floor]
+        match_result, _ = match_points([col_block[0] for col_block in col_block_items],
+                                       [col_string[0] for col_string in col_items])
+        for i, j in match_result:
+            col_string_match_col_block.append(
+                (floor, col_block_items[i], col_items[j]))
+
+    block_error_list = []
+    for floor, col_block, col_string in col_string_match_col_block:
+        mid_pt, (start_pt, end_pt), (x_block_length,
+                                     y_block_length) = col_block
+        col_coor, col_name, col_size = col_string
+
+        if len(re.findall(r"\d+", col_size)) < 2:
+            continue
+
+        match_group = re.findall(r"\d+", col_size)
+        x_length = int(match_group[0])
+        y_length = int(match_group[1])
+
+        if int(x_block_length) != x_length or int(y_block_length) != y_length:
+            block_error_list.append(
+                (floor, col_name, col_size, f'{x_block_length}x{y_block_length}'))
+
     progress('平面圖讀取完畢。')
-    # try:
-    #     doc_plan.Close(SaveChanges=False)
-    # except:
-    #     error('read_plan error in step 12: cannot close.')
 
-    # plan.txt單純debug用，不想多新增檔案可以註解掉
-    with open(result_filename, "w", encoding='utf-8') as f:
-        # f = open(result_filename, "w", encoding='utf-8')
-        f.write("in plan: \n")
-        l = list(set_plan)
-        l.sort()
-        for x in l:
-            f.write(f'{x}\n')
-
-    error_count = 0
-
-    return (set_plan, dic_plan)
+    return (set_plan, dic_plan, block_error_list, col_string_match_col_block)
 
 # def read_col(col_filename, text_layer, line_layer, result_filename, progress_file):
 
 
-def read_col(col_filename: str, layer_config: dict, result_filename, progress_file):
+def read_col(col_filename: str, layer_config: dict):
     '''
     Read AutoCAD XS-COL info.
     '''
@@ -639,45 +620,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
                 f'read_col error in step 4: {e}, error_count = {error_count}.')
     progress('柱配筋圖讀取進度 4/10')
 
-    # Step 5. 遍歷所有物件 -> 炸圖塊
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         count = 0
-    #         total = msp_col.Count
-    #         layer_list = [text_layer, line_layer]
-    #         for object in msp_col:
-    #             count += 1
-    #             if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
-    #                 object.Explode()
-    #             if object.Layer not in layer_list:
-    #                 object.Delete()
-    #             if count % 1000 == 0:
-    #                 progress(f'柱配筋圖已讀取{count}/{total}個物件', progress_file)
-    #         flag = 1
-    #     except Exception as ex:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         try:
-    #             msp_col = doc_col.Modelspace
-    #         except:
-    #             pass
-    #         error(
-    #             f'read_col error in step 5: {ex}, error_count = {error_count}.')
     progress('柱配筋圖讀取進度 5/10')
-
-    # Step 6. 重新匯入modelspace
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         msp_col = doc_col.Modelspace
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_col error in step 6: {e}, error_count = {error_count}.')
-    # progress('柱配筋圖讀取進度 6/10', progress_file)
 
     # Step 7. 遍歷所有物件 -> 完成一堆座標對應的set跟list
     progress('正在遍歷柱配筋圖上所有物件並篩選出有效信息，運行時間取決於柱配筋圖大小，請耐心等候')
@@ -792,7 +735,7 @@ def read_col(col_filename: str, layer_config: dict, result_filename, progress_fi
     }
 
 
-def sort_col(col_data: dict, result_filename: str, progress_file: str):
+def sort_col(col_data: dict):
     # Step 8. 完成col_to_line_set 格式:(col, left, right, up)
     '''
 
@@ -897,12 +840,12 @@ def sort_col(col_data: dict, result_filename: str, progress_file: str):
     progress('柱配筋圖讀取進度 10/10')
     progress('柱配筋圖讀取完成。')
     # col.txt單純debug用，不想多新增檔案可以註解掉
-    with open(result_filename, "w", encoding='utf-8') as f:
-        f.write("in col: \n")
-        l = list(set_col)
-        l.sort()
-        for x in l:
-            f.write(f'{x}\n')
+    # with open(result_filename, "w", encoding='utf-8') as f:
+    #     f.write("in col: \n")
+    #     l = list(set_col)
+    #     l.sort()
+    #     for x in l:
+    #         f.write(f'{x}\n')
 
     return (set_col, dic_col)
 
@@ -913,8 +856,10 @@ def write_plan(plan_filename,
                set_plan,
                set_col,
                dic_plan,
-               result_filename,
-               date, drawing, progress_file, client_id):
+               date,
+               drawing,
+               block_match,
+               client_id):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     error_count = 0
@@ -926,10 +871,10 @@ def write_plan(plan_filename,
     set2 = set_col - set_plan
     list2 = list(set2)
     list2.sort()
-    f = open(result_filename, "w", encoding='utf-8')
+    # f = open(result_filename, "w", encoding='utf-8')
 
-    f.write("in plan but not in col: \n")
-    f.write(f"------------------------------\n")
+    # f.write("in plan but not in col: \n")
+    # f.write(f"------------------------------\n")
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
@@ -1019,34 +964,42 @@ def write_plan(plan_filename,
                 pointobj = msp_plan.AddPolyline(points)
                 for i in range(4):
                     pointobj.SetWidth(i, 10, 10)
+    if drawing:
+        for block in block_match:
+            floor, col_block_item, col_item = block
+            block_pt = col_block_item[0]
+            col_pt = col_item[0]
+            lineObj = msp_plan.AddPolyline(
+                vtFloat([block_pt[0], block_pt[1], 0, col_pt[0], col_pt[1], 0]))
+            lineObj.setWidth(0, 3, 3)
 
     error_list = sorted(error_list, key=cmp_to_key(mycmp))
-    for x in error_list:
-        if x[1] == 0:
-            f.write(f'{x[0]}: 尺寸有誤，在XS-COL那邊是{x[2]}\n')
-        else:
-            f.write(f'{x[0]}: 找不到這根柱子\n')
+    # for x in error_list:
+    #     if x[1] == 0:
+    #         f.write(f'{x[0]}: 尺寸有誤，在XS-COL那邊是{x[2]}\n')
+    #     else:
+    #         f.write(f'{x[0]}: 找不到這根柱子\n')
 
     if drawing:
         doc_plan.SaveAs(plan_new_filename)
         doc_plan.Close(SaveChanges=True)
 
-    count = 0
-    for x in set_plan:
-        count += 1
+    # count = 0
+    # for x in set_plan:
+    #     count += 1
 
     # 計算錯誤率可能會噴錯，因為分母為0
-    try:
-        rate = round(error_num / count * 100, 2)
-        f.write(f'error rate = {rate} %\n')
-    except:
-        rate = 'unfinish'
-        error(f'write_plan error in step 5, there are no col in plan.txt?')
+    # try:
+    #     rate = round(error_num / count * 100, 2)
+    #     f.write(f'error rate = {rate} %\n')
+    # except:
+    #     rate = 'unfinish'
+    #     error(f'write_plan error in step 5, there are no col in plan.txt?')
 
-    f.close()
+    # f.close()
     progress('平面圖標註進度 5/5')
-    progress("標註平面圖(核對項目: 柱配筋)及輸出核對結果至'column.txt'完成。")
-    return rate
+    progress("標註平面圖(核對項目: 柱配筋)及輸出核對結果。")
+    return error_list
 
 
 # 完成 in beam but not in plan 的部分並在圖上mark有問題的部分
@@ -1055,7 +1008,9 @@ def write_col(col_filename,
               set_plan,
               set_col,
               dic_col,
-              result_filename, date, drawing, progress_file, client_id):
+              date,
+              drawing,
+              client_id):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     error_count = 0
@@ -1068,8 +1023,8 @@ def write_col(col_filename,
     list2 = list(set2)
     list2.sort()
 
-    f = open(result_filename, "a", encoding='utf-8')
-    f.write("in col but not in plan: \n")
+    # f = open(result_filename, "a", encoding='utf-8')
+    # f.write("in col but not in plan: \n")
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
@@ -1160,11 +1115,11 @@ def write_col(col_filename,
                 pointobj.SetWidth(i, 10, 10)
 
     error_list = sorted(error_list, key=cmp_to_key(mycmp))
-    for x in error_list:
-        if x[1] == 0:
-            f.write(f'{x[0]}: 尺寸有誤，在XS-PLAN那邊是{x[2]}\n')
-        else:
-            f.write(f'{x[0]}: 找不到這根柱子\n')
+    # for x in error_list:
+    #     if x[1] == 0:
+    #         f.write(f'{x[0]}: 尺寸有誤，在XS-PLAN那邊是{x[2]}\n')
+    #     else:
+    #         f.write(f'{x[0]}: 找不到這根柱子\n')
 
     if drawing:
         doc_col.SaveAs(col_new_filename)
@@ -1176,87 +1131,157 @@ def write_col(col_filename,
         count += 1
 
     # 計算錯誤率可能會噴錯，因為分母為0
-    try:
-        rate = round(error_num / count * 100, 2)
-        f.write(f'error rate = {rate} %\n')
-    except Exception as ex:
-        rate = 'unfinish'
-        error(
-            f'write_col error in step 5, there are no col in col.txt? ex:{ex}')
+    # try:
+    #     rate = round(error_num / count * 100, 2)
+    #     f.write(f'error rate = {rate} %\n')
+    # except Exception as ex:
+    #     rate = 'unfinish'
+    #     error(
+    #         f'write_col error in step 5, there are no col in col.txt? ex:{ex}')
 
-    f.close()
+    # f.close()
     progress('柱配筋圖標註進度 5/5')
     progress("標註柱配筋圖及輸出核對結果至'column.txt'完成。")
-    return rate
+    return error_list
 
 
-def write_result_log(excel_file, task_name, plan_not_col, col_not_plan, date, runtime, other):
-    sheet_name = 'result_log'
-    new_list = [(task_name, plan_not_col, col_not_plan, date, runtime, other)]
-    dfNew = pd.DataFrame(new_list, columns=[
-                         '名稱', 'in plan not in col 柱', 'in col not in plan 柱', '執行時間', '執行日期', '備註'])
-    if os.path.exists(excel_file):
-        writer = pd.ExcelWriter(
-            excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace')
-        df = pd.read_excel(excel_file)
-        df = pd.concat([df, dfNew], axis=0, ignore_index=True, join='inner')
-    else:
-        writer = pd.ExcelWriter(excel_file, engine='openpyxl')
-        df = dfNew
-    df.to_excel(writer, sheet_name=sheet_name)
-    writer.save()
-    return
+def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_error_list, block_match_list):
+    '''
+    (floor,name,size)
+    '''
+    plan_result_dict = {
+        'size error': [],
+        'not found': [],
+        'block error': [],
+        'block item': [],
+        'item': [],
+    }
+    col_result_dict = {
+        'size error': [],
+        'not found': [],
+        'block error': [],
+        'no size': [],
+        'item': [],
+    }
+    for error_result in plan_error_list:
+        floor, name, size = error_result[0]
+        if error_result[1] == 0:
+            xs_col_size = error_result[2]
+            plan_result_dict['size error'].append(
+                (floor, name, size, f'尺寸有誤，在XS-COL那邊是{xs_col_size}'))
+        if error_result[1] == 1:
+            plan_result_dict['not found'].append(
+                (floor, name, size, f'在XS-COL找不到這根柱子'))
+
+    for block_error in block_error_list:
+        col_floor, col_name, col_size, block = block_error
+        plan_result_dict['block error'].append(
+            (col_floor, col_name, col_size, f'圖塊尺寸為{block}'))
+    plan_result_dict['summary'] = {}
+    plan_result_dict['item'] = sorted(list(set_plan))
+    plan_result_dict['block item'] = sorted(block_match_list)
+    plan_result_dict['summary'].update({
+        '尺寸錯誤': len(plan_result_dict['size error']),
+        '缺少配筋': len(plan_result_dict['not found']),
+        '圖塊尺寸錯誤': len(plan_result_dict['block error']),
+        '總數': len(plan_result_dict['item']),
+        '錯誤率': f'{round(len(plan_result_dict["size error"]) +len(plan_result_dict["not found"]) +len(plan_result_dict["block error"])/len(plan_result_dict["item"]), 2)} %'
+    })
+
+    for error_result in col_error_list:
+        floor, name, size = error_result[0]
+        if error_result[1] == 0:
+            xs_col_size = error_result[2]
+            col_result_dict['size error'].append(
+                (floor, name, size, f'尺寸有誤，在XS-PLAN那邊是{xs_col_size}'))
+        if error_result[1] == 1:
+            col_result_dict['not found'].append(
+                (floor, name, size, f'在XS-PLAN找不到這根柱子'))
+    col_result_dict['item'] = sorted(list(set_col))
+    col_result_dict['summary'] = {}
+    col_result_dict['summary'].update({
+        '尺寸錯誤': len(col_result_dict['size error']),
+        '缺少配筋': len(col_result_dict['not found']),
+        '總數': len(col_result_dict['item']),
+        '錯誤率': f'{round(len(col_result_dict["size error"]) +len(col_result_dict["not found"]) /len(col_result_dict["item"]), 2)} %'
+    })
+    output_excel_data = {
+        'XS-PLAN 統整': [pd.DataFrame(plan_result_dict['summary'], index=[0])],
+        'XS-PLAN 結果': [pd.DataFrame(plan_result_dict['size error'], columns=['樓層', '編號', '尺寸', '錯誤']),
+                       pd.DataFrame(plan_result_dict['not found'], columns=[
+                           '樓層', '編號', '尺寸', '錯誤']),
+                       pd.DataFrame(plan_result_dict['block error'], columns=['樓層', '編號', '尺寸', '錯誤'])],
+        'XS-COL 統整': [pd.DataFrame(col_result_dict['summary'], index=[0])],
+        'XS-COL 結果': [pd.DataFrame(col_result_dict['size error'], columns=['樓層', '編號', '尺寸', '錯誤']),
+                      pd.DataFrame(col_result_dict['not found'], columns=['樓層', '編號', '尺寸', '錯誤'])],
+        'XS-PLAN 詳細內容': [pd.DataFrame(plan_result_dict['item'], columns=['floor', 'serial', 'size'])],
+        'XS-PLAN 圖塊核對詳細內容': [pd.DataFrame(plan_result_dict['block item'], columns=['floor', 'serial', 'size'])],
+        'XS-COL 詳細內容': [pd.DataFrame(col_result_dict['item'], columns=['floor', 'serial', 'size'])]
+    }
+
+    return plan_result_dict, col_result_dict, output_excel_data
 
 
 def run_plan(plan_filename: str,
              layer_config: dict,
-             result_filename: str,
-             progress_file: str,
              client_id: str,
              pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     if pkl == "":
         plan_col_set = read_plan(plan_filename=plan_filename,
-                                 layer_config=layer_config,
-                                 progress_file=progress_file)
+                                 layer_config=layer_config)
         save_temp_file.save_pkl(
             data=plan_col_set, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_to_col.pkl')
     else:
         plan_col_set = save_temp_file.read_temp(
             tmp_file=pkl)
-    set_plan, dic_plan = sort_plan(plan_data=plan_col_set,
-                                   result_filename=result_filename,
-                                   progress_file=progress_file)
+    set_plan, dic_plan, block_error_list, column_block_match_list = sort_plan(
+        plan_data=plan_col_set)
     # output_txt = f'{os.path.splitext(plan_new_filename)[0]}_result.txt'
-    return (set_plan, dic_plan)
+    return (set_plan, dic_plan, block_error_list, column_block_match_list)
 
 
 def run_col(col_filename: str,
             layer_config: dict,
-            result_filename: str,
-            progress_file: str,
             client_id: str,
             pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     if pkl == "":
         floor_col_set = read_col(col_filename=col_filename,
-                                 layer_config=layer_config,
-                                 result_filename=result_filename,
-                                 progress_file=progress_file)
+                                 layer_config=layer_config)
         save_temp_file.save_pkl(
             data=floor_col_set, tmp_file=f'{os.path.splitext(col_filename)[0]}_col_set.pkl')
     else:
         floor_col_set = save_temp_file.read_temp(
             tmp_file=pkl)
-    set_col, dic_col = sort_col(col_data=floor_col_set,
-                                result_filename=result_filename,
-                                progress_file=progress_file)
+    set_col, dic_col = sort_col(col_data=floor_col_set)
     return (set_col, dic_col)
 
 
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 
 if __name__ == '__main__':
-    pass
+    layer_config = {
+        'text_layer': ['S-TEXT'],
+        'line_layer': ['S-TABLE'],
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
+        'floor_layer': ['S-TITLE'],
+        'col_layer': ['S-TEXTC'],
+        'size_layer': ['S-TEXT'],
+        'table_line_layer': ['S-TABLE'],
+        'column_block_layer': ['S-COL']
+    }
+    # run_plan(
+    #     plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg',
+    #     layer_config=layer_config,
+    #     client_id='0524-temp_col',
+    #     pkl=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN_plan_to_col.pkl'
+    # )
+    run_col(
+        col_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL.dwg',
+        layer_config=layer_config,
+        client_id='0524-temp-col',
+        pkl=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL_col_set.pkl'
+    )

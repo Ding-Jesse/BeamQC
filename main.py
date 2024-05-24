@@ -170,10 +170,9 @@ def main_col_function(col_filenames,
                       plan_filenames,
                       col_new_filename,
                       plan_new_filename,
-                      result_file,
                       layer_config,
-                      task_name,
-                      progress_file,
+                      output_directory,
+                      project_name,
                       client_id,
                       plan_pkl: str = "",
                       col_pkl: str = ""):
@@ -182,11 +181,12 @@ def main_col_function(col_filenames,
         layer_config:{text_layer,line_layer,block_layer,floor_layer,col_layer}
     '''
     start = time.time()
+    plan_result_dict = None
+    col_result_dict = None
+    status = 'progress'
     # text_layer,line_layer,block_layer,floor_layer,col_layer,
-
-    plan_file = './result/col_plan.txt'  # plan.txt的路徑
-    col_file = './result/col.txt'  # col.txt的路徑
-    excel_file = './result/result_log_col.xlsx'  # result_log.xlsx的路徑
+    data_excel_file = os.path.join(
+        output_directory, f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_結果.xlsx')
 
     date = time.strftime("%Y-%m-%d", time.localtime())
 
@@ -198,19 +198,17 @@ def main_col_function(col_filenames,
     dic_plan = {}
     set_col = set()
     dic_col = {}
+    plan_dwg_file = None
+    col_dwg_file = None
     for plan_dwg_file in plan_filenames:
         res_plan.append(pool.apply_async(plan_to_col.run_plan, (plan_dwg_file,
                                                                 layer_config,
-                                                                plan_file,
-                                                                progress_file,
                                                                 client_id,
                                                                 plan_pkl)))
 
     for col_dwg_file in col_filenames:
         res_col.append(pool.apply_async(plan_to_col.run_col, (col_dwg_file,
                                                               layer_config,
-                                                              col_file,
-                                                              progress_file,
                                                               client_id,
                                                               col_pkl)))
 
@@ -219,7 +217,10 @@ def main_col_function(col_filenames,
         plan_drawing = 1
     col_drawing = 0
     if len(col_filenames) == 1:
-        col_drawing = 1
+        col_drawing = 0
+
+    plan_block_error_list = []
+    plan_block_match_result_list = []
 
     for plan in res_plan:
         plan = plan.get()
@@ -227,11 +228,15 @@ def main_col_function(col_filenames,
             set_plan = set_plan | plan[0]
             if plan_drawing:
                 dic_plan = plan[1]
+            block_error_list = plan[2]
+            block_match_result_list = plan[3]
+            plan_block_error_list.extend(block_error_list)
+            plan_block_match_result_list.extend(block_match_result_list)
         else:
             end = time.time()
-            plan_to_col.write_result_log(
-                excel_file, task_name, '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
-            return
+            # plan_to_col.write_result_log(
+            #     excel_file, task_name, '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            # return
 
     for col in res_col:
         col = col.get()
@@ -241,19 +246,62 @@ def main_col_function(col_filenames,
                 dic_col = col[1]
         else:
             end = time.time()
-            plan_to_col.write_result_log(
-                excel_file, task_name, '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
-            return
+            # plan_to_col.write_result_log(
+            #     excel_file, task_name, '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
+            # return
+    try:
+        plan_result = plan_to_col.write_plan(plan_dwg_file,
+                                             plan_new_filename,
+                                             set_plan,
+                                             set_col,
+                                             dic_plan,
+                                             date,
+                                             plan_drawing,
+                                             block_match=plan_block_match_result_list,
+                                             client_id=client_id)
+        col_result = plan_to_col.write_col(col_dwg_file,
+                                           col_new_filename,
+                                           set_plan,
+                                           set_col,
+                                           dic_col,
+                                           date,
+                                           col_drawing,
+                                           client_id=client_id)
 
-    plan_result = plan_to_col.write_plan(
-        plan_dwg_file, plan_new_filename, set_plan, set_col, dic_plan, result_file, date, plan_drawing, progress_file, client_id=client_id)
-    col_result = plan_to_col.write_col(
-        col_dwg_file, col_new_filename, set_plan, set_col, dic_col, result_file, date, col_drawing, progress_file, client_id=client_id)
-
-    end = time.time()
-    plan_to_col.write_result_log(excel_file, task_name, plan_result, col_result,
-                                 f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'none')
-    return
+        plan_result_dict, col_result_dict, excel_data = plan_to_col.write_result_log(plan_error_list=plan_result,
+                                                                                     col_error_list=col_result,
+                                                                                     set_plan=set_plan,
+                                                                                     set_col=set_col,
+                                                                                     block_error_list=plan_block_error_list,
+                                                                                     block_match_list=block_match_result_list
+                                                                                     )
+        for sheet_name, df_list in excel_data.items():
+            OutputExcel(df_list=df_list,
+                        df_spacing=1,
+                        file_path=data_excel_file,
+                        sheet_name=sheet_name)
+        status = 'success'
+    except Exception as ex:
+        print(ex)
+        status = 'error'
+    finally:
+        Upload_Error_log(data={
+            'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            'col_filenames': col_filenames,
+            'col_new_filename': col_new_filename,
+            'plan_filenames': plan_filenames,
+            'plan_new_filename': plan_new_filename,
+            'project_name': project_name,
+            'output_directory': output_directory,
+            "layer_config": layer_config,
+            'client_id': client_id,
+            'status': status,
+            'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
+            'beam error rate': col_result_dict['summary'] if col_result_dict is not None else None
+        }, collection_name='Column Check Log')
+        if status == 'error':
+            raise Exception
+    return os.path.basename(data_excel_file)
 
 
 def storefile(file, file_directory, file_new_directory, project_name):
@@ -341,7 +389,7 @@ def Output_Config(project_name: str, layer_config: dict, file_new_directory: str
 
 
 def Upload_Error_log(data, collection_name="Log", uri=None):
-    uri = "mongodb+srv://ghjk85692012:MGI3hjs341a7kNWq@cluster0.glspevs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    uri = os.environ['MONGO_URL'].replace('"', '')
     db = get_db('RcCheck', uri=uri)
     add_error_log(db,
                   data=data,
@@ -475,24 +523,47 @@ if __name__ == '__main__':
     #                   client_id="0522-temp",
     #                   plan_pkl=r"TEST\2024-0522\2024-05-20-19-07P2023-05A 桃園龜山樂善安居14FB3-XS-PLAN_plan_to_col.pkl",
     #                   col_pkl=r"D:\Desktop\BeamQC\TEST\2024-0522\2024-05-21-14-57P2023-05A 桃園龜山樂善安居14FB3-XS-COL_col_set.pkl")
-    # run_plan(plan_filename=plan_filenames[0],
-    #          plan_new_filename=plan_new_filename,
-    #          layer_config=layer_config,
-    #          sizing=sizing,
-    #          mline_scaling=mline_scaling,
-    #          date=time.strftime("%Y-%m-%d", time.localtime()),
-    #          client_id="2024-0524",
-    #          pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-PLAN_plan_set.pkl')
+
     # # from collections import Counter
-    main_functionV3(beam_filenames=beam_filenames,
-                    beam_new_filename=beam_new_filename,
-                    plan_filenames=plan_filenames,
-                    plan_new_filename=plan_new_filename,
-                    project_name=task_name,
-                    output_directory=output_directory,
-                    layer_config=layer_config,
-                    sizing=sizing,
-                    mline_scaling=mline_scaling,
-                    client_id="2024-0524",
-                    plan_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-PLAN_plan_set.pkl',
-                    beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-BEAM_beam_set.pkl')
+    # main_functionV3(beam_filenames=beam_filenames,
+    #                 beam_new_filename=beam_new_filename,
+    #                 plan_filenames=plan_filenames,
+    #                 plan_new_filename=plan_new_filename,
+    #                 project_name=task_name,
+    #                 output_directory=output_directory,
+    #                 layer_config=layer_config,
+    #                 sizing=sizing,
+    #                 mline_scaling=mline_scaling,
+    #                 client_id="2024-0524",
+    #                 plan_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-PLAN_plan_set.pkl',
+    #                 beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-BEAM_beam_set.pkl')
+
+    # Column Test
+    layer_config = {
+        'text_layer': ['S-TEXT'],
+        'line_layer': ['S-TABLE'],
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
+        'floor_layer': ['S-TITLE'],
+        'col_layer': ['S-TEXTC'],
+        'size_layer': ['S-TEXT'],
+        'table_line_layer': ['S-TABLE'],
+        'column_block_layer': ['S-COL']
+    }
+    col_filenames = [
+        r'D:\Desktop\BeamQC\TEST\INPUT\2024-05-24-10-02_temp-XS-COL.dwg']
+    plan_filenames = [
+        r'D:\Desktop\BeamQC\TEST\INPUT\2024-05-24-10-02_temp-XS-PLAN.dwg']
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-COL.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-PLAN.dwg'
+    main_col_function(
+        col_filenames=col_filenames,
+        plan_filenames=plan_filenames,
+        col_new_filename=col_new_filename,
+        plan_new_filename=plan_new_filename,
+        output_directory=output_directory,
+        project_name=project_name,
+        layer_config=layer_config,
+        client_id="0524-col",
+        plan_pkl=r'TEST\INPUT\2024-05-24-10-02_temp-XS-PLAN_plan_to_col.pkl',
+        col_pkl=r"TEST\INPUT\2024-05-24-10-02_temp-XS-COL_col_set.pkl"
+    )
