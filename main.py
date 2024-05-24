@@ -432,9 +432,9 @@ if __name__ == '__main__':
     plan_filenames = [
         r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-PLAN.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
-    beam_new_filename = f"{output_directory}/0524-XS-BEAM_new.dwg"
+    beam_new_filename = f"{output_directory}/0524-XS-BEAM_new2.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
-    plan_new_filename = f"{output_directory}/0524-XS-PLAN_new.dwg"
+    plan_new_filename = f"{output_directory}/0524-XS-PLAN_new2.dwg"
 
     column_filenames = []
 
@@ -553,8 +553,8 @@ if __name__ == '__main__':
         r'D:\Desktop\BeamQC\TEST\INPUT\2024-05-24-10-02_temp-XS-COL.dwg']
     plan_filenames = [
         r'D:\Desktop\BeamQC\TEST\INPUT\2024-05-24-10-02_temp-XS-PLAN.dwg']
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-COL.dwg'
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-PLAN.dwg'
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-COL2.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-PLAN2.dwg'
     main_col_function(
         col_filenames=col_filenames,
         plan_filenames=plan_filenames,

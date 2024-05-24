@@ -189,8 +189,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                    'S' not in object.TextString:
+                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -326,7 +326,8 @@ def sort_plan(plan_data: dict):
                 sizes = [t for s_coor, t in floor_table_size if re.match(
                     r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
                 if sizes:
-                    floor_table_size_dict[floor].update({'Cn': sizes[0]})
+                    real_size = re.match(r'\d+[x|X]\d+', sizes[0]).group()
+                    floor_table_size_dict[floor].update({'Cn': real_size})
             elif re.match(r'C\d+', text):
                 upper_line = [
                     line for line in floor_table_line if line[0][1] <= string_coor[1]]
@@ -339,7 +340,8 @@ def sort_plan(plan_data: dict):
                 sizes = [t for s_coor, t in floor_table_size if re.match(
                     r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
                 if sizes:
-                    floor_table_size_dict[floor].update({text: sizes[0]})
+                    real_size = re.match(r'\d+[x|X]\d+', sizes[0]).group()
+                    floor_table_size_dict[floor].update({text: real_size})
 
     progress('平面圖讀取進度 8/11')
 
@@ -1185,7 +1187,7 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
         '缺少配筋': len(plan_result_dict['not found']),
         '圖塊尺寸錯誤': len(plan_result_dict['block error']),
         '總數': len(plan_result_dict['item']),
-        '錯誤率': f'{round(len(plan_result_dict["size error"]) +len(plan_result_dict["not found"]) +len(plan_result_dict["block error"])/len(plan_result_dict["item"]), 2)} %'
+        '錯誤率': f'{round((len(plan_result_dict["size error"]) +len(plan_result_dict["not found"]) +len(plan_result_dict["block error"]))/len(plan_result_dict["item"]), 2)*100} %'
     })
 
     for error_result in col_error_list:
@@ -1203,7 +1205,7 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
         '尺寸錯誤': len(col_result_dict['size error']),
         '缺少配筋': len(col_result_dict['not found']),
         '總數': len(col_result_dict['item']),
-        '錯誤率': f'{round(len(col_result_dict["size error"]) +len(col_result_dict["not found"]) /len(col_result_dict["item"]), 2)} %'
+        '錯誤率': f'{round((len(col_result_dict["size error"]) +len(col_result_dict["not found"])) /len(col_result_dict["item"]), 2)*100} %'
     })
     output_excel_data = {
         'XS-PLAN 統整': [pd.DataFrame(plan_result_dict['summary'], index=[0])],
