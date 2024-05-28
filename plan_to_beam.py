@@ -2078,4 +2078,71 @@ def output_progress_report(layer_config: dict, start_date, end_date, plan_data: 
 
 
 if __name__ == '__main__':
-    pass
+    # # 在beam裡面自訂圖層
+    text_layer = ['S-RC']  # sys.argv[7]
+
+    # 在plan裡面自訂圖層
+    block_layer = ['DwFm', '0', 'DETPOINTS']  # sys.argv[8] # 框框的圖層
+    floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
+    size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
+    big_beam_layer = ['S-RCBMG']  # 大樑複線圖層
+    big_beam_text_layer = ['S-TEXTG']  # 大樑文字圖層
+    sml_beam_layer = ['S-RCBMB']  # 小梁複線圖層
+    sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
+    task_name = '0524-temp'  # sys.argv[13]
+
+    progress_file = './result/tmp'  # sys.argv[14]
+
+    sizing = 1  # 要不要對尺寸
+    mline_scaling = 1  # 要不要對複線寬度
+
+    date = time.strftime("%Y-%m-%d", time.localtime())
+    layer_config = {
+        # 'line_layer':line_layer,
+        'text_layer': text_layer,
+        'block_layer': block_layer,
+        'floor_layer': floor_layer,
+        'big_beam_layer': big_beam_layer,
+        'big_beam_text_layer': big_beam_text_layer,
+        'sml_beam_layer': sml_beam_layer,
+        'size_layer': size_layer,
+        'sml_beam_text_layer': sml_beam_text_layer
+    }
+    pkls = [r'TEST\2024-0528\2024-05-28-11-50_temp-2F_B_beam_set.pkl',
+            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0522__beam_set.pkl',
+            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0524_B3F-1F_beam_set.pkl',
+            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0524_B3F-1F_v2_beam_set.pkl',
+            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0527__beam_set.pkl',
+            r'TEST\2024-0528\2024-05-28-11-50_temp-A_beam_set.pkl']
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
+    set_beam_all = set()
+    for pkl in pkls:
+        floor_to_beam_set = save_temp_file.read_temp(pkl)
+        set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
+                                       sizing=True)
+        set_beam_all = set_beam | set_beam_all
+
+    set_plan, dic_plan, plan_mline_error_list, plan_cad_data_list = run_plan(plan_filename=plan_filename,
+                                                                             plan_new_filename=plan_new_filename,
+                                                                             layer_config=layer_config,
+                                                                             date=date,
+                                                                             sizing=True,
+                                                                             mline_scaling=True,
+                                                                             client_id='temp',
+                                                                             pkl=r'TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_plan_set.pkl')
+    plan_error_list = write_plan(plan_filename=plan_filename,
+                                 plan_new_filename=plan_new_filename,
+                                 set_plan=set_plan,
+                                 set_beam=set_beam_all,
+                                 dic_plan=dic_plan,
+                                 date=date,
+                                 drawing=False,
+                                 mline_scaling=True,
+                                 client_id='temp')
+    plan_error_list.extend(plan_mline_error_list)
+    plan_error_counter, plan_result_dict = output_error_list(error_list=plan_error_list,
+                                                             title_text='XS-BEAM',
+                                                             set_item=set_plan,
+                                                             cad_data=plan_cad_data_list)
+    print()

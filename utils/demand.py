@@ -10,7 +10,7 @@ from utils.column_beam_joint import cal_rebar_As, determine_design_code, get_des
 
 def calculate_beam_gravity_load(beam: Beam):
     '''
-    return w , Vg
+    return w , Vg , Mg
     '''
     rebar_list = beam.rebar_table[RebarType.Bottom.value][RebarType.Middle.value]
     AsFy = sum([r.As * r.fy for r in rebar_list])
@@ -20,14 +20,14 @@ def calculate_beam_gravity_load(beam: Beam):
     # Mu = 1/12wl2
     w = Mu * 12 / (length * length)
     Vg = w * length / 2
-    return w, Vg
+    return w, Vg, Mu
 
 
 def calculate_beam_earthquake_load(w, beam: Beam, pos: Literal[RebarType.Top, RebarType.Bottom]):
     '''
     return left_Mu_eq, right_Mu_eq, Veq, Vp
     '''
-    rebar_list = beam.rebar_table[pos][RebarType.Right.value]
+    rebar_list = beam.rebar_table[pos.value][RebarType.Right.value]
     AsFy = sum([r.As * r.fy for r in rebar_list])
     # 1/24wl2
     length = beam.length
@@ -37,7 +37,7 @@ def calculate_beam_earthquake_load(w, beam: Beam, pos: Literal[RebarType.Top, Re
     right_Mu_eq = Mu - Mu_dl
     right_Mpr = 1.25 * Mn
 
-    rebar_list = beam.rebar_table[pos][RebarType.Left.value]
+    rebar_list = beam.rebar_table[pos.value][RebarType.Left.value]
     AsFy = sum([r.As * r.fy for r in rebar_list])
     # 1/24wl2
     Mn = AsFy * (beam.depth - beam.protect_layer)

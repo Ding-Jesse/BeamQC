@@ -120,6 +120,7 @@ class Beam():
     right_column = 0
     concrete = 0
     formwork = 0
+    fc = 0
     start_pt: Point
     end_pt: Point
     beam_type: BeamType
@@ -527,10 +528,6 @@ class Beam():
     # 整理梁配筋成常用表格
 
     def sort_rebar_table(self):
-        try:
-            assert self.floor != '9F' or self.serial != 'G5-12'
-        except:
-            print('')
         min_diff = 30
         self.rebar['top_first'].sort(key=lambda r: r.arrow_coor[0][0])
         # for i,rebar in enumerate(self.rebar['top_first']):
