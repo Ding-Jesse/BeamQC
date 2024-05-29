@@ -1713,6 +1713,7 @@ def output_error_list(error_list: list, title_text: str, set_item=set, cad_data=
     no_beam = [e for e in error_list if e[1] == 'no_beam']
     replicate_beam = [e for e in error_list if e[1] == 'replicate']
 
+    mline_error = sorted(mline_error, key=cmp_to_key(mycmp))
     error_size = sorted(error_size, key=cmp_to_key(mycmp))
     no_size = sorted(no_size, key=cmp_to_key(mycmp))
     no_beam = sorted(no_beam, key=cmp_to_key(mycmp))

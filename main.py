@@ -29,7 +29,6 @@ def main_functionV3(beam_filenames,
                     client_id,
                     plan_pkl="",
                     beam_pkl="") -> str:
-    status = 'progress'
     plan_result_dict = None
     beam_result_dict = None
 
@@ -73,96 +72,108 @@ def main_functionV3(beam_filenames,
 
     mline_error_list = []
     plan_cad_data_list = []
-    try:
-        for plan in res_plan:
-            plan = plan.get()
-            if plan:
-                set_plan = set_plan | plan[0]
-                if plan_drawing:
-                    dic_plan = plan[1]
-                plan_mline_error_list = plan[2]
-                plan_cad_data = plan[3]
-                mline_error_list.extend(plan_mline_error_list)
-                plan_cad_data_list.append(plan_cad_data)
-            else:
-                end = time.time()
+    # try:
+    for plan in res_plan:
+        plan = plan.get()
+        if plan:
+            set_plan = set_plan | plan[0]
+            if plan_drawing:
+                dic_plan = plan[1]
+            plan_mline_error_list = plan[2]
+            plan_cad_data = plan[3]
+            mline_error_list.extend(plan_mline_error_list)
+            plan_cad_data_list.append(plan_cad_data)
+        else:
+            end = time.time()
 
-        for beam in res_beam:
-            beam = beam.get()
-            if beam:
-                set_beam = set_beam | beam[0]
-                if beam_drawing:
-                    dic_beam = beam[1]
-            else:
-                end = time.time()
+    for beam in res_beam:
+        beam = beam.get()
+        if beam:
+            set_beam = set_beam | beam[0]
+            if beam_drawing:
+                dic_beam = beam[1]
+        else:
+            end = time.time()
 
-        plan_error_list = write_plan(plan_filename=plan_filename,
-                                     plan_new_filename=plan_new_filename,
-                                     set_plan=set_plan,
-                                     set_beam=set_beam,
-                                     dic_plan=dic_plan,
-                                     date=date,
-                                     drawing=plan_drawing,
-                                     mline_scaling=mline_scaling,
-                                     client_id=client_id)
+    plan_error_list = write_plan(plan_filename=plan_filename,
+                                 plan_new_filename=plan_new_filename,
+                                 set_plan=set_plan,
+                                 set_beam=set_beam,
+                                 dic_plan=dic_plan,
+                                 date=date,
+                                 drawing=plan_drawing,
+                                 mline_scaling=mline_scaling,
+                                 client_id=client_id)
 
-        plan_error_list.extend(plan_mline_error_list)
-        plan_error_counter, plan_result_dict = output_error_list(error_list=plan_error_list,
-                                                                 title_text='XS-BEAM',
-                                                                 set_item=set_plan,
-                                                                 cad_data=plan_cad_data_list)
+    plan_error_list.extend(plan_mline_error_list)
+    plan_error_counter, plan_result_dict = output_error_list(error_list=plan_error_list,
+                                                             title_text='XS-BEAM',
+                                                             set_item=set_plan,
+                                                             cad_data=plan_cad_data_list)
 
-        beam_error_list = write_beam(beam_filename=beam_filename,
-                                     beam_new_filename=beam_new_filename,
-                                     set_plan=set_plan,
-                                     set_beam=set_beam,
-                                     dic_beam=dic_beam,
-                                     date=date,
-                                     drawing=beam_drawing,
-                                     client_id=client_id)
-        beam_error_counter, beam_result_dict = output_error_list(error_list=beam_error_list,
-                                                                 title_text='XS-PLAN',
-                                                                 set_item=set_beam)
-        end = time.time()
+    beam_error_list = write_beam(beam_filename=beam_filename,
+                                 beam_new_filename=beam_new_filename,
+                                 set_plan=set_plan,
+                                 set_beam=set_beam,
+                                 dic_beam=dic_beam,
+                                 date=date,
+                                 drawing=beam_drawing,
+                                 client_id=client_id)
+    beam_error_counter, beam_result_dict = output_error_list(error_list=beam_error_list,
+                                                             title_text='XS-PLAN',
+                                                             set_item=set_beam)
+    end = time.time()
 
-        # save_pkl({
-        #     'plan_result_dict': plan_result_dict,
-        #     'plan_error_counter': plan_error_counter,
-        #     'beam_result_dict': beam_result_dict,
-        #     'beam_error_counter': beam_error_counter,
-        # }, tmp_file=os.path.join(output_directory, f'{project_name}-result.pkl'))
+    # save_pkl({
+    #     'plan_result_dict': plan_result_dict,
+    #     'plan_error_counter': plan_error_counter,
+    #     'beam_result_dict': beam_result_dict,
+    #     'beam_error_counter': beam_error_counter,
+    # }, tmp_file=os.path.join(output_directory, f'{project_name}-result.pkl'))
 
-        output_data = write_result_log(task_name=task_name,
-                                       plan_result=plan_result_dict,
-                                       beam_result=beam_result_dict
-                                       )
-        for sheet_name, df_list in output_data.items():
-            OutputExcel(df_list=df_list,
-                        df_spacing=1,
-                        file_path=data_excel_file,
-                        sheet_name=sheet_name)
-        status = 'success'
-    except Exception:
-        status = 'error'
-    finally:
-        Upload_Error_log(data={
-            'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            'beam_filenames': beam_filenames,
-            'beam_new_filename': beam_new_filename,
-            'plan_filenames': plan_filenames,
-            'plan_new_filename': plan_new_filename,
-            'project_name': task_name,
-            'output_directory': output_directory,
-            "layer_config": layer_config,
-            'sizing': sizing,
-            'mline_scaling': mline_scaling,
-            'client_id': client_id,
-            'status': status,
-            'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
-            'beam error rate': beam_result_dict['summary'] if beam_result_dict is not None else None
-        }, collection_name='Beam Check Log')
-        if status == 'error':
-            raise Exception
+    output_data = write_result_log(task_name=task_name,
+                                   plan_result=plan_result_dict,
+                                   beam_result=beam_result_dict
+                                   )
+    for sheet_name, df_list in output_data.items():
+        OutputExcel(df_list=df_list,
+                    df_spacing=1,
+                    file_path=data_excel_file,
+                    sheet_name=sheet_name)
+    Upload_Error_log(data={
+        'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        'beam_filenames': beam_filenames,
+        'beam_new_filename': beam_new_filename,
+        'plan_filenames': plan_filenames,
+        'plan_new_filename': plan_new_filename,
+        'project_name': task_name,
+        'output_directory': output_directory,
+        "layer_config": layer_config,
+        'sizing': sizing,
+        'mline_scaling': mline_scaling,
+        'client_id': client_id,
+        'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
+        'beam error rate': beam_result_dict['summary'] if beam_result_dict is not None else None
+    }, collection_name='Beam Check Log')
+    # except Exception as ex:
+    #     status = 'error'
+    #     Upload_Error_log(data={
+    #         'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+    #         'beam_filenames': beam_filenames,
+    #         'beam_new_filename': beam_new_filename,
+    #         'plan_filenames': plan_filenames,
+    #         'plan_new_filename': plan_new_filename,
+    #         'project_name': task_name,
+    #         'output_directory': output_directory,
+    #         "layer_config": layer_config,
+    #         'sizing': sizing,
+    #         'mline_scaling': mline_scaling,
+    #         'client_id': client_id,
+    #         'status': status,
+    #         'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
+    #         'beam error rate': beam_result_dict['summary'] if beam_result_dict is not None else None,
+    #         'error':ex,
+    #     }, collection_name='Beam Check Log')
     return os.path.basename(data_excel_file)
 
 
@@ -249,58 +260,71 @@ def main_col_function(col_filenames,
             # plan_to_col.write_result_log(
             #     excel_file, task_name, '', '', f'{round(end - start, 2)}(s)', time.strftime("%Y-%m-%d %H:%M", time.localtime()), 'failed')
             # return
-    try:
-        plan_result = plan_to_col.write_plan(plan_dwg_file,
-                                             plan_new_filename,
-                                             set_plan,
-                                             set_col,
-                                             dic_plan,
-                                             date,
-                                             plan_drawing,
-                                             block_match=plan_block_match_result_list,
-                                             client_id=client_id)
-        col_result = plan_to_col.write_col(col_dwg_file,
-                                           col_new_filename,
-                                           set_plan,
-                                           set_col,
-                                           dic_col,
-                                           date,
-                                           col_drawing,
-                                           client_id=client_id)
+    # try:
+    plan_result = plan_to_col.write_plan(plan_dwg_file,
+                                         plan_new_filename,
+                                         set_plan,
+                                         set_col,
+                                         dic_plan,
+                                         date,
+                                         plan_drawing,
+                                         block_match=plan_block_match_result_list,
+                                         client_id=client_id)
+    col_result = plan_to_col.write_col(col_dwg_file,
+                                       col_new_filename,
+                                       set_plan,
+                                       set_col,
+                                       dic_col,
+                                       date,
+                                       col_drawing,
+                                       client_id=client_id)
 
-        plan_result_dict, col_result_dict, excel_data = plan_to_col.write_result_log(plan_error_list=plan_result,
-                                                                                     col_error_list=col_result,
-                                                                                     set_plan=set_plan,
-                                                                                     set_col=set_col,
-                                                                                     block_error_list=plan_block_error_list,
-                                                                                     block_match_list=block_match_result_list
-                                                                                     )
-        for sheet_name, df_list in excel_data.items():
-            OutputExcel(df_list=df_list,
-                        df_spacing=1,
-                        file_path=data_excel_file,
-                        sheet_name=sheet_name)
-        status = 'success'
-    except Exception as ex:
-        print(ex)
-        status = 'error'
-    finally:
-        Upload_Error_log(data={
-            'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            'col_filenames': col_filenames,
-            'col_new_filename': col_new_filename,
-            'plan_filenames': plan_filenames,
-            'plan_new_filename': plan_new_filename,
-            'project_name': project_name,
-            'output_directory': output_directory,
-            "layer_config": layer_config,
-            'client_id': client_id,
-            'status': status,
-            'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
-            'beam error rate': col_result_dict['summary'] if col_result_dict is not None else None
-        }, collection_name='Column Check Log')
-        if status == 'error':
-            raise Exception
+    plan_result_dict, col_result_dict, excel_data = plan_to_col.write_result_log(plan_error_list=plan_result,
+                                                                                 col_error_list=col_result,
+                                                                                 set_plan=set_plan,
+                                                                                 set_col=set_col,
+                                                                                 block_error_list=plan_block_error_list,
+                                                                                 block_match_list=block_match_result_list
+                                                                                 )
+    for sheet_name, df_list in excel_data.items():
+        OutputExcel(df_list=df_list,
+                    df_spacing=1,
+                    file_path=data_excel_file,
+                    sheet_name=sheet_name)
+    Upload_Error_log(data={
+        'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        'col_filenames': col_filenames,
+        'col_new_filename': col_new_filename,
+        'plan_filenames': plan_filenames,
+        'plan_new_filename': plan_new_filename,
+        'project_name': project_name,
+        'output_directory': output_directory,
+        "layer_config": layer_config,
+        'client_id': client_id,
+        'status': status,
+        'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
+        'beam error rate': col_result_dict['summary'] if col_result_dict is not None else None
+    }, collection_name='Column Check Log')
+    # except Exception as ex:
+    #     print(ex)
+    #     status = 'error'
+    # finally:
+    #     Upload_Error_log(data={
+    #         'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+    #         'col_filenames': col_filenames,
+    #         'col_new_filename': col_new_filename,
+    #         'plan_filenames': plan_filenames,
+    #         'plan_new_filename': plan_new_filename,
+    #         'project_name': project_name,
+    #         'output_directory': output_directory,
+    #         "layer_config": layer_config,
+    #         'client_id': client_id,
+    #         'status': status,
+    #         'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
+    #         'beam error rate': col_result_dict['summary'] if col_result_dict is not None else None
+    #     }, collection_name='Column Check Log')
+    #     if status == 'error':
+    #         raise Exception
     return os.path.basename(data_excel_file)
 
 
@@ -539,31 +563,32 @@ if __name__ == '__main__':
     #                 beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-BEAM_beam_set.pkl')
 
     # Column Test
-    # layer_config = {
-    #     'text_layer': ['S-TEXT'],
-    #     'line_layer': ['S-TABLE'],
-    #     'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
-    #     'floor_layer': ['S-TITLE'],
-    #     'col_layer': ['S-TEXTC'],
-    #     'size_layer': ['S-TEXT'],
-    #     'table_line_layer': ['S-TABLE'],
-    #     'column_block_layer': ['S-COL']
-    # }
-    # col_filenames = [
-    #     r'D:\Desktop\BeamQC\TEST\INPUT\2024-05-24-10-02_temp-XS-COL.dwg']
-    # plan_filenames = [
-    #     r'D:\Desktop\BeamQC\TEST\INPUT\2024-05-24-10-02_temp-XS-PLAN.dwg']
-    # col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-COL2.dwg'
-    # plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-24-10-02_temp-XS-PLAN2.dwg'
-    # main_col_function(
-    #     col_filenames=col_filenames,
-    #     plan_filenames=plan_filenames,
-    #     col_new_filename=col_new_filename,
-    #     plan_new_filename=plan_new_filename,
-    #     output_directory=output_directory,
-    #     project_name=project_name,
-    #     layer_config=layer_config,
-    #     client_id="0524-col",
-    #     plan_pkl=r'TEST\INPUT\2024-05-24-10-02_temp-XS-PLAN_plan_to_col.pkl',
-    #     col_pkl=r"TEST\INPUT\2024-05-24-10-02_temp-XS-COL_col_set.pkl"
-    # )
+    layer_config = {
+        'text_layer': ['S-TEXT'],
+        'line_layer': ['S-TABLE'],
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
+        'floor_layer': ['S-TITLE'],
+        'col_layer': ['S-TEXTC'],
+        'size_layer': ['S-TEXT'],
+        'table_line_layer': ['S-TABLE'],
+        'column_block_layer': ['S-COL']
+    }
+    col_filenames = [
+        r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A.dwg',
+        r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-B.dwg']
+    plan_filenames = [
+        r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg']
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-24-10-02_temp-XS-COL2.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-24-10-02_temp-XS-PLAN2.dwg'
+    main_col_function(
+        col_filenames=col_filenames,
+        plan_filenames=plan_filenames,
+        col_new_filename=col_new_filename,
+        plan_new_filename=plan_new_filename,
+        output_directory=output_directory,
+        project_name=project_name,
+        layer_config=layer_config,
+        client_id="0529-col",
+        plan_pkl=r'',
+        col_pkl=r""
+    )

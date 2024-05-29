@@ -1151,6 +1151,27 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
     '''
     (floor,name,size)
     '''
+    def string_to_ord(s: str):
+        temp = 0
+        for i, c in enumerate(s[::-1]):
+            temp += ord(c) * (10 ** i)
+        return temp
+
+    def error_cmp(a, b):
+        if isinstance(a[0], tuple):
+            a = a[0]
+        if isinstance(b[0], tuple):
+            b = b[0]
+        if turn_floor_to_float(a[0]) > turn_floor_to_float(b[0]):
+            return 1
+        elif turn_floor_to_float(a[0]) == turn_floor_to_float(b[0]):
+            if string_to_ord(a[1]) > string_to_ord(b[1]):
+                return 1
+            else:
+                return -1
+        else:
+            return -1
+
     plan_result_dict = {
         'size error': [],
         'not found': [],
@@ -1165,6 +1186,8 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
         'no size': [],
         'item': [],
     }
+    plan_error_list = sorted(plan_error_list, key=cmp_to_key(error_cmp))
+    block_error_list = sorted(block_error_list, key=cmp_to_key(error_cmp))
     for error_result in plan_error_list:
         floor, name, size = error_result[0]
         if error_result[1] == 0:
@@ -1265,6 +1288,10 @@ def run_col(col_filename: str,
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 
 if __name__ == '__main__':
+    plan_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg'
+    col_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
+    col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A_new.dwg'
     layer_config = {
         'text_layer': ['S-TEXT'],
         'line_layer': ['S-TABLE'],
@@ -1275,15 +1302,41 @@ if __name__ == '__main__':
         'table_line_layer': ['S-TABLE'],
         'column_block_layer': ['S-COL']
     }
-    # run_plan(
-    #     plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg',
-    #     layer_config=layer_config,
-    #     client_id='0524-temp_col',
-    #     pkl=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN_plan_to_col.pkl'
-    # )
-    run_col(
+    set_plan, dic_plan, block_error_list, block_match_result_list = run_plan(
+        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg',
+        layer_config=layer_config,
+        client_id='0524-temp_col',
+        pkl=r'TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_plan_to_col.pkl'
+    )
+    set_col, dic_col = run_col(
         col_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL.dwg',
         layer_config=layer_config,
         client_id='0524-temp-col',
-        pkl=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL_col_set.pkl'
+        pkl=r'TEST\2024-0528\2024-05-28-11-50_temp-A_col_set.pkl'
     )
+
+    date = time.strftime("%Y-%m-%d", time.localtime())
+    plan_result = write_plan(plan_dwg_file,
+                             plan_new_filename,
+                             set_plan,
+                             set_col,
+                             dic_plan,
+                             date,
+                             drawing=False,
+                             block_match=block_match_result_list,
+                             client_id='temp')
+    col_result = write_col(col_dwg_file,
+                           col_new_filename,
+                           set_plan,
+                           set_col,
+                           dic_col,
+                           date,
+                           drawing=False,
+                           client_id='temp')
+    plan_result_dict, col_result_dict, excel_data = write_result_log(plan_error_list=plan_result,
+                                                                     col_error_list=col_result,
+                                                                     set_plan=set_plan,
+                                                                     set_col=set_col,
+                                                                     block_error_list=block_error_list,
+                                                                     block_match_list=block_match_result_list
+                                                                     )
