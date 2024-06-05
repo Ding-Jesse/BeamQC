@@ -1730,6 +1730,7 @@ def output_error_list(error_list: list, title_text: str, set_item=set, cad_data=
         for e in error_result:
             beam = e[0]
             beam_name = beam[1]
+
             beam_type = ""
 
             if beam_name[0] == 'B' or beam_name[0] == 'C' or beam_name[0] == 'G':
@@ -1741,7 +1742,8 @@ def output_error_list(error_list: list, title_text: str, set_item=set, cad_data=
             if error_type == 'mline':
                 error_message = e[2]
             if error_type == 'size':
-                error_message = f"在{title_text}是{e[2]}"
+                beam_size = beam[2]
+                error_message = f"{beam_size} , 在{title_text}是{e[2]}"
             if error_type == 'not_found':
                 error_message = f"在{title_text}找不到這根梁"
             if error_type == 'no_size':
@@ -1918,7 +1920,7 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
     plan_beam_df_list = []
     plan_sbeam_df_list = []
     plan_fbeam_df_list = []
-    for error_type in ['mline', 'not_found', 'no_size', 'duplicate']:
+    for error_type in ['mline', 'size', 'not_found', 'no_size', 'duplicate']:
         for beam_type, content in plan_result[error_type].items():
             if not content:
                 continue
@@ -1933,7 +1935,7 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
     beam_beam_df_list = []
     beam_sbeam_df_list = []
     beam_fbeam_df_list = []
-    for error_type in ['not_found', 'no_size', 'duplicate']:
+    for error_type in ['not_found', 'size', 'no_size', 'duplicate']:
         for beam_type, content in beam_result[error_type].items():
             if not content:
                 continue
@@ -2109,20 +2111,10 @@ if __name__ == '__main__':
         'size_layer': size_layer,
         'sml_beam_text_layer': sml_beam_text_layer
     }
-    pkls = [r'TEST\2024-0528\2024-05-28-11-50_temp-2F_B_beam_set.pkl',
-            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0522__beam_set.pkl',
-            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0524_B3F-1F_beam_set.pkl',
-            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0524_B3F-1F_v2_beam_set.pkl',
-            r'TEST\2024-0528\2024-05-28-11-50_temp-2024-0527__beam_set.pkl',
-            r'TEST\2024-0528\2024-05-28-11-50_temp-A_beam_set.pkl']
+    pkls = [r'D:\Desktop\BeamQC\TEST\2024-0605\2024-06-05-11-06_P2023-07F 佳元寶強段14FB3-2024-0605__beam_set.pkl']
     plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg'
     plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
     set_beam_all = set()
-    for pkl in pkls:
-        floor_to_beam_set = save_temp_file.read_temp(pkl)
-        set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-                                       sizing=True)
-        set_beam_all = set_beam | set_beam_all
 
     set_plan, dic_plan, plan_mline_error_list, plan_cad_data_list = run_plan(plan_filename=plan_filename,
                                                                              plan_new_filename=plan_new_filename,
@@ -2131,7 +2123,14 @@ if __name__ == '__main__':
                                                                              sizing=True,
                                                                              mline_scaling=True,
                                                                              client_id='temp',
-                                                                             pkl=r'TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_plan_set.pkl')
+                                                                             pkl=r'D:\Desktop\BeamQC\TEST\2024-0605\2024-06-05-11-35_P2023-07F 佳元寶強段14FB3-XS-PLAN_plan_set.pkl')
+
+    for pkl in pkls:
+        floor_to_beam_set = save_temp_file.read_temp(pkl)
+        set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
+                                       sizing=True)
+        set_beam_all = set_beam | set_beam_all
+
     plan_error_list = write_plan(plan_filename=plan_filename,
                                  plan_new_filename=plan_new_filename,
                                  set_plan=set_plan,

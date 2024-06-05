@@ -427,7 +427,7 @@ def GetAllFiles(mypath: str):
 
 
 if __name__ == '__main__':
-    output_directory = r"D:\Desktop\BeamQC\TEST\2024-0524"
+    output_directory = r"D:\Desktop\BeamQC\TEST\2024-0605"
     task_name = project_name = "0524-temp"
     # Upload_Error_log([{1: 1}, {
     #                  2: 2}], uri="mongodb+srv://ghjk85692012:MGI3hjs341a7kNWq@cluster0.glspevs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
@@ -548,47 +548,47 @@ if __name__ == '__main__':
     #                   plan_pkl=r"TEST\2024-0522\2024-05-20-19-07P2023-05A 桃園龜山樂善安居14FB3-XS-PLAN_plan_to_col.pkl",
     #                   col_pkl=r"D:\Desktop\BeamQC\TEST\2024-0522\2024-05-21-14-57P2023-05A 桃園龜山樂善安居14FB3-XS-COL_col_set.pkl")
 
-    # # from collections import Counter
-    # main_functionV3(beam_filenames=beam_filenames,
-    #                 beam_new_filename=beam_new_filename,
-    #                 plan_filenames=plan_filenames,
-    #                 plan_new_filename=plan_new_filename,
-    #                 project_name=task_name,
-    #                 output_directory=output_directory,
-    #                 layer_config=layer_config,
-    #                 sizing=sizing,
-    #                 mline_scaling=mline_scaling,
-    #                 client_id="2024-0524",
-    #                 plan_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-PLAN_plan_set.pkl',
-    #                 beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-BEAM_beam_set.pkl')
+    # from collections import Counter
+    main_functionV3(beam_filenames=beam_filenames,
+                    beam_new_filename=beam_new_filename,
+                    plan_filenames=plan_filenames,
+                    plan_new_filename=plan_new_filename,
+                    project_name=task_name,
+                    output_directory=output_directory,
+                    layer_config=layer_config,
+                    sizing=sizing,
+                    mline_scaling=mline_scaling,
+                    client_id="2024-0605",
+                    plan_pkl=r'TEST\2024-0605\2024-06-05-11-35_P2023-07F 佳元寶強段14FB3-XS-PLAN_plan_set.pkl',
+                    beam_pkl=r'TEST\2024-0605\2024-06-05-11-06_P2023-07F 佳元寶強段14FB3-2024-0605__beam_set.pkl')
 
     # Column Test
-    layer_config = {
-        'text_layer': ['S-TEXT'],
-        'line_layer': ['S-TABLE'],
-        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
-        'floor_layer': ['S-TITLE'],
-        'col_layer': ['S-TEXTC'],
-        'size_layer': ['S-TEXT'],
-        'table_line_layer': ['S-TABLE'],
-        'column_block_layer': ['S-COL']
-    }
-    col_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A.dwg',
-        r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-B.dwg']
-    plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg']
-    col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-24-10-02_temp-XS-COL2.dwg'
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-24-10-02_temp-XS-PLAN2.dwg'
-    main_col_function(
-        col_filenames=col_filenames,
-        plan_filenames=plan_filenames,
-        col_new_filename=col_new_filename,
-        plan_new_filename=plan_new_filename,
-        output_directory=output_directory,
-        project_name=project_name,
-        layer_config=layer_config,
-        client_id="0529-col",
-        plan_pkl=r'',
-        col_pkl=r""
-    )
+    # layer_config = {
+    #     'text_layer': ['S-TEXT'],
+    #     'line_layer': ['S-TABLE'],
+    #     'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
+    #     'floor_layer': ['S-TITLE'],
+    #     'col_layer': ['S-TEXTC'],
+    #     'size_layer': ['S-TEXT'],
+    #     'table_line_layer': ['S-TABLE'],
+    #     'column_block_layer': ['S-COL']
+    # }
+    # col_filenames = [
+    #     r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A.dwg',
+    #     r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-B.dwg']
+    # plan_filenames = [
+    #     r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg']
+    # col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-24-10-02_temp-XS-COL2.dwg'
+    # plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-24-10-02_temp-XS-PLAN2.dwg'
+    # main_col_function(
+    #     col_filenames=col_filenames,
+    #     plan_filenames=plan_filenames,
+    #     col_new_filename=col_new_filename,
+    #     plan_new_filename=plan_new_filename,
+    #     output_directory=output_directory,
+    #     project_name=project_name,
+    #     layer_config=layer_config,
+    #     client_id="0529-col",
+    #     plan_pkl=r'',
+    #     col_pkl=r""
+    # )
