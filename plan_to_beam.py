@@ -178,8 +178,11 @@ def error(error_message):
     '''
     把錯誤訊息印到error.log裡面
     '''
-    global main_logger
-    main_logger.error(error_message)
+    try:
+        global main_logger
+        main_logger.error(error_message)
+    except:
+        pass
     # f = open(error_file, 'a', encoding='utf-8')
     # localtime = time.asctime(time.localtime(time.time()))
     # f.write(f'{localtime} | {error_message}\n')
@@ -942,6 +945,7 @@ def sort_plan(plan_filename: str,
         if len(block_list) > 1:
             min_floor = min(
                 block_list, key=lambda x: get_distance(x[2], beam_coor))[0]
+
         if len(block_list) == 1:
             min_floor = block_list[0][0]
 
@@ -999,7 +1003,7 @@ def sort_plan(plan_filename: str,
                         table for table in beam_size_coor_table if table[1] == header_string.group(0)]
                     if header_match:
                         min_header_match = min(
-                            header_match, key=lambda table: get_distance(table[3], beam_coor[0]))
+                            header_match, key=lambda table: get_distance(table[3], beam_coor))
                         beam_size = min_header_match[2]
                         break
 
@@ -1750,7 +1754,7 @@ def output_error_list(error_list: list, title_text: str, set_item=set, cad_data=
                 error_message = "找不到尺寸"
             if error_type == 'duplicate':
                 error_message = "重複配筋"
-            error_counter[beam_type][error_type].append(error_result)
+            error_counter[beam_type][error_type].append(e)
             result_dict[error_type][beam_type].append(
                 (beam[0], beam_name, error_message))
 
@@ -2111,7 +2115,7 @@ if __name__ == '__main__':
         'size_layer': size_layer,
         'sml_beam_text_layer': sml_beam_text_layer
     }
-    pkls = [r'D:\Desktop\BeamQC\TEST\2024-0605\2024-06-05-11-06_P2023-07F 佳元寶強段14FB3-2024-0605__beam_set.pkl']
+    pkls = [r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-BEAM_beam_set.pkl']
     plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg'
     plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
     set_beam_all = set()
@@ -2123,7 +2127,7 @@ if __name__ == '__main__':
                                                                              sizing=True,
                                                                              mline_scaling=True,
                                                                              client_id='temp',
-                                                                             pkl=r'D:\Desktop\BeamQC\TEST\2024-0605\2024-06-05-11-35_P2023-07F 佳元寶強段14FB3-XS-PLAN_plan_set.pkl')
+                                                                             pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_set.pkl')
 
     for pkl in pkls:
         floor_to_beam_set = save_temp_file.read_temp(pkl)

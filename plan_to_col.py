@@ -189,8 +189,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                'S' not in object.TextString:
+                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                    'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -1306,13 +1306,13 @@ if __name__ == '__main__':
         plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg',
         layer_config=layer_config,
         client_id='0524-temp_col',
-        pkl=r'TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_plan_to_col.pkl'
+        pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_to_col.pkl'
     )
     set_col, dic_col = run_col(
         col_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL.dwg',
         layer_config=layer_config,
         client_id='0524-temp-col',
-        pkl=r'TEST\2024-0528\2024-05-28-11-50_temp-A_col_set.pkl'
+        pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-COL_col_set.pkl'
     )
 
     date = time.strftime("%Y-%m-%d", time.localtime())

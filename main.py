@@ -559,8 +559,8 @@ if __name__ == '__main__':
                     sizing=sizing,
                     mline_scaling=mline_scaling,
                     client_id="2024-0605",
-                    plan_pkl=r'TEST\2024-0605\2024-06-05-11-35_P2023-07F 佳元寶強段14FB3-XS-PLAN_plan_set.pkl',
-                    beam_pkl=r'TEST\2024-0605\2024-06-05-11-06_P2023-07F 佳元寶強段14FB3-2024-0605__beam_set.pkl')
+                    plan_pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_set.pkl',
+                    beam_pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-BEAM_beam_set.pkl')
 
     # Column Test
     # layer_config = {
@@ -589,6 +589,6 @@ if __name__ == '__main__':
     #     project_name=project_name,
     #     layer_config=layer_config,
     #     client_id="0529-col",
-    #     plan_pkl=r'',
-    #     col_pkl=r""
+    #     plan_pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_to_col.pkl',
+    #     col_pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-COL_col_set.pkl'
     # )
