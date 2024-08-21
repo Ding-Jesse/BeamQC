@@ -16,7 +16,7 @@ layer_config: dict[Literal['block_layer',
 def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str]):
     error_count = 0
     pythoncom.CoInitialize()
-    progress('開始讀取平面圖', progress_file)
+    progress('開始讀取平面圖')
     # Step 1. 打開應用程式
     flag = 0
     while not flag and error_count <= 10:
@@ -28,7 +28,7 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
             time.sleep(5)
             error(
                 f'read_beam error in step 1: {e}, error_count = {error_count}.')
-    progress('平面圖讀取進度 1/15', progress_file)
+    progress('平面圖讀取進度 1/15')
 
     # Step 2. 匯入檔案
     flag = 0
@@ -41,7 +41,7 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
             time.sleep(5)
             error(
                 f'read_beam error in step 2: {e}, error_count = {error_count}.')
-    progress('平面圖讀取進度 2/15', progress_file)
+    progress('平面圖讀取進度 2/15')
 
     # Step 3. 匯入modelspace
     flag = 0
@@ -55,7 +55,7 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
             time.sleep(5)
             error(
                 f'read_beam error in step 3: {e}, error_count = {error_count}.')
-    progress('平面圖讀取進度 3/15', progress_file)
+    progress('平面圖讀取進度 3/15')
     total = 1
     used_layer_list = []
     count = 0
@@ -81,7 +81,7 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
         error_count = 0
         count += 1
         if count % 1000 == 0 or count == total:
-            progress(f'平面圖已讀取{count}/{total}個物件', progress_file)
+            progress(f'平面圖已讀取{count}/{total}個物件')
         while error_count <= 3 and not object_list:
             try:
                 if msp_object.Layer not in used_layer_list:
@@ -114,7 +114,9 @@ def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['bloc
                     if object_layer in name_text_layer and object.EntityName in text_object_type:
                         name_text_entity.append(
                             (object.GetBoundingBox()[0], object.TextString))
-                    if object_layer in floor_text_layer and object.EntityName in floor_object_type:
+                    if object_layer in floor_text_layer and \
+                        object.EntityName in floor_object_type and \
+                            object.TextString != '':
                         floor_text_entity.append(
                             (object.GetBoundingBox()[0], object.TextString))
 
@@ -136,7 +138,7 @@ def in_block(coor: tuple, block: tuple[tuple, tuple]):
 
 
 def check_is_floor(text: str):
-    if re.search(r'\(B?P?R?\d*F?\W?P?R?\d*F?\)', text):
+    if re.search(r'\(B?P?R?S?\d*F?\W?P?R?\d*F?\)', text):
         return True
     return False
 
@@ -192,19 +194,19 @@ def sort_name_text(data):
             for text in floor_text:
                 if check_is_floor(text):
                     break
-        if text not in sort_result:
+        if len(floor_text) > 1 and text not in sort_result:
             sort_result.update({text: Counter(name_text_list)})
     return sort_result
 
 
 def sort_plan_count(plan_filename, progress_file, layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str]) -> dict[str, Counter]:
-    if True:
+    if False:
         cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
         save_temp_file.save_pkl(
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_count_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1017_plan_plan_count_set.pkl')
+            tmp_file=r'TEST\2024-0819\XS-PLANALL_plan_count_set.pkl')
     result = sort_name_text(cad_result)
     sort_result = sort_floor_text(data=result)
     return sort_result

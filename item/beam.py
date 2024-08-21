@@ -93,6 +93,12 @@ class Tie:
             self.spacing = float(match_obj.group(3))
             if match_obj.group(1):
                 self.Ash *= 2
+
+    def __str__(self) -> str:
+        return self.text
+
+    def __repr__(self) -> str:
+        return self.text
         # self.spacing = float()
 
 
@@ -132,6 +138,7 @@ class Beam():
 
     def __init__(self, serial, x, y):
         self.plan_count = 1
+        self.detail_report = []
         self.beam_type = BeamType.Other
         self.coor = Point()
         self.bounding_box = (Point(), Point())
@@ -357,11 +364,7 @@ class Beam():
             self.start_pt.x = dim_start
         if abs(self.end_pt.x - dim_end) < 150:
             self.end_pt.x = dim_end
-        try:
-            assert self.floor != 'B1F' or self.serial != 'B2-4'
-        except:
-            print('')
-            pass
+
         # if self.end_pt.x - self.bounding_box[1].x > min_diff:
         #     self.end_pt.x = min(self.rebar_list,key=lambda rebar:abs(rebar.end_pt.x - self.bounding_box[1].x)).end_pt.x
         # if self.start_pt.x - self.bounding_box[0].x > min_diff and self.rebar_add_list:
@@ -448,6 +451,8 @@ class Beam():
                 else:
                     self.rebar_count[rebar.size] = rebar.length * \
                         rebar.number * RebarInfo(rebar.size)
+                self.detail_report.append(
+                    f'主筋:{rebar}= {rebar.length:.2f} * {rebar.number} * {RebarInfo(rebar.size):.2f}')
         for rebar in self.middle_tie:
             matchObj = re.search(r'[#|D]\d+', rebar.text)
             if matchObj:
@@ -460,6 +465,8 @@ class Beam():
                 else:
                     self.rebar_count[size] += rebar.length * \
                         rebar.number * RebarInfo(size)
+                self.detail_report.append(
+                    f'側筋:{rebar}= {rebar.length:.2f} * {rebar.number} * {RebarInfo(rebar.size):.2f} * 2')
                 break  # middle tie rebar number equal to rebar line number, so only count one middle tie
         for tie in self.tie_list:
             if tie.size in self.tie_count:
@@ -470,6 +477,8 @@ class Beam():
                 self.tie_count[tie.size] = tie.count * \
                     RebarInfo(tie.size) * (self.depth -
                                            10 + self.width - 10) * 2
+            self.detail_report.append(
+                f'箍筋:{tie}= {tie.count} * {(self.depth - 10 + self.width - 10)} * {RebarInfo(tie.size):.2f} * 2')
         self.concrete = (self.depth - 15)*self.width * \
             self.length / (100*100*100)
         self.formwork = (self.width + (self.depth - 15)*2) * \

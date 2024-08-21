@@ -452,7 +452,7 @@ def create_report(output_column_list: list[Column],
     progress('整理樓層與柱編號')
     sort_floor_column(floor_list=floor_list, column_list=output_column_list)
     progress('統計樓層柱鋼筋')
-    rebar_df, concrete_df, coupler_df, formwork_df = summary_floor_rebar(
+    rebar_df, concrete_df, coupler_df, formwork_df, detail_report = summary_floor_rebar(
         floor_list=floor_list, item_type='column')
     progress('讀取SCAN項目')
     cs_list = create_column_scan()
@@ -503,7 +503,8 @@ def create_report(output_column_list: list[Column],
                     header_list=header_list,
                     ratio_dict=ratio_dict,
                     report_type='column',
-                    item_name='柱')
+                    item_name='柱',
+                    detail_report=detail_report)
     return excel_filename, pdf_report
 
 
@@ -931,7 +932,7 @@ def count_column_multiprocessing(column_filenames: list[str],
 
 if __name__ == '__main__':
     # sys.argv[1] # XS-COL的路徑
-    col_filename = r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-03-XS-COL.dwg'
+    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0819\XS-COL.dwg'
     column_filenames = [
         # sys.argv[1] # XS-COL的路徑
         r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-10-XS-COL.dwg',
@@ -939,32 +940,32 @@ if __name__ == '__main__':
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'TEST\2024-0522\427\基本資料表 _ 三重427.xlsx'
-    output_folder = r'TEST\2024-0522\427'
-    project_name = '0522-427'
-    plan_filename = r'TEST\2024-0415\XS-PLAN.dwg'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2024-0819\樓層參數_floor.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2024-0819'
+    project_name = '2024-0819-column'
+    plan_filename = None
     # plan_layer_config = {
     #     'block_layer': ['DwFm'],
     #     'name_text_layer': ['BTXT', 'CTXT', 'BTXT_S_'],
     #     'floor_text_layer': ['TEXT1']
     # }
-    # layer_config = {
-    #     'text_layer':['TABLE','SIZE'],
-    #     'line_layer':['TABLE'],
-    #     'rebar_text_layer':['NBAR'], # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer':['RBAR'], # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer':['NBAR'], # 箍筋文字圖層
-    #     'tie_layer':['RBAR'], # 箍筋文字圖層
-    #     'block_layer':['DwFm'], # 框框的圖層
-    #     'column_rc_layer':['OLINE'] #斷面圖層
-    # }
+    layer_config = {
+        'text_layer': ['TABLE', 'SIZE'],
+        'line_layer': ['TABLE'],
+        'rebar_text_layer': ['NBAR'],  # 箭頭和鋼筋文字的塗層
+        'rebar_layer': ['RBAR'],  # 鋼筋和箍筋的線的塗層
+        'tie_text_layer': ['NBAR'],  # 箍筋文字圖層
+        'tie_layer': ['RBAR'],  # 箍筋文字圖層
+        'block_layer': ['DwFm'],  # 框框的圖層
+        'column_rc_layer': ['OLINE']  # 斷面圖層
+    }
     # DrawRC
-    # entity_type ={
-    #     'rebar_layer':['AcDbPolyline'],
-    #     'rebar_data_layer':['AcDbMText'],
-    #     'rebar_data_leader_layer':['AcDbLeader'],
-    #     'tie_text_layer':['AcDbText']
-    # }
+    entity_type = {
+        'rebar_layer': ['AcDbPolyline'],
+        'rebar_data_layer': ['AcDbMText'],
+        'rebar_data_leader_layer': ['AcDbLeader'],
+        'tie_text_layer': ['AcDbText']
+    }
     # RCAD
     # layer_config = {
     #     'text_layer': ['文字-柱線名稱', '文字-樓群名稱', '文字-斷面尺寸'],
@@ -978,38 +979,39 @@ if __name__ == '__main__':
     #     'column_rc_layer': ['柱斷面線']  # 斷面圖層
     # }
     # Elements
-    layer_config = {
-        'text_layer': ['S-TEXT'],
-        'line_layer': ['S-TABLE'],
-        'rebar_text_layer': ['S-TEXT'],  # 箭頭和鋼筋文字的塗層
-        'rebar_layer': ['S-REINFD'],  # 鋼筋和箍筋的線的塗層
-        'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
-        'tie_layer': ['S-REINF'],  # 箍筋文字圖層
-        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
-        'column_rc_layer': ['S-RC']  # 斷面圖層
-    }
+    # layer_config = {
+    #     'text_layer': ['S-TEXT'],
+    #     'line_layer': ['S-TABLE'],
+    #     'rebar_text_layer': ['S-TEXT'],  # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer': ['S-REINFD'],  # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
+    #     'tie_layer': ['S-REINF'],  # 箍筋文字圖層
+    #     'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
+    #     'column_rc_layer': ['S-RC']  # 斷面圖層
+    # }
     main_logger = setup_custom_logger(__name__, client_id=project_name)
     msp_column = None
     doc_column = None
-    # msp_column, doc_column = read_column_cad(col_filename)
+    msp_column, doc_column = read_column_cad(col_filename)
 
     # sort_col_cad(msp_column=msp_column,
     #              doc_column=doc_column,
     #              layer_config=layer_config,
-    #              temp_file=r'D:\Desktop\BeamQC\TEST\INPUT\2024-0513 test-2024-05-13-09-05-temp-0.pkl',
+    #              temp_file=r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl',
     #              progress_file=r'result\tmp')
 
-    # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2023-0524\0524-column.pkl'),
+    # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl'),
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
-    # print(save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0522\427\2024-0522 427-2024-05-22-11-50-temp-0.pkl'),
-                                   rebar_excel_path=floor_parameter_xlsx,
-                                   progress_file=r'result\tmp')
-    # column_list = save_temp_file.read_temp(
-    #     r'TEST\2024-0522\427\2024-0522 427-2024-05-22-11-41-temp-column_list.pkl')
-    save_temp_file.save_pkl(
-        column_list, r'D:\Desktop\BeamQC\TEST\2024-0522\427\2024-0522_temp-column_list.pkl')
+    # print(save_temp_file.read_temp(
+    #     r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
+    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl'),
+    #                                rebar_excel_path=floor_parameter_xlsx,
+    #                                progress_file=r'result\tmp')
+    column_list = save_temp_file.read_temp(
+        r'D:\Desktop\BeamQC\TEST\2024-0819\column_list.pkl')
+    # save_temp_file.save_pkl(
+    #     column_list, r'D:\Desktop\BeamQC\TEST\2024-0819\column_list.pkl')
     create_report(output_column_list=column_list,
                   output_folder=output_folder,
                   project_name=project_name,

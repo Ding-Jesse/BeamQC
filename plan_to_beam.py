@@ -193,7 +193,10 @@ def error(error_message):
 def progress(message):
     '''把進度印到progress裡面，在app.py會對這個檔案做事'''
     global main_logger
-    main_logger.info(message)
+    try:
+        main_logger.info(message)
+    except NameError:
+        print(message)
     # f = open(progress_file, 'a', encoding='utf-8')
     # f.write(f'{message}\n')
     # f.close()

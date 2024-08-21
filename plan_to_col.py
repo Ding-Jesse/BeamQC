@@ -1306,13 +1306,13 @@ if __name__ == '__main__':
         plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg',
         layer_config=layer_config,
         client_id='0524-temp_col',
-        pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_to_col.pkl'
+        pkl=r'TEST\2024-0812\2024-08-12-10-23_文仁安居-XS-PLAN_plan_to_col.pkl'
     )
     set_col, dic_col = run_col(
         col_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL.dwg',
         layer_config=layer_config,
         client_id='0524-temp-col',
-        pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-COL_col_set.pkl'
+        pkl=r'TEST\2024-0812\2024-08-12-10-23_文仁安居-XS-COL_col_set.pkl'
     )
 
     date = time.strftime("%Y-%m-%d", time.localtime())

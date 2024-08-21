@@ -81,6 +81,7 @@ class Floor:
         self.beam_list.extend(beam_list)
 
     def summary_rebar(self):
+        detail_report = ['']
         for c in self.column_list:
             for size, count in c.rebar_count.items():
                 if not size in self.rebar_count:
@@ -95,15 +96,19 @@ class Floor:
                     self.coupler[size] += coupler//2
                 else:
                     self.coupler[size] += coupler
+            detail_report.append(
+                f'{c.floor} {c.serial} 平面圖個數:{c.plan_count}: {c.report_detail}')
             # if not c.fc in self.concrete_count:self.concrete_count[c.fc] = 0
             self.concrete_count[c.fc] += c.concrete
             self.formwork_count += c.formwork
         self.rebar_count['total'] = sum(self.rebar_count.values())
+        self.detail_report = detail_report
 
     def summary_beam(self, beamtype=None):
         self.beam_rebar_count = defaultdict(lambda: 0)
         self.concrete_count = defaultdict(lambda: 0)
         self.formwork_count = 0
+        detail_report = ['']
         plan_count = 0
         if beamtype:
             beam_list = [
@@ -115,14 +120,20 @@ class Floor:
             for size, count in b.rebar_count.items():
                 self.beam_rebar_count[size] += (round(
                     count/1000/1000, 2) * b.plan_count)
+
             for size, count in b.tie_count.items():
                 self.beam_rebar_count[size] += (round(
                     count/1000/1000, 2) * b.plan_count)
+
+            detail_report.append(
+                f'{b.floor} {b.serial} 平面圖個數:{b.plan_count}: {b.detail_report}')
             self.concrete_count[b.fc] += (b.concrete * b.plan_count)
             self.formwork_count += (b.formwork * b.plan_count)
-        print(f'{len(beam_list)}:plan_count:{plan_count}')
+
+        # print(f'{len(beam_list)}:plan_count:{plan_count}')
         self.beam_rebar_count['total'] = sum(
             self.beam_rebar_count.values())
+        self.detail_report = detail_report
 
 
 def read_parameter_df(read_file, sheet_name, header_list=[0]):
@@ -175,8 +186,8 @@ def summary_floor_rebar(floor_list: list[Floor], item_type='', beam_type=None):
             formwork_df = pd.concat(
                 [formwork_df, new_row_formwork], verify_integrity=True)
     df.fillna(value=0, inplace=True)
-    df.loc['Sum'] = df.sum()
-    df.loc['含耗損5%'] = np.ceil(df.loc['Sum']*1.05)
+    df.loc['不含耗損總和'] = df.sum()
+    df.loc['含耗損10%總和'] = np.ceil(df.loc['不含耗損總和']*1.1)
     try:
         concrete_df.fillna(value=0, inplace=True)
         formwork_df.fillna(value=0, inplace=True)
@@ -185,7 +196,7 @@ def summary_floor_rebar(floor_list: list[Floor], item_type='', beam_type=None):
 
     except:
         pass
-    return df, concrete_df, coupler_df, formwork_df
+    return df, concrete_df, coupler_df, formwork_df, [floor.detail_report for floor in floor_list]
 
 
 def summary_floor_rebar_ratio(floor_list: list[Floor], beam_type: None):

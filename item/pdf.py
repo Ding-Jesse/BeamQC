@@ -6,18 +6,25 @@ import matplotlib.cm as cm
 from matplotlib.font_manager import FontProperties
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from PyPDF2 import PdfReader, PdfWriter
+from PIL import Image
 # plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
 # plt.rcParams['axes.unicode_minus'] = False
 from fpdf import FPDF
 from fpdf.fonts import FontFace
+from fpdf.enums import XPos, YPos
+
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
 
 class PDF(FPDF):
-    def __init__(self):
+    report_type = 'Rebar report'
+
+    def __init__(self, report_type='Rebar report'):
         super().__init__()
         self.WIDTH = 210
         self.HEIGHT = 297
+        self.report_type = report_type
 
     def header(self):
         # Custom logo and positioning
@@ -26,7 +33,10 @@ class PDF(FPDF):
         self.image('assets/logo.png', 10, 8, 33)
         self.set_font('helvetica', 'B', 16)
         self.cell(self.WIDTH - 80)
-        self.cell(60, 1, 'Rebar report', 0, 0, 'R')
+        self.set_font("標楷體", size=12)
+        self.cell(0, 1, self.report_type,
+                  new_x=XPos.RMARGIN, new_y=YPos.TOP, align='R')
+        self.set_font('helvetica', 'B', 16)
         self.ln(20)
 
     def footer(self):
@@ -61,8 +71,10 @@ class PDF(FPDF):
         self.add_text(table_title)
         blue = (0, 0, 255)
         grey = (228, 240, 239)
+        yellow = (255, 255, 0)
         self.set_font(font, size=10)
         headings_style = FontFace(color=blue, fill_color=grey)
+        cell_style = None
         if len(TABLE_DATA[0]) > len(col_widths) and col_widths:
             col_widths.extend([col_widths[-1]] *
                               (len(TABLE_DATA[0]) - len(col_widths)))
@@ -76,9 +88,11 @@ class PDF(FPDF):
                 row = table.row()
                 for x, datum in enumerate(data_row):
                     if x == xlen and y == ylen and bold_last:
-                        self.set_font("Times", style="B", size=15)
+                        self.set_font("Times", style="B", size=20)
+                        cell_style = FontFace(color=blue, fill_color=yellow)
                     if isinstance(datum, float) or isinstance(datum, int):
-                        row.cell(str(round(datum, 2)))
+                        row.cell(str(round(datum, 2)), style=cell_style)
+                        cell_style = None
                     else:
                         row.cell(datum)
                     if x == xlen and y == ylen and bold_last:
@@ -88,10 +102,15 @@ class PDF(FPDF):
     def add_text(self, texts, align='C'):
         # self.set_y(0)FPDF te
         self.set_font("標楷體", size=12)
-        self.cell(w=self.epw, align=align, txt=texts, border=0)
+        # self.cell(w=self.epw, align=align, txt=texts, border=0)
+        # Add title above the image, using multi_cell for auto-wrapping
+        if isinstance(texts, list):
+            texts = "\n".join(texts)
+        self.multi_cell(w=0, txt=texts, align=align,
+                        new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln()
 
-    def add_prop(self, prop_dict: dict(), font: str):
+    def add_prop(self, prop_dict: dict, font: str):
         self.ln(10)
         self.set_font(font, size=12)
         for key, item in prop_dict.items():
@@ -105,6 +124,34 @@ class PDF(FPDF):
                          x2=self.get_x() + self.epw,
                          y1=self.get_y(),
                          y2=self.get_y())
+        self.ln()
+
+    def add_image(self, image_path, title='', page_width='', page_height=''):
+
+        # Get the page dimensions
+        if not page_width:
+            page_width = self.w - self.l_margin - self.r_margin
+        if not page_height:
+            page_height = self.h - self.t_margin - self.b_margin - 35
+        with Image.open(image_path) as img:
+            width, height = img.size
+
+        # Calculate scale factor
+        width_ratio = page_width / width
+        height_ratio = page_height / height
+        scale_factor = min(width_ratio, height_ratio)
+
+        # Calculate new dimensions
+        new_width = width * scale_factor
+        new_height = height * scale_factor
+
+        # Add title above the first image, centered
+        if title != '':
+            self.cell(0, 10, title,
+                      new_x=XPos.LMARGIN, new_y=YPos.NEXT, align='C')
+
+        # Add the image while maintaining its original scale
+        self.image(image_path, x="C", w=new_width, h=new_height)
         self.ln()
 
 
@@ -137,9 +184,9 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
             ("3F","B1-1",	"【0204】請確認左端下層筋下限，是否符合規範 3.6 規定","0204:max(code3_3:11.22cm2 ,code3_4:10.5cm2) > 鋼筋總面積:10.134"),\n
         )
     '''
-    pdf = PDF()
-    pdf.add_page()
+    pdf = PDF(item_name)
     pdf.add_font('標楷體', '', r'assets\msjhbd.ttc', True)
+    pdf.add_page()
     pdf.add_prop(prop_dict=project_prop, font="標楷體")
     pdf.multi_cell(w=80, h=10, txt="數量統計不包含:\n-工作筋\n-穿孔補強\n-僅供參考")
     pdf.ln()
@@ -155,30 +202,41 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
         if kwargs['report_type'].casefold() == 'beam':
             item_name = '梁'
             pdf.add_page(orientation="landscape")
-            pdf.add_text(texts="鋼筋比層樓分布", align='C')
-            top_png_file, bot_png_file = survey(
-                results=kwargs['ratio_dict'], category_names=kwargs['header_list'])
-            pdf.image(top_png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
-            pdf.add_page(orientation="landscape")
-            pdf.add_text(texts="鋼筋比層樓分布", align='C')
-            pdf.image(bot_png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+            # pdf.add_text(texts="鋼筋比層樓分布", align='C')
+            try:
+                top_png_file, bot_png_file = survey(
+                    results=kwargs['ratio_dict'], category_names=kwargs['header_list'])
+                pdf.add_image(top_png_file, title="鋼筋比層樓分布(上層)")
+                pdf.add_page(orientation="landscape")
+                pdf.add_image(bot_png_file, title="鋼筋比層樓分布(下層)")
+                # pdf.image(top_png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+                # pdf.add_page(orientation="landscape")
+                # pdf.add_text(texts="鋼筋比層樓分布", align='C')
+                # pdf.image(bot_png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+            except:
+                pass
         if kwargs['report_type'].casefold() == 'column':
             item_name = '柱'
             pdf.add_page()
-            pdf.add_text(texts="鋼筋比層樓分布", align='C')
+            # pdf.add_text(texts="鋼筋比層樓分布", align='C')
             png_file = column_survey(
                 results=kwargs['ratio_dict'], category_names=kwargs['header_list'])
             if png_file:
-                pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+                pdf.add_image(png_file, "鋼筋比層樓分布")
         # pdf.image(top_png_file,h=pdf.eph - 35,keep_aspect_ratio=True)
 
     if 'header_list' in kwargs and 'ratio_dict' in kwargs:
-        pdf.add_page(orientation="landscape")
+        # pdf.add_page(orientation="landscape")
+        pdf.add_page()
         png_file = plot_rebar_stack_percentage_bar(
             dataset_dict=rebar_df.T.to_dict())
-        pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+        pdf.add_image(png_file, '號數樓層分布', page_height=(
+            pdf.h - pdf.t_margin - pdf.b_margin - 50) / 2)
+        # pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
         png_file = plot_rebar_pie_chart(dataset_dict=rebar_df.T.to_dict())
-        pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+        pdf.add_image(png_file, '號數分布', page_height=(
+            pdf.h - pdf.t_margin - pdf.b_margin - 50) / 2)
+        # pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
     pdf.add_page()
     pdf.add_table(TABLE_DATA=trans_df_to_table(ng_sum_df, 'Scan Item'),
                   table_title=f"{item_name}檢核表", font="標楷體", col_widths=[4, 1, 1])
@@ -192,13 +250,21 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
     pdf.add_table(TABLE_DATA=trans_df_to_table(
         scan_df), table_title=f"{item_name}檢核表", font="標楷體", col_widths=[1, 1, 5, 5])
     pdf.ln(10)
-    pdf.add_text(texts="備註:依照", align='L')
-    pdf.add_text(texts="1. “建築技術規則”，內政部，最新版。", align='L')
-    pdf.add_text(texts="2. “混凝土結構設計規範”，內政部，100 年 7 月。", align='L')
-    pdf.add_text(texts="3. “結構混凝土施工規範”，內政部，110 年 9 月。", align='L')
+
+    pdf.add_text(texts=["備註:依照",
+                        "1. “建築技術規則”，內政部，最新版。",
+                        "2. “混凝土結構設計規範”，內政部，100 年 7 月。",
+                        "3. “結構混凝土施工規範”，內政部，110 年 9 月。"], align='L')
     pdf.ln(10)
     pdf.add_text('--------報告結束--------')
-    pdf.output(pdf_filename)
+    pdf.add_page()
+    if 'detail_report' in kwargs:
+        for details in kwargs['detail_report']:
+            pdf.add_text(texts=details, align='L')
+    pdf.output(r'assets\contents.pdf')
+
+    add_cover(cover_pdf_path=r'assets\封面.pdf',
+              content_pdf_path=r'assets\contents.pdf', output_pdf=pdf_filename)
 
 
 def trans_df_to_table(df: pd.DataFrame, reset_name=""):
@@ -230,12 +296,12 @@ def survey(results: dict[str, dict], category_names: list):
     file_path_top = r'assets/top.png'
     file_path_bot = r'assets/bot.png'
     title = {
-        (0, 0): 'top left',
-        (0, 1): 'top center',
-        (0, 2): 'top right',
-        (1, 0): 'bottom left',
-        (1, 1): 'bottom center',
-        (1, 2): 'bottom right',
+        (0, 0): '左端上層',
+        (0, 1): '中央上層',
+        (0, 2): '右端上層',
+        (1, 0): '左端下層',
+        (1, 1): '中央下層',
+        (1, 2): '右端下層',
     }
     labels = list(results.keys())
     fig, ax0 = plt.subplots(1, 3, figsize=(29.7, 21))
@@ -263,7 +329,7 @@ def survey(results: dict[str, dict], category_names: list):
         ax[y].xaxis.set_visible(True)
         ax[y].set_xlim(0, np.sum(data, axis=1).max())
         ax[y].set_xlabel('percentage(%)', fontsize='xx-large')
-        ax[y].set_title(f'{title[(x,y)]}', fontsize='xx-large')
+        ax[y].set_title(f'{title[(x,y)]}', fontsize=30)
 
         for i, (colname, color) in enumerate(zip(category_names, category_colors)):
             widths = data[:, i]
@@ -354,7 +420,7 @@ def plot_rebar_stack_percentage_bar(dataset_dict: dict[str, dict[str, float]]):
     ax.legend(fontsize=30)
 
     # Add a title
-    ax.set_title('號數樓層分布', fontsize=30)
+    # ax.set_title('號數樓層分布', fontsize=30)
 
     fig.tight_layout()
     fig.savefig(image_path, bbox_inches='tight')
@@ -391,10 +457,10 @@ def plot_rebar_pie_chart(dataset_dict: dict[str, dict[str, float]]):
     fig, ax = plt.subplots(1, 1, figsize=(29.7, 21))
 
     ax.pie(sum_values.values(), labels=sum_values.keys(),
-           autopct='%1.2f%%', startangle=90, textprops={'fontsize': 30})
+           autopct='%1.2f%%', startangle=90, textprops={'fontsize': 40})
     # ax.title('Sum of Values Across Categories')
     ax.axis('equal')
-    ax.set_title('號數分布', pad=50, fontsize=30)
+    # ax.set_title('號數分布', pad=50, fontsize=30)
     ax.legend(fontsize=30)
 
     fig.tight_layout()
@@ -493,6 +559,24 @@ def match_index_with_serial(scan_list: list, scan_df: pd.DataFrame):
     scan_df['檢核項目'] = scan_df['檢核項目'].apply(lambda x: scan_dict[x].ng_message)
     # row['檢核項目'] = scan_dict[row['檢核項目'] ].ng_message
     pass
+
+
+def add_cover(cover_pdf_path, content_pdf_path, output_pdf):
+    import fitz  # PyMuPDF
+    # Load the cover PDF and the content PDF
+    cover_pdf = fitz.open(cover_pdf_path)
+    content_pdf = fitz.open(content_pdf_path)
+    # Create a new PDF to combine them
+    combined_pdf = fitz.open()
+
+    # Add the cover page
+    combined_pdf.insert_pdf(cover_pdf)
+
+    # Add the content pages
+    combined_pdf.insert_pdf(content_pdf)
+
+    # Save the combined PDF
+    combined_pdf.save(output_pdf)
 
 
 if __name__ == '__main__':

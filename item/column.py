@@ -46,6 +46,7 @@ class Column:
     plan_count: int
     joint_result: dict
     connect_beams: dict
+    report_detail: list
 
     def __init__(self):
         self.plan_count = 1
@@ -82,6 +83,7 @@ class Column:
         self.ng_message = []
         self.protect_layer = 4
         self.joint_result = {}
+        self.report_detail = []
 
     def set_border(self, list1: list, list2: list):
         left_bot = Point((list1[0], list2[2]))
@@ -145,10 +147,7 @@ class Column:
             self.total_rebar.append((Rebar(rebar_text), target_rebar[1]))
         self.total_As = sum([r[0].As for r in self.total_rebar])
         self.total_mass = sum([r[0].mass for r in self.total_rebar])
-        try:
-            assert (self.serial != "C5" or self.floor != "1F"), 'check'
-        except:
-            pass
+
         for coor in self.rebar_coor:
             if not self.x_row:
                 self.x_row.add((coor[0][0], coor[1]))
@@ -300,16 +299,21 @@ class Column:
                 self.floor_object.height / (100*100) * self.plan_count  # m2
 
     def summary_count(self):
+        self.report_detail = []
         for rebar in self.rebar:
             if not rebar.size in self.rebar_count:
                 self.rebar_count[rebar.size] = 0
             self.rebar_count[rebar.size] += rebar.length * \
                 rebar.mass * self.plan_count
+            self.report_detail.append(
+                f'主筋:{str(rebar)}= {rebar.length:.2f} * {rebar.mass:.2f}')
         for tie in self.tie:
             if not tie.size in self.rebar_count:
                 self.rebar_count[tie.size] = 0
             self.rebar_count[tie.size] += tie.number * RebarInfo(tie.size) * ((self.x_tie + 2) * (
                 self.x_size - 8) + (self.y_tie + 2) * (self.y_size - 8)) * self.plan_count
+            self.report_detail.append(
+                f'箍筋:{str(tie)}= {tie.number:.2f} * {RebarInfo(tie.size):.2f} * {((self.x_tie + 2) * (self.x_size - 8) + (self.y_tie + 2) * (self.y_size - 8)) }')
 
     def calculate_rebar(self):
         # print(f'calculate map {self.floor} {self.serial}')
@@ -341,6 +345,12 @@ class Rebar:
             self.As = self.number * RebarArea(self.size)
             self.fy = RebarFy(self.size)
 
+    def __str__(self) -> str:
+        return self.text
+
+    def __repr__(self) -> str:
+        return self.text
+
 
 class Tie:
     length = 0
@@ -365,3 +375,9 @@ class Tie:
     def change_spacing(self, new_spacing: float):
         self.spacing = new_spacing
         self.number = self.length//self.spacing
+
+    def __str__(self) -> str:
+        return self.text
+
+    def __repr__(self) -> str:
+        return self.text
