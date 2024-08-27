@@ -384,8 +384,7 @@ def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):
     output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
                                                new_coor_to_floor_line_list=new_coor_to_floor_line_list,
                                                coor_to_section_list=coor_to_section_list,
-                                               coor_to_size_set=coor_to_size_set,
-                                               progress_file=progress_file)
+                                               coor_to_size_set=coor_to_size_set,)
     progress('結合柱編號與柱主筋')
     combine_col_rebar(column_list=output_column_list, coor_to_rebar_list=coor_to_rebar_list,
                       coor_to_rebar_text_list=coor_to_rebar_text_list)
@@ -688,8 +687,7 @@ def concat_name_to_col_floor(coor_to_size_set: set,
 def get_size_from_section(new_coor_to_col_line_list: list,
                           new_coor_to_floor_line_list: list,
                           coor_to_section_list: list,
-                          coor_to_size_set: set,
-                          progress_file=str):
+                          coor_to_size_set: set,):
     output_column_list: list[Column]
     output_column_list = []
     size_text = ''
@@ -704,6 +702,7 @@ def get_size_from_section(new_coor_to_col_line_list: list,
             size_coor=coor1, grid_coor=f[1])]
         if col and floor:
             new_column.set_border(col[0][1], floor[0][1])
+            new_column.set_column_border(coor1, coor2)
             size_text = [
                 s for s in coor_to_size_set if new_column.in_grid(coor=s[0][0])]
             if size_text:
@@ -735,23 +734,38 @@ def get_size_from_section(new_coor_to_col_line_list: list,
 
 
 def combine_col_rebar(column_list: list[Column], coor_to_rebar_list: list, coor_to_rebar_text_list: list):
+    count = 0
     for coor, rebar_text in coor_to_rebar_text_list:
         column = [c for c in column_list if c.in_grid(coor=coor[0])]
         if len(column) > 0:
             if (coor[0], rebar_text) in column[0].multi_rebar_text:
-                print(f'{coor[0]}:{rebar_text} is exists')
+                # print(f'{coor[0]}:{rebar_text} is exists')
                 continue
             column[0].multi_rebar_text.append((coor[0], rebar_text))
+        count += 1
+        if count % 100 == 0:
+            progress(f'{count} / {len(coor_to_rebar_text_list)}')
             # if column[0].rebar_text == '':
             #     column[0].rebar_text = rebar_text
             #     column[0].rebar_text_coor = coor[0]
             #     column[0].multi_rebar_text.append((coor[0],rebar_text))
             # else:
             #     column[0].multi_rebar_text.append((coor[0],rebar_text))
-    for rebar in coor_to_rebar_list:
-        column = [c for c in column_list if c.in_grid(rebar[0])]
-        if len(column) > 0:
-            column[0].add_rebar_coor(rebar)
+    count = 0
+    progress('組合柱斷面與鋼筋')
+    for column in column_list:
+        count += 1
+        rebars = [
+            rebar for rebar in coor_to_rebar_list if column.in_column_section(rebar[0])]
+        if count % 100 == 0:
+            progress(f'{count} / {len(column_list)}')
+        for rebar in rebars:
+            column.add_rebar_coor(rebar)
+            coor_to_rebar_list.remove(rebar)
+    # for rebar in coor_to_rebar_list:
+        # column = [c for c in column_list if c.in_column_section(rebar[0])]
+        # if len(column) > 0:
+        #     column[0].add_rebar_coor(rebar)
     for column in column_list:
         column.sort_rebar()
 
@@ -759,16 +773,32 @@ def combine_col_rebar(column_list: list[Column], coor_to_rebar_list: list, coor_
 
 
 def combine_col_tie(column_list: list[Column], coor_to_tie_text_list: list, coor_to_tie_list: list):
-    for tie in coor_to_tie_list:
-        column = [c for c in column_list if c.in_grid(
-            coor=tie[0]) and c.in_grid(coor=tie[1])]
-        if len(column) > 0:
-            column[0].add_tie(tie)
+    count = 0
+    progress('組合柱斷面與繫筋')
+    for column in column_list:
+        ties = [tie for tie in coor_to_tie_list if column.in_column_section(
+            coor=tie[0]) and column.in_column_section(coor=tie[1])]
+        for tie in ties:
+            column.add_tie(tie)
+            coor_to_tie_list.remove(tie)
+        count += 1
+        if count % 100 == 0:
+            progress(f'{count} / {len(column_list)}')
+    # for tie in coor_to_tie_list:
+    #     column = [c for c in column_list if c.in_grid(
+    #         coor=tie[0]) and c.in_grid(coor=tie[1])]
+    #     if len(column) > 0:
+    #         column[0].add_tie(tie)
+    count = 0
+    progress('組合柱斷面與箍筋文字')
     for coor, tie_text in coor_to_tie_text_list:
         column = [c for c in column_list if c.in_grid(
             coor=coor[1]) and c.in_grid(coor=coor[1])]
         if len(column) > 0:
             column[0].add_tie_text(coor=coor, text=tie_text)
+        count += 1
+        if count % 100 == 0:
+            progress(f'{count} / {len(coor_to_tie_text_list)}')
     for column in column_list:
         column.sort_tie()
         # print(f'{column.floor}:{column.serial} x:{column.x_tie} y:{column.y_tie} tie:{column.tie_dict}')
@@ -785,29 +815,32 @@ def output_col_excel(column_list: list[Column], output_folder: str, project_name
         np.empty([len(column_list), len(header)], dtype='<U16'), columns=header)
     row = 0
     for c in column_list:
-        if c.serial == '' or c.floor == '':
-            continue
-        column_df.at[row, ('樓層', '')] = c.floor
-        column_df.at[row, ('柱編號', '')] = c.serial
-        column_df.at[row, ('X向 柱寬', 'cm')] = c.x_size
-        column_df.at[row, ('Y向 柱寬', 'cm')] = c.y_size
-        if len(c.total_rebar) > 0:
-            column_df.at[row, ('柱主筋', '主筋')] = c.total_rebar[0][0].text
-            column_df.at[row, ('柱主筋', 'X向支數')
-                         ] = c.x_dict[c.total_rebar[0][0].size]
-            column_df.at[row, ('柱主筋', 'Y向支數')
-                         ] = c.y_dict[c.total_rebar[0][0].size]
-        if len(c.total_rebar) == 2:
-            column_df.at[row, ('次柱主筋', '主筋')] = c.total_rebar[1][0].text
-            column_df.at[row, ('次柱主筋', 'X向支數')
-                         ] = c.x_dict[c.total_rebar[1][0].size]
-            column_df.at[row, ('次柱主筋', 'Y向支數')
-                         ] = c.y_dict[c.total_rebar[1][0].size]
-        if c.tie_dict:
-            column_df.at[row, ('柱箍筋', '圍束區')] = c.tie_dict['端部'][1]
-            column_df.at[row, ('柱箍筋', '非圍束區')] = c.tie_dict['中央'][1]
-            column_df.at[row, ('柱箍筋', 'X向繫筋')] = c.x_tie
-            column_df.at[row, ('柱箍筋', 'Y向繫筋')] = c.y_tie
+        try:
+            if c.serial == '' or c.floor == '':
+                continue
+            column_df.at[row, ('樓層', '')] = c.floor
+            column_df.at[row, ('柱編號', '')] = c.serial
+            column_df.at[row, ('X向 柱寬', 'cm')] = c.x_size
+            column_df.at[row, ('Y向 柱寬', 'cm')] = c.y_size
+            if len(c.total_rebar) > 0:
+                column_df.at[row, ('柱主筋', '主筋')] = c.total_rebar[0][0].text
+                column_df.at[row, ('柱主筋', 'X向支數')
+                             ] = c.x_dict[c.total_rebar[0][0].size]
+                column_df.at[row, ('柱主筋', 'Y向支數')
+                             ] = c.y_dict[c.total_rebar[0][0].size]
+            if len(c.total_rebar) == 2:
+                column_df.at[row, ('次柱主筋', '主筋')] = c.total_rebar[1][0].text
+                column_df.at[row, ('次柱主筋', 'X向支數')
+                             ] = c.x_dict[c.total_rebar[1][0].size]
+                column_df.at[row, ('次柱主筋', 'Y向支數')
+                             ] = c.y_dict[c.total_rebar[1][0].size]
+            if c.tie_dict:
+                column_df.at[row, ('柱箍筋', '圍束區')] = c.tie_dict['端部'][1]
+                column_df.at[row, ('柱箍筋', '非圍束區')] = c.tie_dict['中央'][1]
+                column_df.at[row, ('柱箍筋', 'X向繫筋')] = c.x_tie
+                column_df.at[row, ('柱箍筋', 'Y向繫筋')] = c.y_tie
+        except:
+            progress(f'{c.floor} {c.serial} 資料有誤')
         row += 1
 
     # output_column_list = sorted(output_column_list,key=lambda c:c.serial)
@@ -932,7 +965,7 @@ def count_column_multiprocessing(column_filenames: list[str],
 
 if __name__ == '__main__':
     # sys.argv[1] # XS-COL的路徑
-    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0819\XS-COL.dwg'
+    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-09-59-XS-COL.dwg'
     column_filenames = [
         # sys.argv[1] # XS-COL的路徑
         r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-10-XS-COL.dwg',
@@ -940,32 +973,37 @@ if __name__ == '__main__':
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2024-0819\樓層參數_floor.xlsx'
-    output_folder = r'D:\Desktop\BeamQC\TEST\2024-0819'
-    project_name = '2024-0819-column'
-    plan_filename = None
+    floor_parameter_xlsx = r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-floor.xlsx'
+    output_folder = r'TEST\2024-0822'
+    project_name = '2024-0822 國安'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN.dwg'
+    plan_layer_config = {
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
+        'name_text_layer': ['S-TEXTG', 'S-TEXTB', 'S-TEXTC'],
+        'floor_text_layer': ['S-TITLE']
+    }
     # plan_layer_config = {
     #     'block_layer': ['DwFm'],
     #     'name_text_layer': ['BTXT', 'CTXT', 'BTXT_S_'],
     #     'floor_text_layer': ['TEXT1']
     # }
-    layer_config = {
-        'text_layer': ['TABLE', 'SIZE'],
-        'line_layer': ['TABLE'],
-        'rebar_text_layer': ['NBAR'],  # 箭頭和鋼筋文字的塗層
-        'rebar_layer': ['RBAR'],  # 鋼筋和箍筋的線的塗層
-        'tie_text_layer': ['NBAR'],  # 箍筋文字圖層
-        'tie_layer': ['RBAR'],  # 箍筋文字圖層
-        'block_layer': ['DwFm'],  # 框框的圖層
-        'column_rc_layer': ['OLINE']  # 斷面圖層
-    }
+    # layer_config = {
+    #     'text_layer': ['TABLE', 'SIZE'],
+    #     'line_layer': ['TABLE'],
+    #     'rebar_text_layer': ['NBAR'],  # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer': ['RBAR'],  # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer': ['NBAR'],  # 箍筋文字圖層
+    #     'tie_layer': ['RBAR'],  # 箍筋文字圖層
+    #     'block_layer': ['DwFm'],  # 框框的圖層
+    #     'column_rc_layer': ['OLINE']  # 斷面圖層
+    # }
     # DrawRC
-    entity_type = {
-        'rebar_layer': ['AcDbPolyline'],
-        'rebar_data_layer': ['AcDbMText'],
-        'rebar_data_leader_layer': ['AcDbLeader'],
-        'tie_text_layer': ['AcDbText']
-    }
+    # entity_type = {
+    #     'rebar_layer': ['AcDbPolyline'],
+    #     'rebar_data_layer': ['AcDbMText'],
+    #     'rebar_data_leader_layer': ['AcDbLeader'],
+    #     'tie_text_layer': ['AcDbText']
+    # }
     # RCAD
     # layer_config = {
     #     'text_layer': ['文字-柱線名稱', '文字-樓群名稱', '文字-斷面尺寸'],
@@ -979,25 +1017,25 @@ if __name__ == '__main__':
     #     'column_rc_layer': ['柱斷面線']  # 斷面圖層
     # }
     # Elements
-    # layer_config = {
-    #     'text_layer': ['S-TEXT'],
-    #     'line_layer': ['S-TABLE'],
-    #     'rebar_text_layer': ['S-TEXT'],  # 箭頭和鋼筋文字的塗層
-    #     'rebar_layer': ['S-REINFD'],  # 鋼筋和箍筋的線的塗層
-    #     'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
-    #     'tie_layer': ['S-REINF'],  # 箍筋文字圖層
-    #     'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
-    #     'column_rc_layer': ['S-RC']  # 斷面圖層
-    # }
+    layer_config = {
+        'text_layer': ['S-TEXT'],
+        'line_layer': ['S-TABLE'],
+        'rebar_text_layer': ['S-TEXT'],  # 箭頭和鋼筋文字的塗層
+        'rebar_layer': ['S-REINFD'],  # 鋼筋和箍筋的線的塗層
+        'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
+        'tie_layer': ['S-REINF'],  # 箍筋文字圖層
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
+        'column_rc_layer': ['S-RC']  # 斷面圖層
+    }
     main_logger = setup_custom_logger(__name__, client_id=project_name)
     msp_column = None
     doc_column = None
-    msp_column, doc_column = read_column_cad(col_filename)
+    # msp_column, doc_column = read_column_cad(col_filename)
 
     # sort_col_cad(msp_column=msp_column,
     #              doc_column=doc_column,
     #              layer_config=layer_config,
-    #              temp_file=r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl',
+    #              temp_file=r'D:\Desktop\BeamQC\TEST\2024-0822\column.pkl',
     #              progress_file=r'result\tmp')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl'),
@@ -1005,20 +1043,20 @@ if __name__ == '__main__':
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(
     #     r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    # column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl'),
-    #                                rebar_excel_path=floor_parameter_xlsx,
-    #                                progress_file=r'result\tmp')
-    column_list = save_temp_file.read_temp(
-        r'D:\Desktop\BeamQC\TEST\2024-0819\column_list.pkl')
-    # save_temp_file.save_pkl(
-    #     column_list, r'D:\Desktop\BeamQC\TEST\2024-0819\column_list.pkl')
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0822\column.pkl'),
+                                   rebar_excel_path=floor_parameter_xlsx,
+                                   progress_file=r'result\tmp')
+    # column_list = save_temp_file.read_temp(
+    #     r'D:\Desktop\BeamQC\TEST\2024-0822\column_list-2.pkl')
+    save_temp_file.save_pkl(
+        column_list, r'D:\Desktop\BeamQC\TEST\2024-0822\column_list-2.pkl')
     create_report(output_column_list=column_list,
                   output_folder=output_folder,
                   project_name=project_name,
                   floor_parameter_xlsx=floor_parameter_xlsx,
                   progress_file=r'result\tmp',
-                  plan_filename=None,
-                  plan_layer_config=None)
+                  plan_filename=r'',
+                  plan_layer_config=plan_layer_config)
     # count_column_multiprocessing(column_filenames=column_filenames,
     #                              layer_config=layer_config,
     #                              temp_file='temp_0626_COL_Wuku.pkl',

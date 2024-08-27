@@ -207,7 +207,8 @@ def set_check_scan(column_scan: ColumnScan):
         return pass_syntax
 
     def index_0409(c: Column):
-        rebar_dia = max(RebarDiameter(r.size) for r in c.rebar)
+
+        rebar_dia = max(RebarDiameter(r[1]) for r in c.x_row)
         spacing = (c.x_size - c.protect_layer * 2 - 1.27 * 2 -
                    len(c.x_row)*rebar_dia)/(len(c.x_row) - 1)
         if spacing < 1.5*rebar_dia:
@@ -217,12 +218,12 @@ def set_check_scan(column_scan: ColumnScan):
         return pass_syntax
 
     def index_0410(c: Column):
-        rebar_dia = max(RebarDiameter(r.size) for r in c.rebar)
+        rebar_dia = max(RebarDiameter(r[1]) for r in c.y_row)
         spacing = (c.y_size - c.protect_layer * 2 - 1.27 * 2 -
                    len(c.y_row)*rebar_dia)/(len(c.y_row) - 1)
         if spacing < 1.5*rebar_dia:
             c.ng_message.append(
-                f'0409:X向{len(c.x_row)} 支 {rebar_dia} => 淨間距為{round(spacing,2)} < 1.5db:{round(1.5*rebar_dia,2)}')
+                f'0409:Y向{len(c.y_row)} 支 {rebar_dia} => 淨間距為{round(spacing,2)} < 1.5db:{round(1.5*rebar_dia,2)}')
             return fail_syntax
         return pass_syntax
     if column_scan.scan_index == 401:

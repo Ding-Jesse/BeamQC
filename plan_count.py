@@ -143,13 +143,26 @@ def check_is_floor(text: str):
     return False
 
 
+def get_last_parentheses(text):
+    # Use regex to find all substrings enclosed in parentheses
+    matches = re.findall(r'\([^)]*\)', text)
+
+    # Return the last match, or None if there are no matches
+    if matches:
+        return matches[:]
+    return None
+
+
 def sort_floor_text(data: dict[str, Counter]):
     '''
     make 6-7F to ['6F','7F']
     '''
     sort_dict: dict[str, Counter] = {}
-    floor_float_list = [turn_floor_to_float(re.sub(r'\(|\)', '', floor)) for floor in data.keys(
-    ) if not re.findall(r'\W', re.sub(r'\(|\)', '', floor))]
+    floor_list = list(data.keys())
+    floor_list = [(f, floor) for floor in floor_list if get_last_parentheses(floor) is not None
+                  for f in get_last_parentheses(floor)]
+    floor_float_list = [turn_floor_to_float(re.sub(
+        r'\(|\)', '', floor)) for floor, origin_floor in floor_list if not re.findall(r'\W', re.sub(r'\(|\)', '', floor))]
     # not equal to -1000 (FB)
     Bmax = 0  # 地下最深到幾層(不包括FB不包括FB)
     Fmax = 0  # 正常樓最高到幾層
@@ -167,16 +180,19 @@ def sort_floor_text(data: dict[str, Counter]):
         Rmax = max([f for f in floor_float_list if f > 1000 and f != 2000])
     except:
         pass
-    for floor in data.keys():
+    for floor, origin in floor_list:
         if re.findall(r'\W', floor):
             for new_floor in turn_floor_to_list(floor=re.sub(r'\(|\)', '', floor), Bmax=Bmax, Fmax=Fmax, Rmax=Rmax):
                 if new_floor in sort_dict:
-                    for key, item in data[floor].items():
-                        sort_dict[new_floor][key].extend(item)
+                    if isinstance(data[origin], Counter):
+                        sort_dict[new_floor] += data[origin]
+                    if isinstance(data[origin], dict):
+                        for key, item in data[origin].items():
+                            sort_dict[new_floor][key].extend(item)
                 else:
-                    sort_dict.update({new_floor: data[floor]})
+                    sort_dict.update({new_floor: data[origin]})
         else:
-            sort_dict.update({re.sub(r'\(|\)', '', floor): data[floor]})
+            sort_dict.update({re.sub(r'\(|\)', '', floor): data[origin]})
     return sort_dict
 
 
@@ -199,14 +215,17 @@ def sort_name_text(data):
     return sort_result
 
 
-def sort_plan_count(plan_filename, progress_file, layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str]) -> dict[str, Counter]:
-    if False:
+def sort_plan_count(plan_filename,
+                    progress_file,
+                    layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str],
+                    plan_pkl='') -> dict[str, Counter]:
+    if plan_pkl == '':
         cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
         save_temp_file.save_pkl(
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_count_set.pkl')
     else:
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'TEST\2024-0819\XS-PLANALL_plan_count_set.pkl')
+            tmp_file=r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_count_set.pkl')
     result = sort_name_text(cad_result)
     sort_result = sort_floor_text(data=result)
     return sort_result
@@ -224,7 +243,7 @@ if __name__ == "__main__":
     # save_temp_file.save_pkl(
     #     data=cad_result, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
     data = save_temp_file.read_temp(
-        tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1017_plan_plan_count_set.pkl')
+        tmp_file=r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_count_set.pkl')
     result = sort_name_text(data)
     result = sort_floor_text(data=result)
     print(result)

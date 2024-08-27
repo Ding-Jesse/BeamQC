@@ -1303,16 +1303,16 @@ if __name__ == '__main__':
         'column_block_layer': ['S-COL']
     }
     set_plan, dic_plan, block_error_list, block_match_result_list = run_plan(
-        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg',
+        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0819\2024-08-21-16-28_P2023-07A 慈濟中壢園區案5FB1-XSb-PLAN.dwg',
         layer_config=layer_config,
         client_id='0524-temp_col',
-        pkl=r'TEST\2024-0812\2024-08-12-10-23_文仁安居-XS-PLAN_plan_to_col.pkl'
+        pkl=r""
     )
     set_col, dic_col = run_col(
         col_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL.dwg',
         layer_config=layer_config,
         client_id='0524-temp-col',
-        pkl=r'TEST\2024-0812\2024-08-12-10-23_文仁安居-XS-COL_col_set.pkl'
+        pkl=r'TEST\2024-0819\2024-08-21-16-28_P2023-07A 慈濟中壢園區案5FB1-XS-COL_col_set.pkl'
     )
 
     date = time.strftime("%Y-%m-%d", time.localtime())

@@ -108,7 +108,7 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
 
     # transform to column center
     column_beam_df = combine_column_beams(column_beam_df)
-
+    beams_df = beams_df[~beams_df.index.duplicated(keep='first')]
     result = []
 
     for column in column_list:
@@ -120,7 +120,8 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
             continue
         H1 = column.floor_object.height
         column.connect_beams = connect_beams
-
+        e1 = float("inf")
+        e2 = float("inf")
         if column.up_column:
             H2 = column.up_column.floor_object.height
         else:
@@ -143,7 +144,8 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                 fc = beam.fc
                 d1 = beam.depth
                 b1 = beam.width
-
+                e1 = -1 * \
+                    connect_beams['Offset'][f'{pos}_Left'] if pos == "Y" else connect_beams['Offset'][f'{pos}_Left']
                 x11 = (column_width - b1) / 2 - \
                     connect_beams['Offset'][f'{pos}_Left']
                 x12 = (column_width - b1) / 2 + \
@@ -167,7 +169,8 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
 
                 Mpr1_top += Ts1_top * (d1 - 0.5*(Ts1_top/(0.85*fc*b1)))
                 Mpr1_bot += Ts1_bot * (d1 - 0.5*(Ts1_bot/(0.85*fc*b1)))
-
+                x11 = min(hj / 4, x11)
+                x12 = min(hj / 4, x12)
                 bj1 = min(hj / 4, x11) + min(hj / 4, x12) + b1
                 bj.append(bj1)
 
@@ -179,9 +182,11 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                 fc = beam.fc
                 d2 = beam.depth
                 b2 = beam.width
-                x21 = (column_width - b1) / 2 - \
+                e2 = -1 * \
+                    connect_beams['Offset'][f'{pos}_Right'] if pos == "Y" else connect_beams['Offset'][f'{pos}_Right']
+                x21 = (column_width - b2) / 2 - \
                     connect_beams['Offset'][f'{pos}_Right']
-                x22 = (column_width - b1) / 2 + \
+                x22 = (column_width - b2) / 2 + \
                     connect_beams['Offset'][f'{pos}_Right']
 
                 beams_rebar.append(
@@ -201,7 +206,8 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                     beam.rebar_table[RebarType.Top.value][RebarType.Left.value][0].fy if As2_top != 0 else beam.fy
 
                 Mpr2_top = Ts2_top * (d2 - 0.5*(Ts2_top/(0.85*fc*b2)))
-
+                x21 = min(hj / 4, x21)
+                x22 = min(hj / 4, x22)
                 bj2 = min(hj / 4, x21) + min(hj / 4, x22) + b2
                 bj.append(bj2)
 
@@ -217,17 +223,54 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                                                                     beams_df=beams_df,
                                                                     floor=column.floor,
                                                                     hj=hj,
-                                                                    dir=pos)
+                                                                    dir=pos,
+                                                                    offset_beams=connect_beams['Offset'])
             # Conside if confine is fine with all beam
             consider_confine_code = get_design_code_value(detail_design_code[0] == "V",
                                                           detail_design_code[0] == "V",
                                                           True)
+
             Vn = 0.85 * design_code * sqrt(column.fc) * Aj
             Vh1 = (Mpr1_bot + Mpr2_top) / ((H1 + H2)/2)
             Vh2 = (Mpr2_bot + Mpr1_top) / ((H1 + H2)/2)
             Vu = max(Ts1_top + Ts2_bot - Vh1,
                      Ts1_bot + Ts2_top - Vh2)
             new_Vn = 0.85 * consider_confine_code * sqrt(column.fc) * Aj
+
+            # Lee's methods
+            lee_result = {}
+            if not connect_beams['Beam'][f'{pos}_Right'] is None and not connect_beams['Beam'][f'{pos}_Left'] is None:
+
+                inner_design_code = get_design_code_value(detail_design_code[0] == "V",
+                                                          True, detail_design_code[2] == "V")
+
+                outer_design_code = get_design_code_value(detail_design_code[0] == "V",
+                                                          False, detail_design_code[2] == "V")
+                inner_bj = (b1 + b2) / 2 - \
+                    abs(connect_beams['Offset'][f'{pos}_Right'] -
+                        connect_beams['Offset'][f'{pos}_Left'])
+
+                outer_x1 = min((-b1 / 2 + e1 - x11), (-b2 / 2 + e2 - x21))
+                outer_x2 = max((b1 / 2 + e1 + x12), (b2 / 2 + e2 + x22))
+
+                outer_bj = max(outer_x2 - outer_x1 - inner_bj, 0)
+                inner_Vn = inner_design_code * sqrt(column.fc) * inner_bj * hj
+                outer_Vn = outer_design_code * sqrt(column.fc) * outer_bj * hj
+                lee_Vn = 0.85 * (inner_design_code * sqrt(column.fc) * inner_bj *
+                                 hj + outer_design_code * sqrt(column.fc) * outer_bj * hj)
+                lee_result = {
+                    'inner_design_code': inner_design_code,
+                    'outer_design_code': outer_design_code,
+                    'outer_x1': outer_x1,
+                    'outer_x2': outer_x2,
+                    'inner_bj': inner_bj,
+                    'outer_bj': outer_bj,
+                    'inner_Vn': inner_Vn / 1000,
+                    'outer_Vn': outer_Vn / 1000,
+                    'lee_Vn': lee_Vn / 1000,
+                    'lee_DCR': round(Vu/lee_Vn, 2)
+                }
+
             cal_result = {
                 'story': column.floor,
                 'column': column.serial,
@@ -269,7 +312,10 @@ def calculate_column_beam_joint_shear(column_list: list[Column], beam_list: list
                 'Vn(tf)': Vn / 1000,
                 'DCR': round(Vu/Vn, 2),
                 'Fine DCR': round(Vu/new_Vn, 2),
+                'lee_DCR': round(Vu/Vn, 2)
             }
+            if lee_result:
+                cal_result.update(lee_result)
             result.append(cal_result)
             column.joint_result.update({pos: cal_result})
 

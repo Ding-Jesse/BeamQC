@@ -146,10 +146,13 @@ def check_column_joint(excel_filename: str,
         no_rebar_data, [f.floor_name for f in floor_list], '樓層')
     summary_df = summary_column_joint_df(joint_df, 'DCR')
     fine_summary_df = summary_column_joint_df(joint_df, 'Fine DCR')
+    lee_summary_df = summary_column_joint_df(joint_df, 'lee_DCR')
     summary_df = sort_dataframe_by_floor(
         summary_df, [f.floor_name for f in floor_list], 'story')
     fine_summary_df = sort_dataframe_by_floor(
         fine_summary_df, [f.floor_name for f in floor_list], 'story')
+    lee_summary_df = sort_dataframe_by_floor(
+        lee_summary_df, [f.floor_name for f in floor_list], 'story')
 
     OutputExcel(df_list=[joint_df],
                 file_path=excel_filename, sheet_name='梁柱接頭剪力表')
@@ -161,6 +164,8 @@ def check_column_joint(excel_filename: str,
                 file_path=excel_filename, sheet_name='統整表')
     OutputExcel(df_list=[fine_summary_df],
                 file_path=excel_filename, sheet_name='考量圍束統整表')
+    OutputExcel(df_list=[lee_summary_df],
+                file_path=excel_filename, sheet_name='未來式統整表')
     create_calculate_sheet(doc_filename=docx_filename, column_list=column_list,
                            output_serial=output_serial, output_floor=output_floor)
     return joint_df, beams_df
@@ -203,7 +208,7 @@ def column_joint_main(output_folder: str,
 
     beam_list = save_temp_file.read_temp(beam_pkl)
     column_list = save_temp_file.read_temp(column_pkl)
-
+    # column_list = [column for column in column_list if column.serial == 'C68']
     floor_list = column_floor_parameter(column_list=column_list,
                                         floor_parameter_xlsx=column_beam_joint_xlsx)  # sort column floor
     # sort up bottom column
@@ -294,7 +299,7 @@ def read_column_beam_plan(plan_filename, layer_config: dict):
     floor_text_layer = layer_config['floor_text_layer']
 
     block_object_type = ['AcDbBlockReference', "AcDbPolyline"]
-    text_object_type = ['AcDbText']
+    text_object_type = ['AcDbText', 'AcDbMText']
     floor_object_type = ['AcDbText']
     mline_object_type = ['AcDbMline', 'AcDbLine']
     column_block_object_type = ['AcDbBlockReference', "AcDbPolyline"]
@@ -341,8 +346,14 @@ def read_column_beam_plan(plan_filename, layer_config: dict):
                         block_entity.append(
                             (object.GetBoundingBox()[0], object.GetBoundingBox()[1]))
                     if object_layer in beam_name_text_layer and object.EntityName in text_object_type:
+                        start = (round(object.GetBoundingBox()[0][0], 2), round(
+                            object.GetBoundingBox()[0][1], 2))
+                        end = (round(object.GetBoundingBox()[1][0], 2), round(
+                            object.GetBoundingBox()[1][1], 2))
+                        mid = ((start[0] + end[0]) / 2,
+                               (start[1] + end[1]) / 2)
                         beam_name_text_entity.append(
-                            (object.GetBoundingBox()[0], object.TextString, object.rotation))
+                            (mid, object.TextString, object.rotation))
                     if object_layer in column_name_text_layer and object.EntityName in text_object_type:
                         column_name_text_entity.append(
                             (object.GetBoundingBox()[0], object.TextString))
@@ -453,20 +464,31 @@ def sort_entity_to_floor(data: dict):
     return new_sort_floor
 
 
-def get_distance(coor1, coor2):
+def get_distance(coor1, coor2, direction: str = ''):
     from math import sqrt
+    x_ratio = 1
+    y_ratio = 1
+    if direction == 'x':
+        y_ratio = 1.5
+    if direction == 'y':
+        x_ratio = 1.5
     if isinstance(coor1, tuple) and isinstance(coor2, tuple):
         try:
-            return sqrt((coor1[0][0]-coor2[0][0]) ** 2 + (coor1[0][1]-coor2[0][1]) ** 2)
+            return sqrt(x_ratio * (coor1[0][0]-coor2[0][0]) ** 2 + y_ratio * (coor1[0][1]-coor2[0][1]) ** 2)
             return abs(coor1[0][0]-coor2[0][0]) + abs(coor1[0][1]-coor2[0][1])
         except TypeError:
-            return sqrt((coor1[0]-coor2[0]) ** 2 + (coor1[1]-coor2[1]) ** 2)
+            return sqrt(x_ratio * (coor1[0]-coor2[0]) ** 2 + y_ratio * (coor1[1]-coor2[1]) ** 2)
             return abs(coor1[0]-coor2[0]) + abs(coor1[1]-coor2[1])
     return 10000
 
 
 def match_beam_mline(data: dict):
     string_pattern = r"[WB|B|G][\d|\w]'*-*\d*"
+    data = {
+        '2F': data['2F']
+    }
+
+    line_rotation = ''
     for floor, items in data.items():
         mline_list: list[MlineObject] = items['mline_list']
         beam_name_text_list = items['beam_name_text_list']
@@ -476,16 +498,33 @@ def match_beam_mline(data: dict):
         for coor, beam_name, rotation in beam_name_text_list:
             beam_name: str
             beam_name = beam_name.strip()
+
             if rotation == 0:
-                closet_mline = min(
-                    [mline for mline in mline_list if mline.xy_direction == "x"], key=lambda mline: get_distance(coor, mline.mid))
+                line_rotation = 'x'
             else:
-                closet_mline = min(
-                    [mline for mline in mline_list if mline.xy_direction == "y"], key=lambda mline: get_distance(coor, mline.mid))
+                line_rotation = 'y'
+
+            closet_mline = min(
+                [mline for mline in mline_list if mline.xy_direction == line_rotation], key=lambda mline: get_distance(coor, mline.mid, line_rotation))
 
             if closet_mline.beam_serial is not None:
-                if get_distance(closet_mline.beam_serial[0], closet_mline.mid) > get_distance(coor, closet_mline.mid):
+                if get_distance(closet_mline.beam_serial[0], closet_mline.mid) > get_distance(coor, closet_mline.mid) or closet_mline.beam_serial[1] == 'WB1':
                     closet_mline.beam_serial = (coor, beam_name, rotation)
+                else:
+                    # 避免距離受到編號位置影響，如最接近複線已有編號且該編號之距離較短，則找尋找目前無編號之複線，同時透過最近複線之距離避免抓取到過遠之複線
+                    none_mline_list = [
+                        mline for mline in mline_list if mline.xy_direction == line_rotation and mline.beam_serial is None]
+
+                    if not none_mline_list:
+                        continue
+
+                    closet_none_mline: MlineObject = min(
+                        none_mline_list, key=lambda mline: get_distance(coor, mline.mid, line_rotation))
+                    print(
+                        f'{beam_name}:{5 * get_distance(closet_mline.beam_serial[0], closet_mline.mid)} , {get_distance(coor, closet_none_mline.mid)}')
+                    if 5 * get_distance(closet_mline.beam_serial[0], closet_mline.mid) > get_distance(coor, closet_none_mline.mid):
+                        closet_none_mline.beam_serial = (
+                            coor, beam_name, rotation)
             else:
                 closet_mline.beam_serial = (coor, beam_name, rotation)
 
@@ -542,6 +581,7 @@ def match_column_block(data: dict):
 
 
 def match_beam_column(data: dict):
+
     for floor, items in data.items():
         column_block_list: list[ColumnBlock] = items['column_block_list']
         if not column_block_list:
@@ -571,7 +611,7 @@ def output_match_result(data: dict):
                            round(mline.right_offset) if mline.right_column else "",
                            mline.xy_direction.upper()]
             row += 1
-    OutputExcel([df], "scipy_test.xlsx", "梁柱接頭表test")
+    # OutputExcel([df], "scipy_test.xlsx", "梁柱接頭表test")
     return df
 
 
@@ -794,13 +834,13 @@ def sort_dataframe_by_floor(df: pd.DataFrame, floor_list: list[str], column1: st
 
 
 if __name__ == "__main__":
-    output_folder = r"D:\Desktop\BeamQC\TEST\2024-0522"
-    project_name = r"0522_427"
-    beam_pkl = r"TEST\2024-0522\427\2024-0522 247-2024-05-22-11-40-temp-beam_list.pkl"
-    column_pkl = r"TEST\2024-0522\427\2024-0522_temp-column_list.pkl"
-    column_beam_joint_xlsx = r"TEST\2024-0522\427\基本資料表 _ 三重427.xlsx"
+    output_folder = r"D:\Desktop\BeamQC\TEST\2024-0822"
+    project_name = r"0822"
+    beam_pkl = r"TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-temp-beam_list.pkl"
+    column_pkl = r"TEST\2024-0822\column_list.pkl"
+    column_beam_joint_xlsx = r"TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-floor.xlsx"
 
-    plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN.dwg"
+    plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN.dwg"
     layer_config = {
         'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
         'beam_name_text_layer': ['S-TEXTG'],
@@ -817,7 +857,9 @@ if __name__ == "__main__":
                     beam_pkl=beam_pkl,
                     column_pkl=column_pkl,
                     column_beam_joint_xlsx=column_beam_joint_xlsx,
-                    pkl=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-PLAN_plan_set.pkl')
+                    pkl=r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_set.pkl',
+                    output_floor=['3F'],
+                    output_serial=['C68'])
     # match_column_beam_plan(plan_filename=plan_filename,
     #                        layer_config=layer_config)
 

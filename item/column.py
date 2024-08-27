@@ -95,12 +95,30 @@ class Column:
         # self.grid_coor.extend([left_bot,left_top,right_top,right_bot])
         pass
 
+    def set_column_border(self, coor1, coor2):
+        self.column_border = {}
+        left_bot = Point((coor1[0], coor1[1]))
+        left_top = Point((coor1[0], coor2[1]))
+        right_top = Point((coor2[0], coor2[1]))
+        right_bot = Point((coor2[0], coor1[1]))
+        self.column_border.update({'left_bot': left_bot, 'left_top': left_top,
+                                   'right_top': right_top, 'right_bot': right_bot})
+
     def in_grid(self, coor: tuple):
         pt_x = coor[0]
         pt_y = coor[1]
         if len(self.grid_coor) == 0:
             return False
         if (pt_x - self.grid_coor['left_bot'].x)*(pt_x - self.grid_coor['right_top'].x) < 0 and (pt_y - self.grid_coor['right_top'].y)*(pt_y - self.grid_coor['left_bot'].y) < 0:
+            return True
+        return False
+
+    def in_column_section(self, coor: tuple):
+        pt_x = coor[0]
+        pt_y = coor[1]
+        if len(self.grid_coor) == 0:
+            return False
+        if (pt_x - self.column_border['left_bot'].x)*(pt_x - self.column_border['right_top'].x) < 0 and (pt_y - self.column_border['right_top'].y)*(pt_y - self.column_border['left_bot'].y) < 0:
             return True
         return False
 
@@ -133,7 +151,7 @@ class Column:
         self.tie_text_list.append((pt, text))
 
     def sort_rebar(self):
-
+        self.rebar_coor.sort(key=lambda coor: (coor[0], coor[1]))
         # self.total_rebar = Rebar(self.rebar_text)
         if not self.rebar_coor:
             return
@@ -150,13 +168,15 @@ class Column:
 
         for coor in self.rebar_coor:
             if not self.x_row:
-                self.x_row.add((coor[0][0], coor[1]))
+                self.x_row.add((coor[0], coor[1]))
             if not self.y_row:
-                self.y_row.add((coor[0][1], coor[1]))
-            if abs(min(self.x_row, key=lambda x: abs(x[0] - coor[0][0]))[0] - coor[0][0]) > 1:
-                self.x_row.add((coor[0][0], coor[1]))
-            if abs(min(self.y_row, key=lambda x: abs(x[0] - coor[0][1]))[0] - coor[0][1]) > 1:
-                self.y_row.add((coor[0][1], coor[1]))
+                self.y_row.add((coor[0], coor[1]))
+            closet_x = min(self.x_row, key=lambda x: abs(x[0][0] - coor[0][0]))
+            if abs(closet_x[0][0] - coor[0][0]) > 1 and abs(closet_x[0][1] - coor[0][1]) < 10:
+                self.x_row.add((coor[0], coor[1]))
+            closet_y = min(self.y_row, key=lambda x: abs(x[0][1] - coor[0][1]))
+            if abs(closet_y[0][1] - coor[0][1]) > 1 and abs(closet_y[0][0] - coor[0][0]) < 10:
+                self.y_row.add((coor[0], coor[1]))
         self.y_row = set(self.y_row)
         self.x_row = set(self.x_row)
         # self.x_row = set(map(lambda r:(round(r[0][0]),r[1]),self.rebar_coor))

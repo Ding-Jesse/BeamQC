@@ -450,6 +450,7 @@ def create_case_result_sheet(doc: DocumentObject,
     _code_15_2_6 = result['_code_15_2_6']
     _code_15_2_7 = result['_code_15_2_7']
     _code_15_2_8 = result['_code_15_2_8']
+
     dcr = result['DCR']
     message = ""
     pass_sign = ""
@@ -572,17 +573,17 @@ def create_case_result_sheet(doc: DocumentObject,
         rows.append(
             (['左梁上層受拉', [create_subscript('T', 's1'), "=",
                          create_subscript('C', 'c1'), "=",
-                         create_subscript('A', 's1,top'), "×1.25fy"]], f'{Ts1_top} tf')
+                         create_subscript('A', 's1,top'), "×1.25fy"]], f'{Ts1_top:.2f} tf')
         )
         rows.append(([[create_superscript_subscript('M', '-', 'pr1'), "="],
-                     deepcopy(mpr_minus_equation)], f'{Mpr1_minus} tf-m'))
+                     deepcopy(mpr_minus_equation)], f'{Mpr1_minus:.2f} tf-m'))
         rows.append(
             (['左梁下層受拉', [create_subscript('T', 's2'), "=",
                          create_subscript('C', 'c2'), "=",
-                         create_subscript('A', 's1,bot'), "×1.25fy"]], f'{Ts1_bot} tf')
+                         create_subscript('A', 's1,bot'), "×1.25fy"]], f'{Ts1_bot:.2f} tf')
         )
         rows.append(([[create_superscript_subscript('M', '+', 'pr1'), "="],
-                    deepcopy(mpr_plus_equation)], f'{Mpr1_plus} tf-m'))
+                    deepcopy(mpr_plus_equation)], f'{Mpr1_plus:.2f} tf-m'))
     if right_beam:
         rows.append(
             (['右梁上層受拉', [create_subscript('T', 's1'), "=",
@@ -606,11 +607,11 @@ def create_case_result_sheet(doc: DocumentObject,
         ], [
             create_math_element('2')
         ])
-        ]], f'({H1} + {H2}) / 2 ={(H1+H2)/2} m'),
+        ]], f'({H1:.2f} + {H2:.2f}) / 2 ={(H1+H2)/2:.2f} m'),
         ([[create_subscript('V', 'h1'), "="],
-          deepcopy(vh1_equation)], f'({Mpr1_plus:.2f} + {Mpr2_minus:.2f}) / {(H1+H2)/2}={Vh1:.2f} tf'),
+          deepcopy(vh1_equation)], f'({Mpr1_plus:.2f} + {Mpr2_minus:.2f}) / {(H1+H2)/2:.2f}={Vh1:.2f} tf'),
         ([[create_subscript('V', 'h2'), "="],
-          deepcopy(vh2_equation)], f'({Mpr1_minus:.2f} + {Mpr2_plus:.2f}) / {(H1+H2)/2}={Vh2:.2f} tf'),
+          deepcopy(vh2_equation)], f'({Mpr1_minus:.2f} + {Mpr2_plus:.2f}) / {(H1+H2)/2:.2f}={Vh2:.2f} tf'),
         ([[create_subscript('V', 'u'), "=",
            create_subscript('T', 's1'), "+",
            create_subscript('C', 'c2'), "-",
@@ -626,6 +627,49 @@ def create_case_result_sheet(doc: DocumentObject,
            create_math_element(pass_sign),
            create_subscript('V', 'u')], message], [])
     ])
+    # Lee's
+    if 'lee_Vn' in result:
+        inner_bj = result['inner_bj']
+        inner_Vn = result['inner_Vn']
+        outer_bj = result['outer_bj']
+        outer_Vn = result['outer_Vn']
+        inner_design_code = result['inner_design_code']
+        outer_design_code = result['outer_design_code']
+        lee_Vn = result['lee_Vn']
+        lee_DCR = result['lee_DCR']
+        if lee_DCR <= 1:
+            pass_sign = "≥"
+            message = "→OK，檢核通過"
+        else:
+            pass_sign = "<"
+            message = "→NG!"
+        rows.extend([
+            (['接頭交會區有效抗剪寬度', [create_subscript('b', 'j,c'),
+                              create_math_element('=')]], f'{inner_bj} cm'),
+            (['接頭延伸區有效抗剪寬度', [create_subscript('b', 'j,U'),
+                              create_math_element('=')]], f'{outer_bj} cm'),
+            (['接頭交會區強度', [create_subscript('V', 'n,c'), "=", create_subscript('r', 'c'), create_math_element('×'),
+                          create_square_root(create_superscript_subscript(
+                              'f', '\'', 'c')), create_math_element('×'),
+                          create_subscript('b', 'jc'), create_math_element('×'), create_subscript('h', 'c')]],
+             f'{inner_design_code}×\u221A{fc}×{inner_bj}×{hc}={inner_Vn:.2f} tf'),
+            (['接頭延伸區強度', [create_subscript('V', 'n,U'), "=", create_subscript('r', 'U'), create_math_element('×'),
+                          create_square_root(create_superscript_subscript(
+                              'f', '\'', 'c')), create_math_element('×'),
+                          create_subscript('b', 'j,U'), create_math_element('×'), create_subscript('h', 'c')]],
+             f'{outer_design_code}×\u221A{fc}×{outer_bj}×{hc}={outer_Vn:.2f} tf'),
+            (['剪力強度',
+              [create_math_element('∅'),
+               create_subscript(
+                   'V', 'n,pro'), "=", create_math_element('0.85×'),
+               create_subscript('V', 'n,U'), create_math_element('+'),
+               create_subscript('V', 'n,c')]],
+                f'0.85×({inner_Vn:.2f}+{outer_Vn:.2f})={lee_Vn:.2f} tf'),
+            ([[create_math_element('∅'),
+               create_subscript('V', 'n,pro'),
+               create_math_element(pass_sign),
+               create_subscript('V', 'u')], message], f'DCR = {lee_DCR:.2f}')
+        ])
 
     for items, values in rows:
         row_cells = table.add_row().cells

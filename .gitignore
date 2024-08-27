@@ -163,6 +163,7 @@ config/
 *.pkl
 flask_session/
 *.docx
+*.mp4
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at httpsgithub.comgithubgitignoreblobmainGlobalJetBrains.gitignore

@@ -107,7 +107,13 @@ def calculate_column_beam_joint(shaped_column: object,
     return result
 
 
-def determine_design_code(top_floor: bool, joint_beams: pd.DataFrame, beams_df: pd.DataFrame, floor: str, hj: float, dir: Literal['x', 'y']):
+def determine_design_code(top_floor: bool,
+                          joint_beams: pd.DataFrame,
+                          beams_df: pd.DataFrame,
+                          floor: str,
+                          hj: float,
+                          dir: Literal['x', 'y'],
+                          offset_beams: pd.DataFrame):
     '''
     401-112 15.2.6-15.2.8
     '''
@@ -118,13 +124,13 @@ def determine_design_code(top_floor: bool, joint_beams: pd.DataFrame, beams_df: 
     dir = dir.lower()
     if dir == 'x':
         if joint_beams['X_Left'] and joint_beams['X_Right']:
-            _code_15_2_7 = True
+            _code_15_2_7 = offset_beams['X_Left'] == offset_beams['X_Right']
         if joint_beams['Y_Left'] and joint_beams['Y_Right']:
             if beams_df.loc[floor, joint_beams['Y_Left']]['beam'].width > 0.75 * hj and beams_df.loc[floor, joint_beams['Y_Right']]['beam'].width > 0.75 * hj:
                 _code_15_2_8 = True
     if dir == 'y':
         if joint_beams['Y_Left'] and joint_beams['Y_Right']:
-            _code_15_2_7 = True
+            _code_15_2_7 = offset_beams['Y_Left'] == offset_beams['Y_Right']
         if joint_beams['X_Left'] and joint_beams['X_Right']:
             if beams_df.loc[floor, joint_beams['X_Left']]['beam'].width > 0.75 * hj and beams_df.loc[floor, joint_beams['X_Right']]['beam'].width > 0.75 * hj:
                 _code_15_2_8 = True
