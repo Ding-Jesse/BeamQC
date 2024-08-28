@@ -303,7 +303,7 @@ def main_col_function(col_filenames,
         'client_id': client_id,
         'status': status,
         'plan error rate': plan_result_dict['summary'] if plan_result_dict is not None else None,
-        'beam error rate': col_result_dict['summary'] if col_result_dict is not None else None
+        'col error rate': col_result_dict['summary'] if col_result_dict is not None else None
     }, collection_name='Column Check Log')
     # except Exception as ex:
     #     print(ex)

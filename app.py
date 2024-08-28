@@ -266,6 +266,10 @@ def upload_file():
                     "Function": entry.name,
                     "Code Context": entry.line
                 }})
+            error_detail.update({
+                'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+                'project name': project_name,
+            })
             Upload_Error_log(data=error_detail,
                              collection_name="Error Log")
 
@@ -774,70 +778,11 @@ def sendResult(recipients: str, filenames: list, mail_title: str):
                            content_type=content_type, data=fp.read())
         mail.send(msg)
     return 200
-# @app.route("/listen/<project_name>/")
-# def listen(project_name):
-
-#   def respond_to_client():
-#     while True:
-#       f = open(f'./OUTPUT/{project_name}_progress', 'a+', encoding="utf-8")
-#       lines = f.readlines() #一行一行讀
-#       color = 'white'
-#       _data = json.dumps({"color":color, "counter":''.join(lines)}, ensure_ascii=False)
-#       yield f"id: 1\ndata: {_data}\nevent: online\n\n"
-#       time.sleep(5)
-#       f.close
-#   return Response(respond_to_client(), mimetype='text/event-stream')
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     return redirect(url_for('NOT_FOUND'))
-
-
-# def read_last_line(file_path):
-#     error_count = 0
-#     while error_count < 3:
-#         try:
-#             with open(file_path, 'r', encoding="utf-8") as f:
-#                 lines = f.readlines()
-#                 if lines:
-#                     return lines[-1].strip()
-#                 else:
-#                     return ""
-#         except FileNotFoundError:
-#             with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
-#                 error_log.write(
-#                     f'{file_path} Not Exists , error_count = {error_count} \n')
-#             error_count += 1
-#             time.sleep(10)
-#     raise FileExistsError
-
-
-# def generate_notifications(client_id):
-#     if client_id not in connected_clients:
-#         yield "data:No Project Running\n\n"
-#         return
-#     message = f'Client:{client_id}:正在執行專案:{connected_clients[client_id]}'
-#     yield f"data:{message}\n\n"
-#     while True:
-#         # Simulate a process that takes time to complete (Replace this with your actual process)
-#         time.sleep(5)
-#         message = f'Now Time:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}'
-#         yield f"data:{message}\n\n"
-#         for project_name in connected_clients[client_id]:
-#             try:
-#                 last_notification = read_last_line(
-#                     f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress')
-#                 message = f"Client {project_name}: {last_notification}"
-#                 # print(message)
-#                 yield f"data: {message}\n\n"
-#                 time.sleep(1)
-#             except FileExistsError:
-#                 localtime = time.asctime(time.localtime(time.time()))
-#                 connected_clients[client_id].remove(project_name)
-#                 with open(r'result\error_log.txt', 'a', encoding='utf-8') as error_log:
-#                     error_log.write(
-#                         f'{localtime} | {project_name} Not Exists , remove from session \n')
 
 
 def tail_logs(filename):

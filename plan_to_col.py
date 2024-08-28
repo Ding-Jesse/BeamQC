@@ -1205,12 +1205,17 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
     plan_result_dict['summary'] = {}
     plan_result_dict['item'] = sorted(list(set_plan))
     plan_result_dict['block item'] = sorted(block_match_list)
+    if len(plan_result_dict["item"]) == 0:
+        error_ratio = 100
+    else:
+        error_ratio = round((len(plan_result_dict["size error"]) + len(plan_result_dict["not found"]) + len(
+            plan_result_dict["block error"]))/len(plan_result_dict["item"]), 2)*100
     plan_result_dict['summary'].update({
         '尺寸錯誤': len(plan_result_dict['size error']),
         '缺少配筋': len(plan_result_dict['not found']),
         '圖塊尺寸錯誤': len(plan_result_dict['block error']),
         '總數': len(plan_result_dict['item']),
-        '錯誤率': f'{round((len(plan_result_dict["size error"]) +len(plan_result_dict["not found"]) +len(plan_result_dict["block error"]))/len(plan_result_dict["item"]), 2)*100} %'
+        '錯誤率': f'{error_ratio} %'
     })
 
     for error_result in col_error_list:
@@ -1223,12 +1228,17 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
             col_result_dict['not found'].append(
                 (floor, name, size, f'在XS-PLAN找不到這根柱子'))
     col_result_dict['item'] = sorted(list(set_col))
+    if len(col_result_dict["item"]) == 0:
+        error_ratio = 100
+    else:
+        error_ratio = round((len(col_result_dict["size error"]) + len(
+            col_result_dict["not found"])) / len(col_result_dict["item"]), 2)*100
     col_result_dict['summary'] = {}
     col_result_dict['summary'].update({
         '尺寸錯誤': len(col_result_dict['size error']),
         '缺少配筋': len(col_result_dict['not found']),
         '總數': len(col_result_dict['item']),
-        '錯誤率': f'{round((len(col_result_dict["size error"]) +len(col_result_dict["not found"])) /len(col_result_dict["item"]), 2)*100} %'
+        '錯誤率': f'{error_ratio} %'
     })
     output_excel_data = {
         'XS-PLAN 統整': [pd.DataFrame(plan_result_dict['summary'], index=[0])],

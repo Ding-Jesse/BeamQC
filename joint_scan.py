@@ -212,6 +212,9 @@ def column_joint_main(output_folder: str,
     floor_list = column_floor_parameter(column_list=column_list,
                                         floor_parameter_xlsx=column_beam_joint_xlsx)  # sort column floor
     # sort up bottom column
+    column_list = [
+        column for column in column_list if column.floor in ['1F', '2F', '3F', '4F']]
+
     sort_floor_column(floor_list=floor_list, column_list=column_list)
     beam_floor_parameter(beam_list=beam_list,
                          floor_parameter_xlsx=column_beam_joint_xlsx)  # sort beam floor
@@ -484,10 +487,6 @@ def get_distance(coor1, coor2, direction: str = ''):
 
 def match_beam_mline(data: dict):
     string_pattern = r"[WB|B|G][\d|\w]'*-*\d*"
-    data = {
-        '2F': data['2F']
-    }
-
     line_rotation = ''
     for floor, items in data.items():
         mline_list: list[MlineObject] = items['mline_list']
@@ -497,7 +496,7 @@ def match_beam_mline(data: dict):
         closet_mline = None
         for coor, beam_name, rotation in beam_name_text_list:
             beam_name: str
-            beam_name = beam_name.strip()
+            beam_name = beam_name.strip().replace('\P', '')
 
             if rotation == 0:
                 line_rotation = 'x'
@@ -858,8 +857,7 @@ if __name__ == "__main__":
                     column_pkl=column_pkl,
                     column_beam_joint_xlsx=column_beam_joint_xlsx,
                     pkl=r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_set.pkl',
-                    output_floor=['3F'],
-                    output_serial=['C68'])
+                    output_floor=['2F', '3F'])
     # match_column_beam_plan(plan_filename=plan_filename,
     #                        layer_config=layer_config)
 

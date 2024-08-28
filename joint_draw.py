@@ -5,6 +5,7 @@ import pythoncom
 from math import sqrt
 from collections import defaultdict
 from logger import setup_custom_logger
+from typing import Literal
 # logging.basicConfig(level=logging.DEBUG,
 #                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 # main_logger = logging.getLogger(__name__)
@@ -283,42 +284,51 @@ def draw_rebar_data(msp_joint_plan, mline_list):
     draw_rebar_data_logger.info("Rebar Data Create Success")
 
 
-def draw_column_data(msp_joint_plan, column_block_list):
+def draw_column_data(msp_joint_plan, column_block_list, DCR_type: Literal['Lee', 'default'] = 'default'):
     from joint_scan import ColumnBlock, UserDefineWarning
     column_block: ColumnBlock
     draw_column_data = main_logger.getChild('draw_column_data')
     summary_dict: dict[str, list] = {}
-    for column_block in column_block_list:
+    draw_column_data.info('draw column data')
+    dcr_str = 'DCR'
+    for count, column_block in enumerate(column_block_list, 1):
         if column_block.column_data:
 
             points = [*column_block.mid]
             for pos, result in column_block.column_data.joint_result.items():
-                ms_column_dcr_text = msp_joint_plan.AddMText(vtFloat(points),
-                                                             10,
-                                                             f"{pos}:DCR={result['DCR']}{split_line}{pos}:Code={result['design_code']}")
+                if DCR_type == 'Lee':
+                    dcr_str = 'lee_DCR'
+                    ms_column_dcr_text = msp_joint_plan.AddMText(vtFloat(points),
+                                                                 10,
+                                                                 f"{pos}:Lee_DCR={result['lee_DCR']}{split_line}{pos}:Code={result['inner_design_code'] if 'inner_design_code' in result else result['design_code']};{result['outer_design_code'] if 'outer_design_code' in result else result['design_code']}")
+                else:
+                    ms_column_dcr_text = msp_joint_plan.AddMText(vtFloat(points),
+                                                                 10,
+                                                                 f"{pos}:DCR={result['DCR']}{split_line}{pos}:Code={result['design_code']}")
                 ms_column_dcr_text.AttachmentPoint = 2
                 ms_column_dcr_text.Height = 8
                 ms_column_dcr_text.StyleName = "myStandard"
                 ms_column_dcr_text.Layer = "ColumnText"
                 ms_column_dcr_text.InsertionPoint = vtFloat(points)
                 points[1] -= 30
-                if result['DCR'] > 1:
+                if result[dcr_str] > 1:
                     column_block.warning.append(
                         UserDefineWarning.ColumnJointShearFail)
                 if column_block.column_data.floor not in summary_dict:
                     summary_dict[column_block.column_data.floor] = []
                 summary_dict[column_block.column_data.floor].append(
-                    result['DCR'])
-
+                    result[dcr_str])
+        if count % 100 == 0:
+            draw_column_data.info(f'{count} / {len(column_block_list)}')
     draw_column_data.info("Column Data Create Success")
     return summary_dict
 
 
 def draw_warning_plan(msp_joint_plan, column_block_list):
-    from joint_scan import ColumnBlock
+    from joint_scan import ColumnBlock, UserDefineWarning
     column_block: ColumnBlock
     for column_block in column_block_list:
-        if column_block.warning:
+        if UserDefineWarning.ColumnJointShearFail in column_block.warning:
             radius = sqrt((column_block.end[0] - column_block.start[0])
                           ** 2 + (column_block.end[1] - column_block.start[1]) ** 2)
             ms_circle = msp_joint_plan.AddCircle(
@@ -412,11 +422,11 @@ def create_joint_plan_view(plan_filename,
                    mline_list=mline_list,
                    layer_config=layer_config)
 
-    draw_rebar_data(msp_joint_plan=msp_joint_plan,
-                    mline_list=mline_list)
+    # draw_rebar_data(msp_joint_plan=msp_joint_plan,
+    #                 mline_list=mline_list)
 
     summary_dict = draw_column_data(msp_joint_plan=msp_joint_plan,
-                                    column_block_list=column_block_list)
+                                    column_block_list=column_block_list, DCR_type='Lee')
 
     change_block_ratio(block_list=block_list, ratio=0.6)
 
