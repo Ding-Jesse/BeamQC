@@ -6,7 +6,7 @@ import multiprocessing
 import os
 import pandas as pd
 from functools import cmp_to_key
-import save_temp_file
+import src.save_temp_file as save_temp_file
 import json
 import sys
 from gzip import READ
@@ -18,7 +18,7 @@ from tkinter import HIDDEN
 from numpy import object_
 from openpyxl import load_workbook
 from collections import Counter
-from logger import setup_custom_logger
+from src.logger import setup_custom_logger
 from utils.algorithm import match_points, for_loop_min_match
 
 weird_to_list = ['-', '~']

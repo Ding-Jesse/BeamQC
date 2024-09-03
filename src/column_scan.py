@@ -1,9 +1,10 @@
 from __future__ import annotations
-from item.column import Column
+
 import pandas as pd
 import numpy as np
 import pprint
-import beam_scan
+import src.beam_scan as beam_scan
+from item.column import Column
 from math import ceil
 from item.floor import read_parameter_df
 from item.rebar import RebarDiameter

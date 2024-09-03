@@ -5,8 +5,10 @@ from collections import Counter
 from numpy import arange, empty
 import pandas as pd
 import numpy as np
+from dataclasses import dataclass
 
 
+@dataclass(eq=True)
 class Floor:
     height: float
     material_list: dict[str, float]
@@ -105,6 +107,8 @@ class Floor:
         self.detail_report = detail_report
 
     def summary_beam(self, beamtype=None):
+        sizes = ['#3', '#4', '#5', '#6',
+                 '#7', '#8', '#10', '#11']
         self.beam_rebar_count = defaultdict(lambda: 0)
         self.concrete_count = defaultdict(lambda: 0)
         self.formwork_count = 0
@@ -118,12 +122,14 @@ class Floor:
         for b in beam_list:
             plan_count += b.plan_count
             for size, count in b.rebar_count.items():
-                self.beam_rebar_count[size] += (round(
-                    count/1000/1000, 2) * b.plan_count)
+                if size in sizes:
+                    self.beam_rebar_count[size] += (round(
+                        count/1000/1000, 2) * b.plan_count)
 
             for size, count in b.tie_count.items():
-                self.beam_rebar_count[size] += (round(
-                    count/1000/1000, 2) * b.plan_count)
+                if size in sizes:
+                    self.beam_rebar_count[size] += (round(
+                        count/1000/1000, 2) * b.plan_count)
 
             detail_report.append(
                 f'{b.floor} {b.serial} 平面圖個數:{b.plan_count}: {b.detail_report}')
@@ -141,7 +147,7 @@ def read_parameter_df(read_file, sheet_name, header_list=[0]):
         read_file, sheet_name=sheet_name, header=header_list)
 
 
-def summary_floor_rebar(floor_list: list[Floor], item_type='', beam_type=None):
+def summary_floor_rebar(floor_list: list[Floor], item_type='', beam_type=None, measure_type='cm'):
     df = pd.DataFrame(columns=['#3', '#4', '#5', '#6',
                       '#7', '#8', '#10', '#11'], index=[])
     concrete_df = pd.DataFrame(columns=[], index=[])
@@ -149,7 +155,8 @@ def summary_floor_rebar(floor_list: list[Floor], item_type='', beam_type=None):
     formwork_df = pd.DataFrame(columns=[], index=[])
     if item_type == 'column':
         for floor in floor_list:
-            list(map(lambda c: c.calculate_rebar(), floor.column_list))
+            list(map(lambda c: c.calculate_rebar(
+                measure_type=measure_type), floor.column_list))
             floor.summary_rebar()
             new_row = pd.DataFrame(floor.rebar_count, index=[floor.floor_name])
             new_row_concrete = pd.DataFrame(

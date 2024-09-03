@@ -4,7 +4,7 @@ import pythoncom
 import win32com.client
 import re
 import os
-import save_temp_file
+import src.save_temp_file as save_temp_file
 import pandas as pd
 import numpy as np
 import copy
@@ -20,7 +20,7 @@ from item.floor import Floor, read_parameter_df, summary_floor_rebar, summary_fl
 from item.rebar import readRebarExcel
 from item.pdf import create_scan_pdf
 from utils.demand import calculate_column_beam_joint_shear
-from logger import setup_custom_logger
+from src.logger import setup_custom_logger
 slash_pattern = r'(.+)[~|-](.+)'  # ~
 commom_pattern = r'(,)|(、)'
 multi = True
@@ -55,7 +55,7 @@ def read_column_cad(column_filename):
 
     # Step 2. 匯入檔案
     flag = 0
-    while not flag and error_count <= 10:
+    while not flag and error_count <= 30:
         try:
             doc_column = wincad_column.Documents.Open(column_filename)
             flag = 1
@@ -63,11 +63,11 @@ def read_column_cad(column_filename):
             error_count += 1
             time.sleep(5)
             error(
-                f'read_column error in step 2: {e}, error_count = {error_count}.')
+                f' {os.path.basename(column_filename)} read_column error in step 2: {e}, error_count = {error_count}.')
 
     # Step 3. 匯入modelspace
     flag = 0
-    while not flag and error_count <= 10:
+    while not flag and error_count <= 30:
         try:
             msp_column = doc_column.Modelspace
             flag = 1
@@ -78,7 +78,7 @@ def read_column_cad(column_filename):
                 f'read_column error in step 3: {e}, error_count = {error_count}.')
 
     # 在這之後就沒有while迴圈了，所以錯超過10次就出去
-    if error_count > 10:
+    if error_count > 30:
         try:
             doc_column.Close(SaveChanges=False)
         except:
@@ -102,29 +102,27 @@ def read_column_cad(column_filename):
     # progress('柱配筋圖讀取進度 4/10', progress_file)
 
     # Step 5. 遍歷所有物件 -> 炸圖塊
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         count = 0
-    #         total = msp_col.Count
-    #         # layer_list = [text_layer, line_layer]
-    #         for object in msp_col:
-    #             count += 1
-    #             if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:
-    #                 object.Explode()
-    #             if object.Layer not in layer_list:
-    #                 object.Delete()
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
+    # if burst_layer_list:
+    #     print('burst')
+    #     flag = 0
+    #     while not flag and error_count <= 10:
     #         try:
-    #             msp_col = doc_column.Modelspace
-    #         except:
-    #             pass
-    #         error(f'read_col error in step 5: {e}, error_count = {error_count}.')
-    # progress('柱配筋圖讀取進度 5/10', progress_file)
-
+    #             count = 0
+    #             total = msp_column.Count
+    #             # layer_list = [text_layer, line_layer]
+    #             for object in msp_column:
+    #                 count += 1
+    #                 if object.EntityName == "AcDbBlockReference" and object.Layer in burst_layer_list:
+    #                     object.Explode()
+    #             flag = 1
+    #         except Exception as e:
+    #             error_count += 1
+    #             msp_column = doc_column.Modelspace
+    #             time.sleep(5)
+    #             error(
+    #                 f'read_col error in step 5: {e}, error_count = {error_count}.')
+        # progress('柱配筋圖讀取進度 5/10')
+    progress(f'{column_filename} : Finish')
     # Step 6. 重新匯入modelspace
     # flag = 0
     # while not flag and error_count <= 10:
@@ -151,6 +149,7 @@ def sort_col_cad(msp_column,
     tie_layer = list(layer_config['tie_layer'])
     tie_text_layer = list(layer_config['tie_text_layer'])
     column_rc_layer = list(layer_config['column_rc_layer'])
+    burst_layer_list = list(layer_config['burst_layer_list'])
     coor_to_floor_set = set()  # set(coor, floor)
     coor_to_col_set = set()  # set(coor, col)
     coor_to_size_set = set()  # set(coor, size)
@@ -162,7 +161,7 @@ def sort_col_cad(msp_column,
     coor_to_tie_list = []
     coor_to_section_list = []
     error_count = 0
-    while error_count <= 3:
+    while error_count <= 30:
         try:
             total = msp_column.Count
             break
@@ -171,16 +170,29 @@ def sort_col_cad(msp_column,
     # try:
     progress(
         f'柱配筋圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
-    for count, object in enumerate(msp_column):
-        # check object is successfully loaded
+    for count, msp_object in enumerate(msp_column):
+        object_list = []
         error_count = 0
         if count % 1000 == 0:
             progress(f'柱配筋圖已讀取{count}/{total}個物件')
-        while error_count < 3:
+        while error_count <= 3 and not object_list:
             try:
-                # print(f'{object.Layer}:{object.ObjectName}')
+                object_list = [msp_object]
+                if msp_object.EntityName == "AcDbBlockReference" and msp_object.Layer in burst_layer_list:
+                    if msp_object.GetAttributes():
+                        object_list = list(msp_object.GetAttributes())
+                    else:
+                        object_list = list(msp_object.Explode())
+            except Exception as ex:
+                error_count += 1
+                time.sleep(2)
+                error(
+                    f'read error in step 7: {ex}, error_count = {error_count}.')
+        while error_count <= 3 and object_list:
+            object = object_list.pop()
+            try:
                 if object.Layer in tie_layer:
-                    if object.ObjectName == "AcDbPolyline":
+                    if object.ObjectName == "AcDbPolyline" or object.ObjectName == "AcDb2dPolyline":
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -310,7 +322,7 @@ def sort_col_cad(msp_column,
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                             object.GetBoundingBox()[1][1], 2))
                         coor_to_section_list.append((coor1, coor2))
-                break
+                continue
             except Exception as ex:
                 error(ex)
                 error_count += 1
@@ -345,7 +357,8 @@ def sort_col_cad(msp_column,
                              'coor_to_section_list': coor_to_section_list
                              }, temp_file)
     try:
-        doc_column.Close(SaveChanges=False)
+        pass
+        # doc_column.Close(SaveChanges=False)
     except:
         error('Cant Close Dwg File')
 
@@ -379,12 +392,14 @@ def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):
     new_coor_to_floor_line_list = concat_floor_to_grid(
         coor_to_floor_set=coor_to_floor_set, coor_to_floor_line_list=coor_to_floor_line_list)
     # draw_grid_line(new_coor_to_floor_line_list=new_coor_to_floor_line_list,new_coor_to_col_line_list=new_coor_to_col_line_list,msp_beam=msp_column,doc_beam=doc_column)
-    # output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,new_coor_to_col_line_list=new_coor_to_col_line_list,new_coor_to_floor_line_list=new_coor_to_floor_line_list)
+    output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,
+                                                  new_coor_to_col_line_list=new_coor_to_col_line_list,
+                                                  new_coor_to_floor_line_list=new_coor_to_floor_line_list)
     progress('獲取斷面大小資訊')
-    output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
-                                               new_coor_to_floor_line_list=new_coor_to_floor_line_list,
-                                               coor_to_section_list=coor_to_section_list,
-                                               coor_to_size_set=coor_to_size_set,)
+    # output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
+    #                                            new_coor_to_floor_line_list=new_coor_to_floor_line_list,
+    #                                            coor_to_section_list=coor_to_section_list,
+    #                                            coor_to_size_set=coor_to_size_set,)
     progress('結合柱編號與柱主筋')
     combine_col_rebar(column_list=output_column_list, coor_to_rebar_list=coor_to_rebar_list,
                       coor_to_rebar_text_list=coor_to_rebar_text_list)
@@ -409,10 +424,15 @@ def output_grid_dwg(data, msp_column, doc_column):
                    doc_beam=doc_column)
 
 
-def cal_column_in_plan(column_list: list[Column], plan_filename: str, progress_file: str, plan_layer_config: dict):
+def cal_column_in_plan(column_list: list[Column],
+                       plan_filename: str,
+                       progress_file: str,
+                       plan_layer_config: dict,
+                       plan_pkl: str = ''):
     plan_floor_count = sort_plan_count(plan_filename=plan_filename,
                                        progress_file=progress_file,
-                                       layer_config=plan_layer_config)
+                                       layer_config=plan_layer_config,
+                                       plan_pkl=plan_pkl)
     for column in column_list:
         if column.floor in plan_floor_count:
             if column.serial in plan_floor_count[column.floor]:
@@ -421,13 +441,23 @@ def cal_column_in_plan(column_list: list[Column], plan_filename: str, progress_f
         column.plan_count = 1
 
 
+def modify_column_measure(column_list: list[Column]):
+    for column in column_list:
+        column.x_size /= 10
+        column.y_size /= 10
+        for tie in column.tie:
+            tie.change_spacing(tie.spacing / 10)
+
+
 def create_report(output_column_list: list[Column],
                   floor_parameter_xlsx='',
                   output_folder='',
                   project_name='',
                   progress_file='',
                   plan_filename='',
-                  plan_layer_config=None):
+                  plan_layer_config=None,
+                  measure_type: str = 'cm',
+                  plan_pkl: str = ''):
     excel_filename = (
         f'{output_folder}/'
         f'{project_name}_'
@@ -440,11 +470,12 @@ def create_report(output_column_list: list[Column],
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'柱_report.pdf'
     )
-    if plan_filename:
+    if plan_filename or plan_pkl:
         cal_column_in_plan(column_list=output_column_list,
                            plan_filename=plan_filename,
                            progress_file=progress_file,
-                           plan_layer_config=plan_layer_config)
+                           plan_layer_config=plan_layer_config,
+                           plan_pkl=plan_pkl)
 
     floor_list = floor_parameter(column_list=output_column_list,
                                  floor_parameter_xlsx=floor_parameter_xlsx)
@@ -452,7 +483,7 @@ def create_report(output_column_list: list[Column],
     sort_floor_column(floor_list=floor_list, column_list=output_column_list)
     progress('統計樓層柱鋼筋')
     rebar_df, concrete_df, coupler_df, formwork_df, detail_report = summary_floor_rebar(
-        floor_list=floor_list, item_type='column')
+        floor_list=floor_list, item_type='column', measure_type=measure_type)
     progress('讀取SCAN項目')
     cs_list = create_column_scan()
     progress('柱斷面檢核')
@@ -648,9 +679,7 @@ def _ingrid(size_coor, grid_coor):
 
 def concat_name_to_col_floor(coor_to_size_set: set,
                              new_coor_to_col_line_list: list,
-                             new_coor_to_floor_line_list: list,
-                             coor_to_section_list: list,
-                             progress_file=str):
+                             new_coor_to_floor_line_list: list):
 
     output_column_list: list[Column]
     output_column_list = []
@@ -665,6 +694,8 @@ def concat_name_to_col_floor(coor_to_size_set: set,
             size_coor=coor[0], grid_coor=f[1])]
         if col and floor:
             new_column.set_border(col[0][1], floor[0][1])
+            new_column.set_column_border(
+                col[0][1][0], floor[0][1], border_type="Table")
         if len(col) > 0:
             new_column.serial = col[0][0]
             new_column.multi_column.extend(list(map(lambda c: c[0], col[0:])))
@@ -835,8 +866,8 @@ def output_col_excel(column_list: list[Column], output_folder: str, project_name
                 column_df.at[row, ('次柱主筋', 'Y向支數')
                              ] = c.y_dict[c.total_rebar[1][0].size]
             if c.tie_dict:
-                column_df.at[row, ('柱箍筋', '圍束區')] = c.tie_dict['端部'][1]
-                column_df.at[row, ('柱箍筋', '非圍束區')] = c.tie_dict['中央'][1]
+                column_df.at[row, ('柱箍筋', '圍束區')] = str(c.confine_tie)
+                column_df.at[row, ('柱箍筋', '非圍束區')] = str(c.middle_tie)
                 column_df.at[row, ('柱箍筋', 'X向繫筋')] = c.x_tie
                 column_df.at[row, ('柱箍筋', 'Y向繫筋')] = c.y_tie
         except:
@@ -909,7 +940,8 @@ def count_column_multiprocessing(column_filenames: list[str],
                                  progress_file='',
                                  plan_filename='',
                                  plan_layer_config=None,
-                                 client_id="temp"):
+                                 client_id="temp",
+                                 measure_type="cm"):
     def read_col_multi(column_filename, temp_file):
         msp_column, doc_column = read_column_cad(
             column_filename=column_filename)
@@ -925,7 +957,7 @@ def count_column_multiprocessing(column_filenames: list[str],
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     start = time.time()  # 開始測量執行時間
-    with Pool(processes=10) as p:
+    with Pool() as p:
         jobs = []
         column_list = []
         for i, filename in enumerate(column_filenames):
@@ -942,7 +974,8 @@ def count_column_multiprocessing(column_filenames: list[str],
                                                project_name=project_name,
                                                progress_file=progress_file,
                                                plan_filename=plan_filename,
-                                               plan_layer_config=plan_layer_config)
+                                               plan_layer_config=plan_layer_config,
+                                               measure_type=measure_type)
 
     end = time.time()
     print("執行時間：%f 秒" % (end - start))
@@ -964,18 +997,23 @@ def count_column_multiprocessing(column_filenames: list[str],
 
 
 if __name__ == '__main__':
+    from os import listdir
+    from os.path import isfile, join
+    mypath = r'D:\Desktop\BeamQC\TEST\2024-0829\柱'
+    onlyfiles = [os.path.join(mypath, f) for f in listdir(mypath) if isfile(
+        join(mypath, f)) and os.path.splitext(f)[1] == ".dwg"]
     # sys.argv[1] # XS-COL的路徑
-    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-09-59-XS-COL.dwg'
+    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0829\柱\S503.dwg'
     column_filenames = [
         # sys.argv[1] # XS-COL的路徑
-        r'D:\Desktop\BeamQC\TEST\2023-0831\P2022-09A 中德建設楠梓區15FB4-2023-08-31-11-10-XS-COL.dwg',
+        r'D:\Desktop\BeamQC\TEST\2024-0829\柱\S504.dwg',
         # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-floor.xlsx'
-    output_folder = r'TEST\2024-0822'
-    project_name = '2024-0822 國安'
+    floor_parameter_xlsx = r'TEST\2024-0829\-floor.xlsx'
+    output_folder = r'TEST\2024-0829\柱'
+    project_name = '2024-0829 煙波'
     plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN.dwg'
     plan_layer_config = {
         'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
@@ -1017,49 +1055,90 @@ if __name__ == '__main__':
     #     'column_rc_layer': ['柱斷面線']  # 斷面圖層
     # }
     # Elements
+    # layer_config = {
+    #     'text_layer': ['S-TEXT'],
+    #     'line_layer': ['S-TABLE'],
+    #     'rebar_text_layer': ['S-TEXT'],  # 箭頭和鋼筋文字的塗層
+    #     'rebar_layer': ['S-REINFD'],  # 鋼筋和箍筋的線的塗層
+    #     'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
+    #     'tie_layer': ['S-REINF'],  # 箍筋文字圖層
+    #     'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
+    #     'column_rc_layer': ['S-RC']  # 斷面圖層
+    # }
+    # JJP
     layer_config = {
-        'text_layer': ['S-TEXT'],
-        'line_layer': ['S-TABLE'],
-        'rebar_text_layer': ['S-TEXT'],  # 箭頭和鋼筋文字的塗層
-        'rebar_layer': ['S-REINFD'],  # 鋼筋和箍筋的線的塗層
-        'tie_text_layer': ['S-TEXT'],  # 箍筋文字圖層
-        'tie_layer': ['S-REINF'],  # 箍筋文字圖層
-        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],  # 框框的圖層
-        'column_rc_layer': ['S-RC']  # 斷面圖層
+        'text_layer': ['TITLE', 'BARNOTE'],
+        'line_layer': ['TABLE'],
+        'rebar_text_layer': ['BARNOTE'],  # 箭頭和鋼筋文字的塗層
+        'rebar_layer': ['BARA'],  # 鋼筋和箍筋的線的塗層
+        'tie_text_layer': ['BARNOTE'],  # 箍筋文字圖層
+        'tie_layer': ['BARS'],  # 箍筋文字圖層
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS', 'XREF'],  # 框框的圖層
+        'column_rc_layer': ['OLINE'],  # 斷面圖層
+        'burst_layer_list': ['XREF']
     }
     main_logger = setup_custom_logger(__name__, client_id=project_name)
     msp_column = None
     doc_column = None
-    # msp_column, doc_column = read_column_cad(col_filename)
+    all_column_list = []
+    # for i, filename in enumerate(onlyfiles):
+    #     try:
+    #         print(f'run {filename}')
 
-    # sort_col_cad(msp_column=msp_column,
-    #              doc_column=doc_column,
-    #              layer_config=layer_config,
-    #              temp_file=r'D:\Desktop\BeamQC\TEST\2024-0822\column.pkl',
-    #              progress_file=r'result\tmp')
+    #         tmp_file = f'{output_folder}/0830-column-data-{i}.pkl'
+
+    #         if not os.path.exists(tmp_file):
+    #             msp_column, doc_column = read_column_cad(filename)
+    #             sort_col_cad(msp_column=msp_column,
+    #                          doc_column=doc_column,
+    #                          layer_config=layer_config,
+    #                          temp_file=tmp_file,
+    #                          progress_file=r'result\tmp')
+
+    #         column_list = cal_column_rebar(data=save_temp_file.read_temp(tmp_file),
+    #                                        rebar_excel_path=floor_parameter_xlsx,
+    #                                        progress_file=r'result\tmp')
+
+    #         all_column_list.extend(column_list)
+
+    #     except Exception:
+    #         print(f'{filename} error')
+    #         save_temp_file.save_pkl(
+    #             all_column_list, f'{output_folder}/column_list-temp-{i}.pkl')
+
+    # save_temp_file.save_pkl(
+    #     all_column_list, f'{output_folder}/column_list-all.pkl')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl'),
     #                 msp_column=msp_column,
     #                 doc_column=doc_column)
     # print(save_temp_file.read_temp(
     #     r'D:\Desktop\BeamQC\TEST\INPUT\test-2023-02-15-15-41-temp-0.pkl'))
-    column_list = cal_column_rebar(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0822\column.pkl'),
-                                   rebar_excel_path=floor_parameter_xlsx,
-                                   progress_file=r'result\tmp')
-    # column_list = save_temp_file.read_temp(
-    #     r'D:\Desktop\BeamQC\TEST\2024-0822\column_list-2.pkl')
-    save_temp_file.save_pkl(
-        column_list, r'D:\Desktop\BeamQC\TEST\2024-0822\column_list-2.pkl')
-    create_report(output_column_list=column_list,
+    # temp = []
+    # for i in range(0, 12):
+    #     column_list = cal_column_rebar(data=save_temp_file.read_temp(f'D:/Desktop/BeamQC/TEST/2024-0829/柱/column-data-{i}.pkl'),
+    #                                    rebar_excel_path=floor_parameter_xlsx,
+    #                                    progress_file=r'result\tmp')
+    #     temp.extend(column_list)
+
+    all_column_list = save_temp_file.read_temp(
+        f'{output_folder}/column_list-all.pkl')
+    # save_temp_file.save_pkl(
+    #     temp, r'D:\Desktop\BeamQC\TEST\2024-0829\柱\column_list-2.pkl')
+
+    create_report(output_column_list=all_column_list,
                   output_folder=output_folder,
                   project_name=project_name,
                   floor_parameter_xlsx=floor_parameter_xlsx,
                   progress_file=r'result\tmp',
-                  plan_filename=r'',
-                  plan_layer_config=plan_layer_config)
-    # count_column_multiprocessing(column_filenames=column_filenames,
+                  plan_pkl=r'TEST\2024-0829\平面圖\TEST-2024-08-30-08-53-ALL_plan_count_set.pkl',
+                  plan_layer_config=plan_layer_config,
+                  measure_type='mm')
+
+    # count_column_multiprocessing(column_filenames=onlyfiles,
     #                              layer_config=layer_config,
-    #                              temp_file='temp_0626_COL_Wuku.pkl',
+    #                              temp_file=r'TEST\2024-0829\柱\column-data.pkl',
     #                              output_folder=output_folder,
     #                              project_name=project_name,
-    #                              floor_parameter_xlsx=floor_parameter_xlsx)
+    #                              floor_parameter_xlsx=floor_parameter_xlsx,
+    #                              measure_type='mm')

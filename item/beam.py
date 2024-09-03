@@ -8,16 +8,19 @@ from item.rebar import RebarInfo, RebarArea, RebarFy, RebarDiameter
 from item import floor
 from item.point import Point
 from enum import Enum
+from dataclasses import dataclass, field
 commom_pattern = r'(,)|(、)'
 stash_pattern = r'(\w+)[-|~](\w+)'
 
 
+@dataclass(eq=True)
 class Rebar:
-    arrow_coor: Tuple[Tuple[float, float], Tuple[float, float]]
-    start_pt = Point
-    end_pt = Point
+    arrow_coor: Tuple[Tuple[float, float],
+                      Tuple[float, float]] = field(default_factory=Tuple)
+    start_pt: Point = None
+    end_pt: Point = None
     length = 0
-    text: str
+    text: str = ''
     number = 0
     size = ''
     fy = 0
@@ -70,8 +73,9 @@ class BeamType(Enum):
     Other = 'other'
 
 
+@dataclass(eq=True)
 class Tie:
-    # start_pt=Point
+    start_pt = None
     count = 0
     tie_num = 0
     size = ''
@@ -102,21 +106,25 @@ class Tie:
         # self.spacing = float()
 
 
+@dataclass(eq=True)
 class Beam():
 
-    middle_tie: list[Rebar]
-    rebar_list: list[Rebar]
-    rebar_add_list: list[Rebar]  # line with no arrow
-    rebar_bend_list: list[Rebar]
-    tie_list: list[Tie]
-    rebar: dict[str, list[Rebar]]
-    rebar_table: dict[str, dict[str, list[Rebar]]]
-    tie: dict[str, Tie]
-    rebar_count: dict[str, float]
-    tie_count: dict[str, float]
-    floor_object: floor.Floor
-    multi_floor: list[str]
-    rebar_ratio: dict[Tuple[RebarType, RebarType], float]
+    middle_tie: list[Rebar] = field(default_factory=list)
+    rebar_list: list[Rebar] = field(default_factory=list)
+    rebar_add_list: list[Rebar] = field(
+        default_factory=list)  # line with no arrow
+    rebar_bend_list: list[Rebar] = field(default_factory=list)
+    tie_list: list[Tie] = field(default_factory=list)
+    rebar: dict[str, list[Rebar]] = field(default_factory=dict)
+    rebar_table: dict[str, dict[str, list[Rebar]]
+                      ] = field(default_factory=dict)
+    tie: dict[str, Tie] = field(default_factory=dict)
+    rebar_count: dict[str, float] = field(default_factory=dict)
+    tie_count: dict[str, float] = field(default_factory=dict)
+    floor_object: floor.Floor = None
+    multi_floor: list[str] = field(default_factory=list)
+    rebar_ratio: dict[Tuple[RebarType, RebarType],
+                      float] = field(default_factory=dict)
     serial = ''
     floor = ''
     depth = 0
@@ -127,12 +135,12 @@ class Beam():
     concrete = 0
     formwork = 0
     fc = 0
-    start_pt: Point
-    end_pt: Point
-    beam_type: BeamType
-    ng_message: list[str]
-    protect_layer: int
-    plan_count: int
+    start_pt: Point = None
+    end_pt: Point = None
+    beam_type: BeamType = None
+    ng_message: list[str] = field(default_factory=list)
+    protect_layer = 0
+    plan_count = 0
     # coor = Point
     # bounding_box = (Point,Point)
 
@@ -223,9 +231,9 @@ class Beam():
     def get_coor(self):
         return (self.coor.x, self.coor.y)
 
-    def get_beam_info(self, floor_list: list[str]):
+    def get_beam_info(self, floor_list: list[str], measure_type='cm'):
         floor_serial_spacing_char = ' '
-
+        self.measure_type = measure_type
         # def _get_floor_list(floor1: float, floor2: float):
         #     if floor1 >= floor2:
         #         l = list(range(int(floor1), int(floor2), -1))
@@ -236,9 +244,12 @@ class Beam():
         #         l.append(floor2)
         #         return l
         # get beam floor
-        if self.serial.count(floor_serial_spacing_char) <= 0:
+        if self.serial.count(floor_serial_spacing_char) <= 1:
             # temp = self.serial.split(floor_serial_spacing_char)[0]
-            temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))', self.serial)
+            # temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))', self.serial)
+            # temp_matchobj = re.search(r'(.*)/([G|B|FB].*)', self.serial)
+            # 1 EB2(700x900)
+            temp_matchobj = re.search(r'(.*) ([G|B|E].*)', self.serial)
             if temp_matchobj:
                 self.floor = temp_matchobj.group(1)
                 self.serial = temp_matchobj.group(2)
@@ -286,6 +297,8 @@ class Beam():
                     self.floor = self.multi_floor[0]
             except:
                 pass
+        if self.floor == '':
+            return
         if self.floor[-1] != 'F':
             self.floor += 'F'
 
@@ -300,6 +313,9 @@ class Beam():
         try:
             self.depth = int(matches[0].split(split_char)[1])
             self.width = int(matches[0].split(split_char)[0])
+            if measure_type == 'mm':
+                self.depth /= 10
+                self.width /= 10
         except:
             self.depth = 0
             self.width = 0
@@ -327,7 +343,12 @@ class Beam():
         return self.floor_object.loading['SDL'] * 0.1 * band_width + self.floor_object.loading['LL'] * 0.1 * band_width + self.width * self.depth * 2.4 / 1000
 
     def sort_beam_rebar(self):
+        factor = 1
+        if self.measure_type == 'mm':
+            factor = 10
+
         def check_rebar_dim(pos_list: list[Rebar], rebar: Rebar):
+
             if len(pos_list) > 0:
                 prev_rebar = pos_list[-1]
             else:
@@ -336,11 +357,12 @@ class Beam():
                 if rebar.start_pt.x != prev_rebar.end_pt.x:
                     prev_rebar.end_pt.x = rebar.start_pt.x
                     prev_rebar.length = abs(
-                        prev_rebar.start_pt.x - prev_rebar.end_pt.x)
+                        prev_rebar.start_pt.x - prev_rebar.end_pt.x) / factor
             elif not rebar.dim and prev_rebar.dim:
                 if rebar.start_pt.x != prev_rebar.end_pt.x:
                     rebar.start_pt.x = prev_rebar.end_pt.x
-                    rebar.length = abs(rebar.start_pt.x - rebar.end_pt.x)
+                    rebar.length = abs(rebar.start_pt.x -
+                                       rebar.end_pt.x) / factor
             return
 
         min_diff = 30
@@ -370,7 +392,7 @@ class Beam():
         # if self.start_pt.x - self.bounding_box[0].x > min_diff and self.rebar_add_list:
         #     if min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x < self.start_pt.x :
         #         self.start_pt.x = min(self.rebar_add_list,key=lambda rebar:abs(rebar.start_pt.x - self.bounding_box[0].x)).start_pt.x
-        self.length = abs(self.start_pt.x - self.end_pt.x)
+        self.length = abs(self.start_pt.x - self.end_pt.x) / factor
         self.rebar_list.sort(key=lambda rebar: (
             round(rebar.arrow_coor[0][1]), round(rebar.arrow_coor[0][0])))
 
@@ -379,7 +401,7 @@ class Beam():
         for rebar in self.rebar_list:
             if rebar.end_pt.x > self.end_pt.x:
                 rebar.end_pt.x = self.end_pt.x
-                rebar.length -= abs(rebar.end_pt.x - self.end_pt.x)
+                rebar.length -= abs(rebar.end_pt.x - self.end_pt.x) / factor
             if bot_y == rebar.start_pt.y:
                 check_rebar_dim(self.rebar['bot_first'], rebar=rebar)
                 self.rebar['bot_first'].append(rebar)

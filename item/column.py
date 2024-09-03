@@ -95,8 +95,11 @@ class Column:
         # self.grid_coor.extend([left_bot,left_top,right_top,right_bot])
         pass
 
-    def set_column_border(self, coor1, coor2):
+    def set_column_border(self, coor1, coor2, border_type=None):
         self.column_border = {}
+        if border_type == 'Table':
+            self.column_border = self.grid_coor
+            return
         left_bot = Point((coor1[0], coor1[1]))
         left_top = Point((coor1[0], coor2[1]))
         right_top = Point((coor2[0], coor2[1]))
@@ -212,12 +215,12 @@ class Column:
                 joint_text = min(
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'接頭': joint_text})
-            if '端部' in tie_text or '圍束' in tie_text or 'COF' in tie_text:
+            if '端部' in tie_text or ('圍束' in tie_text and '非' not in tie_text) or 'COF' in tie_text:
                 confine_text = min(
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'端部': confine_text})
                 self.confine_tie = Tie(self.tie_dict['端部'][1], 0)
-            if '一般' in tie_text or '中央' in tie_text or 'TIE' in tie_text:
+            if '一般' in tie_text or '中央' in tie_text or 'TIE' in tie_text or '非圍束' in tie_text:
                 middle_text = min(
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'中央': middle_text})
@@ -335,12 +338,25 @@ class Column:
             self.report_detail.append(
                 f'箍筋:{str(tie)}= {tie.number:.2f} * {RebarInfo(tie.size):.2f} * {((self.x_tie + 2) * (self.x_size - 8) + (self.y_tie + 2) * (self.y_size - 8)) }')
 
-    def calculate_rebar(self):
+    def calculate_rebar(self, measure_type):
         # print(f'calculate map {self.floor} {self.serial}')
         self.cal_rebar()
         self.cal_tie()
+        self.change_measure_type(measure_type)
         self.cal_material()
         self.summary_count()
+
+    def change_measure_type(self, measure_type='cm'):
+        if measure_type == 'mm':
+            self.x_size /= 10
+            self.y_size /= 10
+            # for tie in self.tie:
+            #     if tie.spacing >= 100:
+            #         tie.change_spacing(tie.spacing / 10)
+            # if self.confine_tie.spacing >= 100:
+            #     self.confine_tie.change_spacing(self.confine_tie.spacing / 10)
+            # if self.middle_tie.spacing >= 100:
+            #     self.middle_tie.change_spacing(self.middle_tie.spacing / 10)
 
     def create_rebar_table():
         pass
@@ -391,10 +407,13 @@ class Tie:
             self.number = length//self.spacing
             self.Ash = RebarArea(self.size)
             self.fy = RebarFy(self.size)
+            if self.spacing >= 100:
+                self.change_spacing(self.spacing / 10)
 
     def change_spacing(self, new_spacing: float):
         self.spacing = new_spacing
         self.number = self.length//self.spacing
+        self.text = f'{self.size}@{new_spacing}'
 
     def __str__(self) -> str:
         return self.text

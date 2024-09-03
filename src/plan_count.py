@@ -4,9 +4,9 @@ import os
 import time
 import pythoncom
 import win32com.client
-import save_temp_file
+import src.save_temp_file as save_temp_file
 import re
-from plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, progress
+from src.plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, progress
 from collections import Counter
 
 layer_config: dict[Literal['block_layer',
@@ -220,12 +220,14 @@ def sort_plan_count(plan_filename,
                     layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str],
                     plan_pkl='') -> dict[str, Counter]:
     if plan_pkl == '':
+        print('run by plan dwg')
         cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
         save_temp_file.save_pkl(
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_count_set.pkl')
     else:
+        print('run by plan pkl')
         cad_result = save_temp_file.read_temp(
-            tmp_file=r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_count_set.pkl')
+            tmp_file=plan_pkl)
     result = sort_name_text(cad_result)
     sort_result = sort_floor_text(data=result)
     return sort_result

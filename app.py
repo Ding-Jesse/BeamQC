@@ -1,22 +1,22 @@
-from multiprocessing import allow_connection_pickling
 import functools
 import json
-import time
 import os
 import sys
-import uuid
-import logging
-import queue
+import time
 import traceback
-from flask import Flask, request, redirect, url_for, render_template, send_from_directory, session, Response, jsonify, stream_with_context
-from flask_mail import Mail, Message
-from flask_session import Session
-from main import main_functionV3, main_col_function, storefile, Upload_Error_log
-from auth import sendPhoneMessage
-from beam_count import count_beam_multiprocessing
-from column_count import count_column_multiprocessing
-from joint_scan import joint_scan_main
+import uuid
 
+from flask import (Flask, Response, redirect, render_template, request,
+                   send_from_directory, session, stream_with_context, url_for)
+from flask_mail import Mail, Message
+
+from auth import sendPhoneMessage
+from flask_session import Session
+from src.beam_count import count_beam_multiprocessing
+from src.column_count import count_column_multiprocessing
+from src.joint_scan import joint_scan_main
+from src.main import (Upload_Error_log, main_col_function, main_functionV3,
+                      storefile)
 
 app = Flask(__name__)
 app.config.from_object('config.config.Config')
@@ -101,7 +101,6 @@ def tool1():
 
 
 def send_error_response(warning_message: str):
-    print(warning_message)
     response = Response()
     response.status_code = 200
     response.data = json.dumps({'validate': f'{warning_message}'})
@@ -530,6 +529,8 @@ def count_beam():
                 connected_clients[client_id] = []
             connected_clients[client_id].append(project_name)
         # rebar_input_file = os.path.join(app.config['OUTPUT_FOLDER'],rebar_file)
+        response = Response()
+
         if len(uploaded_beams) == 0:
             response.status_code = 404
             response.data = json.dumps({'validate': '未上傳檔案'})
