@@ -263,7 +263,9 @@ def upload_file():
                 error_detail.update({entry.filename: {
                     "Line": entry.lineno,
                     "Function": entry.name,
-                    "Code Context": entry.line
+                    "Code Context": entry.line,
+                    "Error Type": exc_type,
+                    "Value": exc_value
                 }})
             error_detail.update({
                 'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
@@ -538,17 +540,25 @@ def count_beam():
             return response
         print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
         for uploaded_beam in uploaded_beams:
-            beam_ok, beam_new_file, input_beam_file = storefile(
-                uploaded_beam, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            beam_ok, \
+                beam_new_file, \
+                input_beam_file = storefile(uploaded_beam,
+                                            app.config['UPLOAD_FOLDER'],
+                                            app.config['OUTPUT_FOLDER'],
+                                            f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             # beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_beam.filename)}')
             beam_filename = input_beam_file
             beam_filenames.append(beam_filename)
-            temp_file = os.path.join(
-                app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
+            temp_file = os.path.join(app.config['UPLOAD_FOLDER'],
+                                     f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
             # print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
-            xlsx_ok, xlsx_new_file, input_xlsx_file = storefile(
-                uploaded_xlsx, app.config['UPLOAD_FOLDER'], app.config['OUTPUT_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            xlsx_ok, \
+                xlsx_new_file, \
+                input_xlsx_file = storefile(uploaded_xlsx,
+                                            app.config['UPLOAD_FOLDER'],
+                                            app.config['OUTPUT_FOLDER'],
+                                            f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
             xlsx_filename = input_xlsx_file
         if uploaded_plans:

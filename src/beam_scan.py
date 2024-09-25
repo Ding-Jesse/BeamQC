@@ -54,25 +54,21 @@ def output_ng_ratio(df: pd.DataFrame):
     df = df.loc[:, ~df.columns.duplicated()]
     for column in df:
         ng_item = list(df.loc[df[column] == "NG."].index)
+
+        # Remove no ng item
+        if len(ng_item) == 0:
+            continue
+
         serial = column.split(":")
+
         temp_df = pd.DataFrame(data={'樓層': serial[0], '編號': serial[1], 'NG項目': '\n'.join(
             ng_item), 'NG率(NG項目/總檢核項目)': f'{len(ng_item)}/{len(df.index)}'}, index=[0])
+
         ng_df = pd.concat([ng_df, temp_df],
                           verify_integrity=True, ignore_index=True)
-    #     count_df = df[column].value_counts()
-    #     if "NG." in count_df.index:
-    #         df[column].loc['Total_NG'] = count_df.loc["NG."]
-    #     else:
-    #         df[column].loc['Total_NG'] = 0
-    #     if "OK" in count_df.index:
-    #         df[column].loc['Total_Ok'] = count_df.loc["OK"]
-    #     else:
-    #         df[column].loc['Total_Ok'] = 0
-    # new_df = df.apply(lambda s: s.value_counts(),axis=1).fillna(0)
-    # new_df = df.apply(pd.value_counts).fillna(0).astype(int)
+
     sum_df = df.apply(pd.Series.value_counts, axis=1).fillna(0).astype(int)
-    # print(new_df)
-    # print(ng_df)
+
     return ng_df, sum_df
 
 
@@ -150,9 +146,9 @@ def set_check_scan(beam_scan: BeamScan):
         clear_depth = (
             b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < clear_depth * 4 and b.middle_tie:
-            if 0.0015 * b.width * clear_depth > b.middle_tie[0].As*2:
+            if 0.0025 * b.width * clear_depth > b.middle_tie[0].As*2:
                 b.ng_message.append(
-                    f'0102:0.0015 * {b.width} * {clear_depth} > 2 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} > {round(b.middle_tie[0].As*2)}')
+                    f'0102:0.0025 * {b.width} * {clear_depth} > 2 * {round(b.middle_tie[0].As,2)} => {round(0.0025 * b.width * clear_depth,2)} > {round(b.middle_tie[0].As*2)}')
                 return fail_syntax
         return pass_syntax
 
@@ -160,9 +156,9 @@ def set_check_scan(beam_scan: BeamScan):
         clear_depth = (
             b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < clear_depth * 4 and b.middle_tie:
-            if 0.0015 * b.width * clear_depth * 1.5 < b.middle_tie[0].As:
+            if 0.0025 * b.width * clear_depth * 1.5 < b.middle_tie[0].As:
                 b.ng_message.append(
-                    f'0103:0.0015 *{b.width} * {clear_depth} < 1.5 * {round(b.middle_tie[0].As,2)} => {round(0.0015 * b.width * clear_depth,2)} < {round(1.5*b.middle_tie[0].As,2)}')
+                    f'0103:0.0025 *{b.width} * {clear_depth} < 1.5 * {round(b.middle_tie[0].As,2)} => {round(0.0025 * b.width * clear_depth,2)} < {round(1.5*b.middle_tie[0].As,2)}')
                 return fail_syntax
         return pass_syntax
 
@@ -417,7 +413,7 @@ def set_check_scan(beam_scan: BeamScan):
             rebar_type1=RebarType.Top, rebar_type2=RebarType.Left)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(
-                f'0212:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
+                f'0212:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer)):.3f} < max({code15_4_2} , {code15_4_2_1})')
             return fail_syntax
         return pass_syntax
 
@@ -430,7 +426,7 @@ def set_check_scan(beam_scan: BeamScan):
             rebar_type1=RebarType.Top, rebar_type2=RebarType.Middle)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(
-                f'0213:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
+                f'0213:鋼筋As:{rebar_As}/梁面積:{(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer)):.3f} < max({code15_4_2} , {code15_4_2_1})')
             return fail_syntax
         return pass_syntax
 
@@ -443,7 +439,7 @@ def set_check_scan(beam_scan: BeamScan):
             rebar_type1=RebarType.Top, rebar_type2=RebarType.Left)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(
-                f'0214:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
+                f'0214:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer)):.3f} < max({code15_4_2} , {code15_4_2_1})')
             return fail_syntax
         return pass_syntax
 
@@ -456,7 +452,7 @@ def set_check_scan(beam_scan: BeamScan):
             rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Left)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(
-                f'0215:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2:{code15_4_2} , code15_4_2_1{code15_4_2_1})')
+                f'0215:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer)):.3f} < max({code15_4_2} , {code15_4_2_1})')
             return fail_syntax
         return pass_syntax
 
@@ -469,7 +465,7 @@ def set_check_scan(beam_scan: BeamScan):
             rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Middle)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(
-                f'0216:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2={code15_4_2} , code15_4_2_1{code15_4_2_1})')
+                f'0216:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer)):.3f} < max({code15_4_2} , {code15_4_2_1})')
             return fail_syntax
         return pass_syntax
 
@@ -482,7 +478,7 @@ def set_check_scan(beam_scan: BeamScan):
             rebar_type1=RebarType.Bottom, rebar_type2=RebarType.Right)
         if rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2 or rebar_As/(b.width * (b.depth - protect_layer)) > code15_4_2_1:
             b.ng_message.append(
-                f'0217:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer))} < max(code15_4_2={code15_4_2} , code15_4_2_1{code15_4_2_1})')
+                f'0217:鋼筋As={rebar_As}/梁面積={(b.width * (b.depth - protect_layer))} = {rebar_As/(b.width * (b.depth - protect_layer)):.3f} < max({code15_4_2} , {code15_4_2_1})')
             return fail_syntax
         return pass_syntax
 
@@ -543,7 +539,7 @@ def set_check_scan(beam_scan: BeamScan):
 
     def index_0222(b: Beam):
         if b.length < b.depth * 4 and b.middle_tie:
-            if 0.0015 * b.width * 1.5 < b.middle_tie[0].As:
+            if 0.0025 * b.width * 1.5 < b.middle_tie[0].As:
                 return fail_syntax
         return pass_syntax
 

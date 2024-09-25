@@ -6,6 +6,7 @@ import pythoncom
 import win32com.client
 import src.save_temp_file as save_temp_file
 import re
+import copy
 from src.plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, error, progress
 from collections import Counter
 
@@ -186,11 +187,13 @@ def sort_floor_text(data: dict[str, Counter]):
                 if new_floor in sort_dict:
                     if isinstance(data[origin], Counter):
                         sort_dict[new_floor] += data[origin]
-                    if isinstance(data[origin], dict):
+                    # A Counter is a dict subclass for counting hashable objects
+                    elif isinstance(data[origin], dict):
                         for key, item in data[origin].items():
+
                             sort_dict[new_floor][key].extend(item)
                 else:
-                    sort_dict.update({new_floor: data[origin]})
+                    sort_dict.update({new_floor: copy.deepcopy(data[origin])})
         else:
             sort_dict.update({re.sub(r'\(|\)', '', floor): data[origin]})
     return sort_dict
@@ -234,18 +237,18 @@ def sort_plan_count(plan_filename,
 
 
 if __name__ == "__main__":
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2023-1013\華泰電子_S1結構平面圖_1120829.dwg'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0830\平面圖\ALL.dwg'
     progress_file = './result/tmp'
     layer_config = {
-        'block_layer': ['AREA'],
-        'name_text_layer': ['BTXT', 'CTXT', 'BTXT_S_'],
-        'floor_text_layer': ['TEXT1']
+        'block_layer': ['DEFPOINTS'],
+        'name_text_layer': ['Y-G-Text', 'X-G-Text', 'Y-B-Text', 'X-B-Text'],
+        'floor_text_layer': ['S-TITLE']
     }
     # cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
     # save_temp_file.save_pkl(
-    #     data=cad_result, tmp_file=r'D:\Desktop\BeamQC\TEST\2023-1013\1013-cal.pkl')
-    data = save_temp_file.read_temp(
-        tmp_file=r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_count_set.pkl')
-    result = sort_name_text(data)
+    #     data=cad_result, tmp_file=r'TEST\2024-0830\平面圖\0904-cad.pkl')
+    cad_result = save_temp_file.read_temp(
+        tmp_file=r'TEST\2024-0830\平面圖\0904-cad.pkl')
+    result = sort_name_text(cad_result)
     result = sort_floor_text(data=result)
     print(result)

@@ -19,15 +19,15 @@ class Rebar:
                       Tuple[float, float]] = field(default_factory=Tuple)
     start_pt: Point = None
     end_pt: Point = None
-    length = 0
+    length: float = 0
     text: str = ''
-    number = 0
-    size = ''
-    fy = 0
-    As = 0
+    number: float = 0
+    size: str = ''
+    fy: float = 0
+    As: float = 0
     arrow_coor: tuple
 
-    def __init__(self, start_pt, end_pt, length, number, size, text, arrow_coor, with_dim, add_up=''):
+    def __init__(self, start_pt, end_pt, length, number, size, text, arrow_coor, with_dim, add_up='', measure_type=''):
         self.start_pt = Point(start_pt)
         self.end_pt = Point(end_pt)
         self.number = int(number)
@@ -40,6 +40,8 @@ class Rebar:
         self.As = RebarArea(self.size) * self.number
         self.fy = RebarFy(self.size)
         self.dim = with_dim
+        if measure_type == 'mm':
+            self.length /= 10
 
     def __str__(self) -> str:
         return self.text
@@ -75,14 +77,14 @@ class BeamType(Enum):
 
 @dataclass(eq=True)
 class Tie:
-    start_pt = None
-    count = 0
-    tie_num = 0
-    size = ''
-    text = 0
-    spacing = 0
-    Ash = 0
-    fy = 0
+    start_pt: Point = None
+    count: float = 0
+    tie_num: float = 0
+    size: str = ''
+    text: str = ''
+    spacing: float = 0
+    Ash: float = 0
+    fy: float = 0
 
     def __init__(self, tie, coor, tie_num, count, size):
         self.start_pt = Point(coor)
@@ -125,22 +127,22 @@ class Beam():
     multi_floor: list[str] = field(default_factory=list)
     rebar_ratio: dict[Tuple[RebarType, RebarType],
                       float] = field(default_factory=dict)
-    serial = ''
-    floor = ''
-    depth = 0
-    width = 0
-    length = 0
+    serial: str = ''
+    floor: str = ''
+    depth: float = 0
+    width: float = 0
+    length: float = 0
     left_column = 0
     right_column = 0
     concrete = 0
     formwork = 0
-    fc = 0
+    fc: float = 0
     start_pt: Point = None
     end_pt: Point = None
     beam_type: BeamType = None
     ng_message: list[str] = field(default_factory=list)
-    protect_layer = 0
-    plan_count = 0
+    protect_layer: float = 0
+    plan_count: float = 0
     # coor = Point
     # bounding_box = (Point,Point)
 
@@ -202,9 +204,11 @@ class Beam():
         self.coor.y = y
         self.fy = 0
         self.fc = 0
+        self.measure_type = 'cm'
         # self.get_beam_info()
 
     def add_rebar(self, **kwargs):
+        kwargs['measure_type'] = self.measure_type
         if 'add_up' in kwargs:
             if kwargs['add_up'] == 'bend':
                 self.rebar_bend_list.append(Rebar(**kwargs))
@@ -231,44 +235,74 @@ class Beam():
     def get_coor(self):
         return (self.coor.x, self.coor.y)
 
-    def get_beam_info(self, floor_list: list[str], measure_type='cm'):
+    def get_beam_info(self, floor_list: list[str], measure_type='cm', name_pattern: dict = {}):
+        '''
+        assign beam name type, seperate floor, name and section type
+        inputs = {
+            'Grider':[],
+            'FB':[],
+            'SB':[]
+        }
+        '''
         floor_serial_spacing_char = ' '
         self.measure_type = measure_type
-        # def _get_floor_list(floor1: float, floor2: float):
-        #     if floor1 >= floor2:
-        #         l = list(range(int(floor1), int(floor2), -1))
-        #         l.append(floor2)
-        #         return l
-        #     else:
-        #         l = list(range(int(floor1), int(floor2), 1))
-        #         l.append(floor2)
-        #         return l
-        # get beam floor
-        if self.serial.count(floor_serial_spacing_char) <= 1:
-            # temp = self.serial.split(floor_serial_spacing_char)[0]
-            # temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))', self.serial)
-            # temp_matchobj = re.search(r'(.*)/([G|B|FB].*)', self.serial)
-            # 1 EB2(700x900)
-            temp_matchobj = re.search(r'(.*) ([G|B|E].*)', self.serial)
-            if temp_matchobj:
-                self.floor = temp_matchobj.group(1)
-                self.serial = temp_matchobj.group(2)
-            else:
-                temp_matchobj = re.search(r'(.*)([G|B].*)', self.serial)
-                if not temp_matchobj:
-                    return
-                self.floor = temp_matchobj.group(1)
-                self.serial = temp_matchobj.group(2)
-                # raise BeamFloorNameError
+        if name_pattern:
+            match_floor = ''
+            match_serial = ''
+            for beam_type, patterns in name_pattern.items():
+                for pattern in patterns:
+                    match_obj = re.search(pattern, self.serial)
+                    if match_obj:
+                        match_floor = match_obj.group(1)
+                        match_floor = re.sub(r'\(|\)', '', match_floor)  # 去除()
+                        match_serial = match_obj.group(2)
+                        match_serial.replace(' ', '')  # 去除編號與尺寸的間隔
+                        break
+                if match_floor != '' and match_serial != '':
+
+                    self.floor = match_floor
+                    self.serial = match_serial
+
+                    if beam_type == 'Grider':
+                        self.beam_type = BeamType.Grider
+                    if beam_type == 'FB':
+                        self.beam_type = BeamType.FB
+                    if beam_type == 'SB':
+                        self.beam_type = BeamType.SB
+                    break
         else:
-            self.floor = self.serial.split(' ')[0]
-            if self.floor == '':
-                raise BeamFloorNameError
-            if "(" in self.floor and ")" in self.floor:
-                temp_matchobj = re.search(r'\((.*)\)', self.floor)
-                self.floor = temp_matchobj.group(1)
-            self.serial = ''.join(self.serial.split(
-                floor_serial_spacing_char)[1:])
+            if self.serial.count(floor_serial_spacing_char) <= 1:
+                # temp = self.serial.split(floor_serial_spacing_char)[0]
+                # temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))', self.serial)
+                # temp_matchobj = re.search(r'(.*)/([G|B|FB].*)', self.serial)
+                # 1 EB2(700x900)
+                temp_matchobj = re.search(r'(.*) ([G|B|E].*)', self.serial)
+                if temp_matchobj:
+                    self.floor = temp_matchobj.group(1)
+                    self.serial = temp_matchobj.group(2)
+                else:
+                    temp_matchobj = re.search(r'(.*)([G|B].*)', self.serial)
+                    if not temp_matchobj:
+                        return
+                    self.floor = temp_matchobj.group(1)
+                    self.serial = temp_matchobj.group(2)
+                    # raise BeamFloorNameError
+            else:
+                self.floor = self.serial.split(' ')[0]
+                if self.floor == '':
+                    raise BeamFloorNameError
+                if "(" in self.floor and ")" in self.floor:
+                    temp_matchobj = re.search(r'\((.*)\)', self.floor)
+                    self.floor = temp_matchobj.group(1)
+                self.serial = ''.join(self.serial.split(
+                    floor_serial_spacing_char)[1:])
+            self.beam_type = BeamType.Other
+            if re.search(r'^[B|G]', self.serial):
+                self.beam_type = BeamType.Grider
+            if re.search(r'^F', self.serial):
+                self.beam_type = BeamType.FB
+            if re.search(r'^b', self.serial):
+                self.beam_type = BeamType.SB
         if re.search(commom_pattern, self.floor):
             sep = re.search(commom_pattern, self.floor).group(0)
             for floor_text in self.floor.split(sep):
@@ -284,10 +318,7 @@ class Beam():
                     second_floor = floors[-1]
                     if second_floor[-1] != 'F':
                         second_floor += 'F'
-                    # if first_floor and second_floor and max(first_floor,second_floor) < 100:
-                    #     for floor_float in _get_floor_list(second_floor,first_floor):
-                    #         self.multi_floor.append(turn_floor_to_string(floor_float))
-                    #     self.floor = self.multi_floor[0]
+
                     first_index = min(floor_list.index(
                         first_floor), floor_list.index(second_floor))
                     second_index = max(floor_list.index(
@@ -330,13 +361,6 @@ class Beam():
                 for serial_text in self.serial.split(sep):
                     self.multi_serial.append(serial_text)
                 self.serial = self.multi_serial[0]
-            self.beam_type = BeamType.Other
-            if re.search(r'^[B|G]', serial):
-                self.beam_type = BeamType.Grider
-            if re.search(r'^F', serial):
-                self.beam_type = BeamType.FB
-            if re.search(r'^b', serial):
-                self.beam_type = BeamType.SB
 
     def get_loading(self, band_width):
         # t/m
@@ -474,7 +498,7 @@ class Beam():
                     self.rebar_count[rebar.size] = rebar.length * \
                         rebar.number * RebarInfo(rebar.size)
                 self.detail_report.append(
-                    f'主筋:{rebar}= {rebar.length:.2f} * {rebar.number} * {RebarInfo(rebar.size):.2f}')
+                    f'主筋:{rebar}= {rebar.length:.2f} (cm) * {rebar.number} * {RebarInfo(rebar.size):.2f} (kg)')
         for rebar in self.middle_tie:
             matchObj = re.search(r'[#|D]\d+', rebar.text)
             if matchObj:
@@ -488,7 +512,7 @@ class Beam():
                     self.rebar_count[size] += rebar.length * \
                         rebar.number * RebarInfo(size)
                 self.detail_report.append(
-                    f'側筋:{rebar}= {rebar.length:.2f} * {rebar.number} * {RebarInfo(rebar.size):.2f} * 2')
+                    f'側筋:{rebar}= {rebar.length:.2f} (cm) * {rebar.number} * {RebarInfo(rebar.size):.2f} (kg) * 2')
                 break  # middle tie rebar number equal to rebar line number, so only count one middle tie
         for tie in self.tie_list:
             if tie.size in self.tie_count:
@@ -500,7 +524,7 @@ class Beam():
                     RebarInfo(tie.size) * (self.depth -
                                            10 + self.width - 10) * 2
             self.detail_report.append(
-                f'箍筋:{tie}= {tie.count} * {(self.depth - 10 + self.width - 10)} * {RebarInfo(tie.size):.2f} * 2')
+                f'箍筋:{tie}= {tie.count} * {(self.depth - 10 + self.width - 10)} (cm) * {RebarInfo(tie.size):.2f} (kg) * 2')
         self.concrete = (self.depth - 15)*self.width * \
             self.length / (100*100*100)
         self.formwork = (self.width + (self.depth - 15)*2) * \

@@ -15,3 +15,8 @@ class Point:
         elif isinstance(pt, tuple):
             self.x = pt[0]
             self.y = pt[1]
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, Point):
+            return False
+        return self.x == value.x and self.y == value.y

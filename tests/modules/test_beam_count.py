@@ -96,6 +96,9 @@ def test_add_beam_to_list(all_test_data):
         inputs = case['inputs']
         expect_outputs = case['outputs']
         inputs['class_beam_list'] = []
+        inputs['name_pattern'] = {
+            'Grider': [r'(.*)/([G|B|FB].*)']
+        }
         add_beam_to_list(**inputs)
 
         for key, item in expect_outputs.items():
@@ -180,4 +183,4 @@ if __name__ == '__main__':
         with open(pkl_file, 'rb') as f:
             data = pickle.load(f)
             test_data_list.append(data)
-    test_sort_arrow_to_word(test_data_list)
+    test_add_beam_to_list(test_data_list)

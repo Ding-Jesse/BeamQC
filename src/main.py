@@ -6,7 +6,7 @@ import multiprocessing
 from src.plan_to_beam import run_plan, run_beam, output_error_list, write_beam, write_plan, write_result_log
 from werkzeug.utils import secure_filename
 import os
-import src.plan_to_col
+import src.plan_to_col as plan_to_col
 import pandas as pd
 from datetime import datetime
 from openpyxl import load_workbook

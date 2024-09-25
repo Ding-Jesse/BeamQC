@@ -21,6 +21,9 @@ from item.rebar import readRebarExcel
 from item.pdf import create_scan_pdf
 from utils.demand import calculate_column_beam_joint_shear
 from src.logger import setup_custom_logger
+from collections import defaultdict
+from typing import Literal
+
 slash_pattern = r'(.+)[~|-](.+)'  # ~
 commom_pattern = r'(,)|(、)'
 multi = True
@@ -153,6 +156,7 @@ def sort_col_cad(msp_column,
     coor_to_floor_set = set()  # set(coor, floor)
     coor_to_col_set = set()  # set(coor, col)
     coor_to_size_set = set()  # set(coor, size)
+    coor_to_floor_slash_set = set()
     coor_to_floor_line_list = []  # (橫線y座標, start, end)
     coor_to_col_line_list = []  # (縱線x座標, start, end)
     coor_to_rebar_text_list = []
@@ -263,14 +267,19 @@ def sort_col_cad(msp_column,
                             coor_to_col_set.add(
                                 ((coor1, coor2), object.TextString))
 
-                    elif 'x' in object.TextString or 'X' in object.TextString:
+                    elif 'x' in object.TextString or \
+                            'X' in object.TextString:
                         size = object.TextString.replace('X', 'x')
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                             object.GetBoundingBox()[1][1], 2))
                         coor_to_size_set.add(((coor1, coor2), size))
-                    elif ('F' in object.TextString or 'B' in object.TextString or 'R' in object.TextString) and 'O' not in object.TextString:  # 可能有樓層
+                    elif ('F' in object.TextString or
+                          'B' in object.TextString or
+                          'R' in object.TextString or
+                          re.match(r'\d+', object.TextString)) and \
+                            'O' not in object.TextString:  # 可能有樓層
                         floor = object.TextString
                         if '_' in floor:  # 可能有B_6F表示B棟的6F
                             floor = floor.split('_')[1]
@@ -303,18 +312,43 @@ def sort_col_cad(msp_column,
                                 floor = turn_floor_to_float(floor)
                                 floor = turn_floor_to_string(floor)
                                 coor_to_floor_set.add(((coor1, coor2), floor))
+                    elif object.TextString in ['~', '-']:
+                        # for slash text not combine with floor text
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
+                            object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
+                            object.GetBoundingBox()[1][1], 2))
+                        coor_to_floor_slash_set.add(((coor1, coor2), floor))
 
                 elif object.Layer in line_layer:
-                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
-                        object.GetBoundingBox()[0][1], 2))
-                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
-                        object.GetBoundingBox()[1][1], 2))
-                    if abs(coor1[0] - coor2[0]) < 5:
-                        coor_to_col_line_list.append(
-                            (coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
-                    elif abs(coor1[1] - coor2[1]) < 5:
-                        coor_to_floor_line_list.append(
-                            (coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
+                    # consider line as polyline
+                    if object.ObjectName == "AcDbPolyline" and len(object.Coordinates) == 8:
+                        for k in range(0, len(object.Coordinates), 2):
+                            coor1 = (round(object.Coordinates[k], 2), round(
+                                object.Coordinates[k+1], 2))
+                            if k + 1 == len(object.Coordinates) - 1:
+                                coor2 = (round(object.Coordinates[0], 2), round(
+                                    object.Coordinates[1], 2))
+                            else:
+                                coor2 = (round(object.Coordinates[k + 2], 2), round(
+                                    object.Coordinates[k + 3], 2))
+                            if abs(coor1[0] - coor2[0]) < 5:
+                                coor_to_col_line_list.append(
+                                    (coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
+                            elif abs(coor1[1] - coor2[1]) < 5:
+                                coor_to_floor_line_list.append(
+                                    (coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
+                    else:
+                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
+                            object.GetBoundingBox()[0][1], 2))
+                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
+                            object.GetBoundingBox()[1][1], 2))
+                        if abs(coor1[0] - coor2[0]) < 5:
+                            coor_to_col_line_list.append(
+                                (coor1[0], min(coor1[1], coor2[1]), max(coor1[1], coor2[1])))
+                        elif abs(coor1[1] - coor2[1]) < 5:
+                            coor_to_floor_line_list.append(
+                                (coor1[1], min(coor1[0], coor2[0]), max(coor1[0], coor2[0])))
                 if object.Layer in column_rc_layer:
                     if object.ObjectName == "AcDbPolyline":
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
@@ -354,16 +388,16 @@ def sort_col_cad(msp_column,
                              'coor_to_rebar_list': coor_to_rebar_list,
                              'coor_to_tie_text_list': coor_to_tie_text_list,
                              'coor_to_tie_list': coor_to_tie_list,
-                             'coor_to_section_list': coor_to_section_list
+                             'coor_to_section_list': coor_to_section_list,
+                             'coor_to_floor_slash_set': coor_to_floor_slash_set
                              }, temp_file)
     try:
-        pass
-        # doc_column.Close(SaveChanges=False)
+        doc_column.Close(SaveChanges=False)
     except:
         error('Cant Close Dwg File')
 
 
-def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):
+def cal_column_rebar(data={}, rebar_excel_path='', line_order=1, size_type: Literal['text', 'section'] = 'text'):
     # output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
     # output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
     # excel_filename = (
@@ -384,23 +418,38 @@ def cal_column_rebar(data={}, rebar_excel_path='', progress_file=''):
     coor_to_tie_text_list = data['coor_to_tie_text_list']
     coor_to_tie_list = data['coor_to_tie_list']
     coor_to_section_list = data['coor_to_section_list']
+    coor_to_floor_slash_set = set()
+    if 'coor_to_floor_slash_set' in data:
+        coor_to_floor_slash_set = data['coor_to_floor_slash_set']
     readRebarExcel(file_path=rebar_excel_path)
     progress('結合格線與柱編號')
     new_coor_to_col_line_list = concat_col_to_grid(
         coor_to_col_set=coor_to_col_set, coor_to_col_line_list=coor_to_col_line_list)
+
     progress('結合格線與樓層編號')
-    new_coor_to_floor_line_list = concat_floor_to_grid(
-        coor_to_floor_set=coor_to_floor_set, coor_to_floor_line_list=coor_to_floor_line_list)
+    parameter_df: pd.DataFrame = read_parameter_df(
+        floor_parameter_xlsx, '柱參數表')
+    parameter_df.set_index(['樓層'], inplace=True)
+    floor_seq_list = list(parameter_df.index)
+    new_coor_to_floor_line_list = concat_floor_to_grid(coor_to_floor_set=coor_to_floor_set,
+                                                       coor_to_floor_line_list=coor_to_floor_line_list,
+                                                       coor_to_floor_slash_set=coor_to_floor_slash_set,
+                                                       floor_list=floor_seq_list,
+                                                       line_order=line_order)
     # draw_grid_line(new_coor_to_floor_line_list=new_coor_to_floor_line_list,new_coor_to_col_line_list=new_coor_to_col_line_list,msp_beam=msp_column,doc_beam=doc_column)
-    output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,
-                                                  new_coor_to_col_line_list=new_coor_to_col_line_list,
-                                                  new_coor_to_floor_line_list=new_coor_to_floor_line_list)
+
+    if size_type == 'text':
+        output_column_list = concat_name_to_col_floor(coor_to_size_set=coor_to_size_set,
+                                                      new_coor_to_col_line_list=new_coor_to_col_line_list,
+                                                      new_coor_to_floor_line_list=new_coor_to_floor_line_list)
     progress('獲取斷面大小資訊')
-    # output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
-    #                                            new_coor_to_floor_line_list=new_coor_to_floor_line_list,
-    #                                            coor_to_section_list=coor_to_section_list,
-    #                                            coor_to_size_set=coor_to_size_set,)
+    if size_type == 'section':
+        output_column_list = get_size_from_section(new_coor_to_col_line_list=new_coor_to_col_line_list,
+                                                   new_coor_to_floor_line_list=new_coor_to_floor_line_list,
+                                                   coor_to_section_list=coor_to_section_list,
+                                                   coor_to_size_set=coor_to_size_set)
     progress('結合柱編號與柱主筋')
+
     combine_col_rebar(column_list=output_column_list, coor_to_rebar_list=coor_to_rebar_list,
                       coor_to_rebar_text_list=coor_to_rebar_text_list)
     progress('結合柱編號與柱箍筋')
@@ -526,7 +575,7 @@ def create_report(output_column_list: list[Column],
                     ng_sum_df=sum_df,
                     beam_ng_df=column_ng_df,
                     project_prop={
-                        "專案名稱:": project_name,
+                        "專案名稱:": f'{project_name}_柱',
                         "測試日期:": time.strftime("%Y/%m/%d %H:%M:%S", time.localtime())
                     },
                     pdf_filename=pdf_report,
@@ -607,33 +656,97 @@ def concat_col_to_grid(coor_to_col_set: set, coor_to_col_line_list: list):
     return new_coor_to_col_line_list
 
 
-def concat_floor_to_grid(coor_to_floor_set: set, coor_to_floor_line_list: list):
+def concat_floor_to_grid(coor_to_floor_set: set,
+                         coor_to_floor_line_list: list,
+                         coor_to_floor_slash_set: set,
+                         floor_list: list = [],
+                         line_order: float = 0):
+    '''
+    line order means the n th (0-base) horz-line in the bottom of the row
+    '''
     def _overlap(l1, l2):
         return (l2[1] - l1[2])*(l2[2] - l1[1]) <= 0
+
+    def expand_floors(text):
+        floor_float_list = [turn_floor_to_float(floor) for floor in floor_list]
+        # not equal to -1000 (FB)
+        Bmax = 0  # 地下最深到幾層(不包括FB不包括FB)
+        Fmax = 0  # 正常樓最高到幾層
+        Rmax = 0  # R開頭最高到幾層(不包括PRF)
+        try:
+            Bmax = min([f for f in floor_float_list if f < 0 and f != -1000])
+        except:
+            pass
+        try:
+            Fmax = max([f for f in floor_float_list if 1000 > f > 0])
+        except:
+            pass
+        # not equal to PRF (FB)
+        try:
+            Rmax = max([f for f in floor_float_list if f > 1000 and f != 2000])
+        except:
+            pass
+        return turn_floor_to_list(text, Bmax, Fmax=Fmax, Rmax=Rmax)
     new_coor_to_floor_line_list = []
+    record_floor_line_dict = defaultdict(list)
     for element in coor_to_floor_set:
         coor = element[0]
         floor = element[1]
+
+        if floor not in floor_list:
+            continue
         top_temp_list = [l for l in coor_to_floor_line_list if l[1]
                          <= coor[0][0] and coor[0][0] <= l[2] and l[0] >= coor[0][1]]
         bot_temp_list = [l for l in coor_to_floor_line_list if l[1]
                          <= coor[0][0] and coor[0][0] <= l[2] and l[0] <= coor[0][1]]
         top_closet_line = [0, float("inf"), float("-inf")]
         bot_closet_line = [0, float("inf"), float("-inf")]
-        if len(top_temp_list) > 0:
-            top_closet_line = list(
-                min(top_temp_list, key=lambda l: abs(coor[0][1] - l[0])))
-            top_closet_line = concat_grid_line(
-                coor_to_floor_line_list, top_closet_line, _overlap)
-        if len(bot_temp_list) > 0:
-            bot_closet_line = list(
-                min(bot_temp_list, key=lambda l: abs(coor[0][1] - l[0])))
-            bot_closet_line = concat_grid_line(
-                coor_to_floor_line_list, bot_closet_line, _overlap)
+        # find closet line
+        if line_order:
+            if len(top_temp_list) > 0:
+                top_closet_line = list(
+                    min(top_temp_list, key=lambda l: abs(coor[0][1] - l[0])))
+                top_closet_line = concat_grid_line(
+                    coor_to_floor_line_list, top_closet_line, _overlap)
+            if len(bot_temp_list) > line_order:
+                bot_temp_list.sort(key=lambda l: abs(coor[0][1] - l[0]))
+                bot_closet_line = bot_temp_list[line_order]
+                bot_closet_line = concat_grid_line(
+                    coor_to_floor_line_list, bot_closet_line, _overlap)
+        else:
+            if len(top_temp_list) > 0:
+                top_closet_line = list(
+                    min(top_temp_list, key=lambda l: abs(coor[0][1] - l[0])))
+                top_closet_line = concat_grid_line(
+                    coor_to_floor_line_list, top_closet_line, _overlap)
+            if len(bot_temp_list) > 0:
+                bot_closet_line = list(
+                    min(bot_temp_list, key=lambda l: abs(coor[0][1] - l[0])))
+                bot_closet_line = concat_grid_line(
+                    coor_to_floor_line_list, bot_closet_line, _overlap)
+        # find no belone line
         right = max(top_closet_line[2], bot_closet_line[2])
         left = min(top_closet_line[1], bot_closet_line[1])
         new_coor_to_floor_line_list.append(
             (floor, (left, right, bot_closet_line[0], top_closet_line[0])))
+        record_floor_line_dict[(
+            left, right, bot_closet_line[0], top_closet_line[0])].append(floor)
+    if coor_to_floor_slash_set:
+        for floor_line, floors in record_floor_line_dict.items():
+            slash_list = [(coor, slash) for (coor, slash) in coor_to_floor_slash_set if
+                          (floor_line[0] - coor[0][0]) * (floor_line[1] - coor[0][0]) < 0 and
+                          (floor_line[2] - coor[0][1]) * (floor_line[3] - coor[0][1]) < 0]
+            if not slash_list:
+                continue
+            # only support for two floors with slash , not ok with four and tw slash
+            if len(floors) != 2:
+                continue
+            new_floors = expand_floors(f'{floors[0]}~{floors[1]}')
+
+            for i in range(1, len(new_floors) - 1):
+                new_coor_to_floor_line_list.append(
+                    (new_floors[i], floor_line))
+
     return new_coor_to_floor_line_list
 
 
@@ -698,12 +811,12 @@ def concat_name_to_col_floor(coor_to_size_set: set,
                 col[0][1][0], floor[0][1], border_type="Table")
         if len(col) > 0:
             new_column.serial = col[0][0]
-            new_column.multi_column.extend(list(map(lambda c: c[0], col[0:])))
         if len(floor) > 0:
             new_column.floor = floor[0][0]
         if len(col) > 1:
             progress(
                 f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
+            new_column.multi_column.extend(list(map(lambda c: c[0], col[1:])))
             # print(f'{size}:{coor} => {list(map(lambda c:c[0],col))}')
         if len(floor) > 1:
             progress(
@@ -766,7 +879,7 @@ def get_size_from_section(new_coor_to_col_line_list: list,
 
 def combine_col_rebar(column_list: list[Column], coor_to_rebar_list: list, coor_to_rebar_text_list: list):
     count = 0
-    for coor, rebar_text in coor_to_rebar_text_list:
+    for coor, rebar_text in [c for c in coor_to_rebar_text_list if '@' not in c[1]]:
         column = [c for c in column_list if c.in_grid(coor=coor[0])]
         if len(column) > 0:
             if (coor[0], rebar_text) in column[0].multi_rebar_text:
@@ -888,6 +1001,8 @@ def floor_parameter(column_list: list[Column], floor_parameter_xlsx: str):
     for c in column_list[:]:
         # for floor in c.multi_floor:
         for column_name in c.multi_column:
+            if c.serial == column_name:
+                continue
             new_c = copy.deepcopy(c)
             # new_c.floor = floor
             new_c.serial = column_name
@@ -895,6 +1010,8 @@ def floor_parameter(column_list: list[Column], floor_parameter_xlsx: str):
             column_list.append(new_c)
     for c in column_list[:]:
         for floor in c.multi_floor:
+            if c.floor == floor:
+                continue
             new_c = copy.deepcopy(c)
             new_c.floor = floor
             # new_c.serial = column_name
@@ -999,27 +1116,25 @@ def count_column_multiprocessing(column_filenames: list[str],
 if __name__ == '__main__':
     from os import listdir
     from os.path import isfile, join
-    mypath = r'D:\Desktop\BeamQC\TEST\2024-0829\柱'
-    onlyfiles = [os.path.join(mypath, f) for f in listdir(mypath) if isfile(
-        join(mypath, f)) and os.path.splitext(f)[1] == ".dwg"]
+
     # sys.argv[1] # XS-COL的路徑
-    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0829\柱\S503.dwg'
+    col_filename = r'D:\Desktop\BeamQC\TEST\2024-0830\柱\11002_S3101_C1棟柱配筋圖.dwg'
     column_filenames = [
         # sys.argv[1] # XS-COL的路徑
-        r'D:\Desktop\BeamQC\TEST\2024-0829\柱\S504.dwg',
+        r'D:\Desktop\BeamQC\TEST\2024-0830\柱\11002_S3109_C1棟柱配筋圖.dwg',
         # r'D:\Desktop\BeamQC\TEST\2023-0324\岡山\XS-COL(南基地).dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-3.dwg',#sys.argv[1] # XS-COL的路徑
         # r'D:\Desktop\BeamQC\TEST\INPUT\1-2023-02-15-15-23--XS-COL-4.dwg'#sys.argv[1] # XS-COL的路徑
     ]
-    floor_parameter_xlsx = r'TEST\2024-0829\-floor.xlsx'
-    output_folder = r'TEST\2024-0829\柱'
-    project_name = '2024-0829 煙波'
+    floor_parameter_xlsx = r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-24-16-02-floor_1.xlsx'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2024-0923'
+    project_name = '2024-0924'
     plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN.dwg'
-    plan_layer_config = {
-        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
-        'name_text_layer': ['S-TEXTG', 'S-TEXTB', 'S-TEXTC'],
-        'floor_text_layer': ['S-TITLE']
-    }
+    # plan_layer_config = {
+    #     'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
+    #     'name_text_layer': ['S-TEXTG', 'S-TEXTB', 'S-TEXTC'],
+    #     'floor_text_layer': ['S-TITLE']
+    # }
     # plan_layer_config = {
     #     'block_layer': ['DwFm'],
     #     'name_text_layer': ['BTXT', 'CTXT', 'BTXT_S_'],
@@ -1077,15 +1192,37 @@ if __name__ == '__main__':
         'column_rc_layer': ['OLINE'],  # 斷面圖層
         'burst_layer_list': ['XREF']
     }
+    # 永峻
+    layer_config = {
+        'text_layer': ['TEXT-1', 'CT-1', '手改'],
+        'line_layer': ['CT-1'],
+        'rebar_text_layer': ['TEXT-1', '手改'],  # 箭頭和鋼筋文字的塗層
+        'rebar_layer': ['CT-3', '手改'],  # 鋼筋和箍筋的線的塗層
+        'tie_text_layer': ['TEXT-1'],  # 箍筋文字圖層
+        'tie_layer': ['CT-2', '手改'],  # 箍筋文字圖層
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS', 'XREF'],  # 框框的圖層
+        'column_rc_layer': ['CT-1'],  # 斷面圖層
+        'burst_layer_list': ['']
+    }
     main_logger = setup_custom_logger(__name__, client_id=project_name)
     msp_column = None
     doc_column = None
     all_column_list = []
+
+    # mypath = r'D:\Desktop\BeamQC\TEST\2024-0830\柱'
+    # onlyfiles = [os.path.join(mypath, f) for f in listdir(mypath) if isfile(
+    #     join(mypath, f)) and os.path.splitext(f)[1] == ".dwg"]
+
+    tmp_file = f'{output_folder}/P2022-04A 國安社宅二期暨三期22FB4-2024-09-24-16-02-temp-0.pkl'
+
+    column_list = cal_column_rebar(data=save_temp_file.read_temp(tmp_file),
+                                   rebar_excel_path=floor_parameter_xlsx)
+
     # for i, filename in enumerate(onlyfiles):
     #     try:
     #         print(f'run {filename}')
 
-    #         tmp_file = f'{output_folder}/0830-column-data-{i}.pkl'
+    #         tmp_file = f'{output_folder}/0904-column-test-{i}.pkl'
 
     #         if not os.path.exists(tmp_file):
     #             msp_column, doc_column = read_column_cad(filename)
@@ -1106,8 +1243,8 @@ if __name__ == '__main__':
     #         save_temp_file.save_pkl(
     #             all_column_list, f'{output_folder}/column_list-temp-{i}.pkl')
 
-    # save_temp_file.save_pkl(
-    #     all_column_list, f'{output_folder}/column_list-all.pkl')
+    save_temp_file.save_pkl(
+        column_list, f'{output_folder}/column-3.pkl')
 
     # output_grid_dwg(data=save_temp_file.read_temp(r'D:\Desktop\BeamQC\TEST\2024-0819\column.pkl'),
     #                 msp_column=msp_column,
@@ -1121,19 +1258,19 @@ if __name__ == '__main__':
     #                                    progress_file=r'result\tmp')
     #     temp.extend(column_list)
 
-    all_column_list = save_temp_file.read_temp(
-        f'{output_folder}/column_list-all.pkl')
+    # column_list = save_temp_file.read_temp(
+    #     f'{output_folder}/column-3.pkl')
     # save_temp_file.save_pkl(
     #     temp, r'D:\Desktop\BeamQC\TEST\2024-0829\柱\column_list-2.pkl')
 
-    create_report(output_column_list=all_column_list,
+    create_report(output_column_list=column_list,
                   output_folder=output_folder,
                   project_name=project_name,
                   floor_parameter_xlsx=floor_parameter_xlsx,
                   progress_file=r'result\tmp',
-                  plan_pkl=r'TEST\2024-0829\平面圖\TEST-2024-08-30-08-53-ALL_plan_count_set.pkl',
+                  plan_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-XS-PLAN_plan_count_set.pkl',
                   plan_layer_config=plan_layer_config,
-                  measure_type='mm')
+                  measure_type='cm')
 
     # count_column_multiprocessing(column_filenames=onlyfiles,
     #                              layer_config=layer_config,

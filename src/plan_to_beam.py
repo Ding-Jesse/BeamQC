@@ -97,7 +97,7 @@ def turn_floor_to_string(floor):
     return floor
 
 
-def turn_floor_to_list(floor, Bmax, Fmax, Rmax):
+def turn_floor_to_list(floor: str, Bmax, Fmax, Rmax):
     '''
     將多重樓層如(2F-RF)轉為[2F....RF]
     '''
@@ -182,7 +182,7 @@ def error(error_message):
         global main_logger
         main_logger.error(error_message)
     except:
-        pass
+        print(error_message)
     # f = open(error_file, 'a', encoding='utf-8')
     # localtime = time.asctime(time.localtime(time.time()))
     # f.write(f'{localtime} | {error_message}\n')

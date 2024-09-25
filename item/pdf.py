@@ -17,6 +17,8 @@ from collections import defaultdict
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
+plt.switch_backend('agg')
+
 
 class PDF(FPDF):
     report_type = 'Rebar report'
@@ -306,17 +308,17 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
         # pdf.image(top_png_file,h=pdf.eph - 35,keep_aspect_ratio=True)
 
     if 'header_list' in kwargs and 'ratio_dict' in kwargs:
-        # pdf.add_page(orientation="landscape")
+
         pdf.add_page()
         png_file = plot_rebar_stack_percentage_bar(
             dataset_dict=rebar_df.T.to_dict())
         pdf.add_image(png_file, '號數樓層分布', page_height=(
             pdf.h - pdf.t_margin - pdf.b_margin - 50) / 2)
-        # pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+
         png_file = plot_rebar_pie_chart(dataset_dict=rebar_df.T.to_dict())
         pdf.add_image(png_file, '號數分布', page_height=(
             pdf.h - pdf.t_margin - pdf.b_margin - 50) / 2)
-        # pdf.image(png_file, h=pdf.eph - 35, w=pdf.epw, x='C')
+
     pdf.add_cover_page(title=f"{item_name}檢核統計表",
                        subtitle='檢核內容依據\n- 設計規範\n- 相關工程經驗\n- 經濟性\n進行配筋結果查核')
     pdf.add_table(TABLE_DATA=trans_df_to_table(ng_sum_df, 'Scan Item'),
@@ -338,21 +340,25 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
 
     pdf.add_text(texts=["備註:依照",
                         "1. “建築技術規則”，內政部，最新版。",
-                        "2. “混凝土結構設計規範”，內政部，100 年 7 月。",
+                        "2. “混凝土結構設計規範”，內政部，113 年 1 月。",
                         "3. “結構混凝土施工規範”，內政部，110 年 9 月。"], align='L')
     pdf.ln(10)
     pdf.add_text('--------報告結束--------')
     # pdf.add_page()
-    if 'detail_report' in kwargs:
-        pdf.add_cover_page(f"鋼筋計算式詳細內容")
-        for details in kwargs['detail_report']:
-            pdf.add_text(texts=details, align='L')
     pdf.output(r'assets\contents.pdf')
 
     add_cover(cover_pdf_path=r'assets\封面.pdf',
               content_pdf_path=r'assets\contents.pdf',
               output_pdf=pdf_filename,
               cover_title=project_prop['專案名稱:'])
+
+    if 'detail_report' in kwargs and 'appendix' in kwargs:
+        pdf = PDF(item_name)
+        pdf.add_font('標楷體', '', r'assets\msjhbd.ttc', True)
+        pdf.add_cover_page(f"鋼筋計算式詳細內容")
+        for details in kwargs['detail_report']:
+            pdf.add_text(texts=details, align='L')
+        pdf.output(kwargs['appendix'])
 
 
 def trans_df_to_table(df: pd.DataFrame, reset_name=""):

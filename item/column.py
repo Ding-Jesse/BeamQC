@@ -125,9 +125,9 @@ class Column:
             return True
         return False
 
-    def set_size(self, size):
-        self.size = size
-        match_obj = re.search(r'([\d|.]+)[x|X]([\d|.]+)', size)
+    def set_size(self, size: str):
+        self.size = size.replace(' ', '')
+        match_obj = re.search(r'([\d|.]+)[x|X]([\d|.]+)', self.size)
         if match_obj:
             self.x_size = float(match_obj.group(1))
             self.y_size = float(match_obj.group(2))
@@ -227,6 +227,13 @@ class Column:
                 self.middle_tie = Tie(self.tie_dict['中央'][1], 0)
         if not self.tie_list:
             return
+
+        # if there is no mid text in dwg, use the bottom on as middle
+        if '中央' not in self.tie_dict:
+            if temp_list:
+                middle_text = min(temp_list, key=lambda r: r[0].y)
+                self.tie_dict.update({'中央': middle_text})
+                self.middle_tie = Tie(self.tie_dict['中央'][1], 0)
         temp_list = []
         outer_tie = max(
             self.tie_list, key=lambda tie: self.cal_length(tie[0], tie[1]))
