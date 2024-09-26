@@ -14,7 +14,7 @@ layer_config: dict[Literal['block_layer',
                            'name_text_layer', 'floor_text_layer'], str]
 
 
-def read_plan_cad(plan_filename, progress_file, layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str]):
+def read_plan_cad(plan_filename, layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str]):
     error_count = 0
     pythoncom.CoInitialize()
     progress('開始讀取平面圖')
@@ -219,12 +219,11 @@ def sort_name_text(data):
 
 
 def sort_plan_count(plan_filename,
-                    progress_file,
                     layer_config: dict[Literal['block_layer', 'name_text_layer', 'floor_text_layer'], str],
                     plan_pkl='') -> dict[str, Counter]:
     if plan_pkl == '':
         print('run by plan dwg')
-        cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
+        cad_result = read_plan_cad(plan_filename, layer_config)
         save_temp_file.save_pkl(
             data=cad_result, tmp_file=f'{os.path.splitext(plan_filename)[0]}_plan_count_set.pkl')
     else:

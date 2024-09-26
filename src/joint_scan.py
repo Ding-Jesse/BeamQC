@@ -7,22 +7,22 @@ import win32com.client
 import src.save_temp_file as save_temp_file
 import re
 import numpy as np
-from main import OutputExcel
+from src.main import OutputExcel
 from utils.demand import calculate_column_beam_joint_shear
 from item.beam import Beam
 from item.column import Column
 from item.floor import Floor
 from item.floor import read_parameter_df
 from utils.create_calculate_sheet import create_calculate_sheet
-from column_count import floor_parameter as column_floor_parameter
-from column_count import sort_floor_column
-from beam_count import floor_parameter as beam_floor_parameter
-from beam_count import read_beam_cad, sort_beam_cad, get_template, cal_beam_rebar
-from plan_count import in_block, check_is_floor, sort_floor_text
+from src.column_count import floor_parameter as column_floor_parameter
+from src.column_count import sort_floor_column
+from src.beam_count import floor_parameter as beam_floor_parameter
+from src.beam_count import read_beam_cad, sort_beam_cad, get_template, cal_beam_rebar
+from src.plan_count import in_block, check_is_floor, sort_floor_text
 from multiprocessing.pool import ThreadPool as Pool
 from collections import Counter
 from typing import Literal
-from joint_draw import create_joint_plan_view
+from src.joint_draw import create_joint_plan_view
 from enum import Enum
 from src.logger import setup_custom_logger
 from utils.algorithm import match_points
@@ -519,8 +519,8 @@ def match_beam_mline(data: dict):
 
                     closet_none_mline: MlineObject = min(
                         none_mline_list, key=lambda mline: get_distance(coor, mline.mid, line_rotation))
-                    print(
-                        f'{beam_name}:{5 * get_distance(closet_mline.beam_serial[0], closet_mline.mid)} , {get_distance(coor, closet_none_mline.mid)}')
+                    # print(
+                    #     f'{beam_name}:{5 * get_distance(closet_mline.beam_serial[0], closet_mline.mid)} , {get_distance(coor, closet_none_mline.mid)}')
                     if 5 * get_distance(closet_mline.beam_serial[0], closet_mline.mid) > get_distance(coor, closet_none_mline.mid):
                         closet_none_mline.beam_serial = (
                             coor, beam_name, rotation)
@@ -554,8 +554,8 @@ def match_column_block(data: dict):
             closest_block = column_block_list[j]
             closest_block.column_serial = (coor, column_name_text)
             total_distance += get_distance(coor, closest_block.mid)
-        print(
-            f"Cost time {time.time() - start}s , min distance:{_} , total distance:{total_distance}")
+        # print(
+        #     f"Cost time {time.time() - start}s , min distance:{_} , total distance:{total_distance}")
         # for coor, column_name_text in column_name_text_list:
         #     column_name_text: str
         #     column_name_text = column_name_text.strip()
@@ -835,8 +835,8 @@ def sort_dataframe_by_floor(df: pd.DataFrame, floor_list: list[str], column1: st
 if __name__ == "__main__":
     output_folder = r"D:\Desktop\BeamQC\TEST\2024-0822"
     project_name = r"0822"
-    beam_pkl = r"TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-temp-beam_list.pkl"
-    column_pkl = r"TEST\2024-0822\column_list.pkl"
+    beam_pkl = r"TEST\INPUT\test-20240926_153357-beam-object-all.pkl"
+    column_pkl = r"TEST\INPUT\test-20240926_152541-column-object-all.pkl"
     column_beam_joint_xlsx = r"TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-floor.xlsx"
 
     plan_filename = r"D:\Desktop\BeamQC\TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN.dwg"
@@ -856,7 +856,7 @@ if __name__ == "__main__":
                     beam_pkl=beam_pkl,
                     column_pkl=column_pkl,
                     column_beam_joint_xlsx=column_beam_joint_xlsx,
-                    pkl=r'TEST\2024-0822\P2022-04A 國安社宅二期暨三期22FB4-2024-08-22-10-00-XS-PLAN_plan_set.pkl',
+                    pkl=r'TEST\INPUT\test-2024-09-26-15-36-P2022-04A_22FB4-2024-09-23-11-32-XS-PLAN_plan_set.pkl',
                     output_floor=['2F', '3F'])
     # match_column_beam_plan(plan_filename=plan_filename,
     #                        layer_config=layer_config)

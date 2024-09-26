@@ -119,7 +119,7 @@
                 <div class="section-title">
                     <strong>梁鋼筋檔案</strong>
                     <div class="radio-buttons-container">
-                        {% for option in session.beam_pkl_files %}
+                        {% for option in beam_pkl_files %}
                         <div class="radio-button">
                             <input type="radio" name="beam_pkl_file" value="{{ option }}">
                             <label>{{ option }}</label>
@@ -131,7 +131,7 @@
                 <div class="section-title">
                     <strong>柱鋼筋檔案</strong>
                     <div class="radio-buttons-container">
-                        {% for option in session.column_pkl_files %}
+                        {% for option in column_pkl_files %}
                         <div class="radio-button">
                             <input type="radio" name="column_pkl_file" value="{{ option }}">
                             <label>{{ option }}</label>

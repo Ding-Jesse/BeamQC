@@ -394,6 +394,8 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                 # print(f'{msp_object.Layer}:{msp_object.EntityName}')
                 object_list = [msp_object]
                 if msp_object.EntityName == "AcDbBlockReference":
+                    if msp_object.Layer == 'S-TEXTG':
+                        print()
                     if msp_object.GetAttributes():
                         object_list = list(msp_object.GetAttributes())
                     else:
@@ -408,6 +410,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
             object = object_list.pop()
             try:
                 if object.Layer == '0':
+
                     object_layer = msp_object.Layer
                 else:
                     object_layer = object.Layer
@@ -549,7 +552,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                             continue
                         else:
                             progress(object.TextString)
-                if object.Layer in beam_text_layer and object.EntityName in text_object_type\
+                if object_layer in beam_text_layer and object.EntityName in text_object_type\
                         and object.TextString != '' and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
 
                     beam = object.TextString
@@ -2119,8 +2122,8 @@ if __name__ == '__main__':
         'sml_beam_text_layer': sml_beam_text_layer
     }
     pkls = [r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-BEAM_beam_set.pkl']
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg'
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0923\test.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-XS-PLAN-new.dwg'
     set_beam_all = set()
 
     set_plan, dic_plan, plan_mline_error_list, plan_cad_data_list = run_plan(plan_filename=plan_filename,
@@ -2130,7 +2133,7 @@ if __name__ == '__main__':
                                                                              sizing=True,
                                                                              mline_scaling=True,
                                                                              client_id='temp',
-                                                                             pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_set.pkl')
+                                                                             pkl=r'')
 
     for pkl in pkls:
         floor_to_beam_set = save_temp_file.read_temp(pkl)

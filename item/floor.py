@@ -121,7 +121,7 @@ class Floor:
             beam_list = self.beam_list
 
         if not beam_list:
-            False
+            return False
         for b in beam_list:
             plan_count += b.plan_count
             for size, count in b.rebar_count.items():
@@ -186,6 +186,7 @@ def summary_floor_rebar(floor_list: list[Floor], item_type='', beam_type=None, m
         for floor in floor_list:
             is_not_empty_floor = floor.summary_beam(beam_type)
             if not is_not_empty_floor:
+                floor.detail_report = []
                 continue
             new_row = pd.DataFrame(
                 floor.beam_rebar_count, index=[floor.floor_name])

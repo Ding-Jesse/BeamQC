@@ -7,13 +7,14 @@ import traceback
 import uuid
 
 from flask import (Flask, Response, redirect, render_template, request,
-                   send_from_directory, session, stream_with_context, url_for)
+                   send_from_directory, session, stream_with_context, url_for, jsonify)
 from flask_mail import Mail, Message
 
 from auth import sendPhoneMessage
 from flask_session import Session
-from src.beam_count import count_beam_multiprocessing
-from src.column_count import count_column_multiprocessing
+from src.beam_count import (count_beam_multiprocessing, count_beam_multifiles,
+                            read_parameter_json)
+from src.column_count import count_column_multiprocessing, count_column_multifiles
 from src.joint_scan import joint_scan_main
 from src.main import (Upload_Error_log, main_col_function, main_functionV3,
                       storefile)
@@ -349,9 +350,9 @@ def tool5():
             column_pkl = request.form.get('column_pkl_file')
 
             beam_pkl = os.path.join(
-                app.config['UPLOAD_FOLDER'], f'{beam_pkl}.pkl')
+                session['pkl_file_folder'], f'{beam_pkl}.pkl')
             column_pkl = os.path.join(
-                app.config['UPLOAD_FOLDER'], f'{column_pkl}.pkl')
+                session['pkl_file_folder'], f'{column_pkl}.pkl')
 
             uploaded_plans = request.files['file_plan']
             project_name = request.form['project_name']
@@ -420,7 +421,12 @@ def tool5():
         return response
         # Process the selected option as needed
         # return jsonify({'status': 'success', 'selectedOption': selected_option})
-    return render_template('tool5.html')
+
+    beam_pkl_files = [path for path in session['beam_pkl_files']
+                      ] if 'beam_pkl_files' in session else []
+    column_pkl_files = [path for path in session['column_pkl_files']
+                        ] if 'column_pkl_files' in session else []
+    return render_template('tool5.html', beam_pkl_files=beam_pkl_files, column_pkl_files=column_pkl_files)
 
 
 @app.route('/sendVerifyCode', methods=['POST'])
@@ -518,11 +524,10 @@ def count_beam():
         uploaded_beams = request.files.getlist("file_beam")
         project_name = request.form['project_name']
         email_address = request.form['email_address']
-        # print(request.form['company'])
+
         template_name = request.form['company']
-        progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
-        # print(progress_file)
-        # project_name = time.strftime("%Y-%m-%d-%H-%M", time.localtime())+project_name
+        measure_type = request.form['measure_type']
+
         beam_filename = ''
         temp_file = ''
         client_id = session.get('client_id', None)
@@ -549,8 +554,9 @@ def count_beam():
             # beam_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_beam.filename)}')
             beam_filename = input_beam_file
             beam_filenames.append(beam_filename)
-            temp_file = os.path.join(app.config['UPLOAD_FOLDER'],
-                                     f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
+            # temp_file = os.path.join(app.config['UPLOAD_FOLDER'],
+            #                          f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
+            pkl_file_folder = os.path.join(app.config['UPLOAD_FOLDER'])
             # print(f'beam_filename:{beam_filename},temp_file:{temp_file}')
         if uploaded_xlsx:
             xlsx_ok, \
@@ -562,7 +568,8 @@ def count_beam():
             # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
             xlsx_filename = input_xlsx_file
         if uploaded_plans:
-            xlsx_ok, xlsx_new_file, input_plan_file = storefile(uploaded_plans, app.config['UPLOAD_FOLDER'],
+            xlsx_ok, xlsx_new_file, input_plan_file = storefile(uploaded_plans,
+                                                                app.config['UPLOAD_FOLDER'],
                                                                 app.config['OUTPUT_FOLDER'],
                                                                 f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
             plan_filename = input_plan_file
@@ -579,7 +586,8 @@ def count_beam():
             'beam_text_layer': request.form['beam_text_layer'].split('\r\n'),
             'bounding_block_layer': request.form['bounding_block_layer'].split('\r\n'),
             'rc_block_layer': request.form['rc_block_layer'].split('\r\n'),
-            's_dim_layer': request.form['beam_dim_layer'].split('\r\n')
+            's_dim_layer': request.form['s_dim_layer'].split('\r\n'),
+            'burst_layer_list': request.form['burst_layer_list'].split('\r\n'),
         }
         plan_layer_config = {
             'block_layer':  request.form['plan_block_layer'].split('\r\n'),
@@ -594,20 +602,35 @@ def count_beam():
         result_log_content['layer_config'] = layer_config
 
         # print(layer_config)
-        if beam_filename != '' and temp_file != '' and beam_ok:
+        if beam_filename != '' and beam_ok:
             # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
             #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            output_file_list, output_dwg_list, pkl = count_beam_multiprocessing(beam_filenames=beam_filenames,
-                                                                                layer_config=layer_config,
-                                                                                temp_file=temp_file,
-                                                                                project_name=project_name,
-                                                                                output_folder=app.config['OUTPUT_FOLDER'],
-                                                                                template_name=template_name,
-                                                                                floor_parameter_xlsx=xlsx_filename,
-                                                                                progress_file=progress_file,
-                                                                                plan_filename=plan_filename,
-                                                                                plan_layer_config=plan_layer_config,
-                                                                                client_id=client_id)
+            # output_file_list, output_dwg_list, pkl = count_beam_multiprocessing(beam_filenames=beam_filenames,
+            #                                                                     layer_config=layer_config,
+            #                                                                     pkl_file_folder=pkl_file_folder,
+            #                                                                     project_name=project_name,
+            #                                                                     output_folder=app.config['OUTPUT_FOLDER'],
+            #                                                                     template_name=template_name,
+            #                                                                     floor_parameter_xlsx=xlsx_filename,
+            #                                                                     progress_file=progress_file,
+            #                                                                     plan_filename=plan_filename,
+            #                                                                     plan_layer_config=plan_layer_config,
+            #                                                                     client_id=client_id)
+            hyper_parameter: dict = read_parameter_json(
+                template_name=template_name)['beam']
+
+            hyper_parameter.update({'layer_config': layer_config,
+                                    'plan_layer_config': plan_layer_config,
+                                    'measure_type': measure_type})
+
+            output_file_list, output_dwg_list, pkl = count_beam_multifiles(beam_filenames=beam_filenames,
+                                                                           pkl_file_folder=pkl_file_folder,
+                                                                           project_name=project_name,
+                                                                           output_folder=app.config['OUTPUT_FOLDER'],
+                                                                           floor_parameter_xlsx=xlsx_filename,
+                                                                           plan_filename=plan_filename,
+                                                                           client_id=client_id,
+                                                                           **hyper_parameter)
             # output_dwg_list = ['P2022-06A 岡山大鵬九村社宅12FB2_20230410_170229_Markon.dwg']
             if 'count_filenames' in session:
                 session['count_filenames'].extend(output_file_list)
@@ -615,9 +638,11 @@ def count_beam():
             else:
                 session['count_filenames'] = output_file_list
                 session['count_filenames'].extend(output_dwg_list)
-            pkl = os.path.splitext(os.path.basename(pkl))[0]
-            if 'beam_pkl_files' in session:
 
+            pkl = os.path.splitext(os.path.basename(pkl))[0]
+            session['pkl_file_folder'] = pkl_file_folder
+
+            if 'beam_pkl_files' in session:
                 session['beam_pkl_files'].extend(pkl)
             else:
                 session['beam_pkl_files'] = [pkl]
@@ -637,6 +662,20 @@ def count_beam():
         # print(request.form['project_name'])
         time.sleep(1)
     except Exception as ex:
+        import sys
+        import traceback
+        error_class = ex.__class__.__name__  # 取得錯誤類型
+        detail = ex.args[0]  # 取得詳細內容
+        cl, exc, tb = sys.exc_info()  # 取得Call Stack
+        for lastCallStack in traceback.extract_tb(tb):
+            fileName = lastCallStack[0]  # 取得發生的檔案名稱
+            lineNum = lastCallStack[1]  # 取得發生的行號
+            funcName = lastCallStack[2]  # 取得發生的函數名稱
+            className = sys.exc_info()[0]
+            errMsg = "F[{}] {} ".format(error_class, detail)  # 新增常見使用者錯誤
+            adminMsg = "File \"{}\", line {}, in {}: [{}] {} ".format(
+                fileName, lineNum, funcName, error_class, detail)
+            print(adminMsg)
         result_log_content['status'] = f'error, {ex}'
         # print(ex)
         response = Response()
@@ -657,43 +696,56 @@ def count_column():
         project_name = request.form['project_name']
         email_address = request.form['email_address']
         template_name = request.form['companyColumn']
+        measure_type = request.form['measure_type']
         uploaded_xlsx = request.files['file_floor_xlsx']
+        uploaded_plans = request.files['file_plan']
+
         column_filename = ''
+        plan_filename = ''
         column_filenames = []
         column_excel = ''
         column_ok = False
+
+        response = Response()
         if len(uploaded_columns) == 0:
             response.status_code = 404
             response.data = json.dumps({'validate': f'未上傳檔案'})
             response.content_type = 'application/json'
             return response
-        progress_file = f'{app.config["OUTPUT_FOLDER"]}/{project_name}_progress'
-        # print(progress_file)
+
         client_id = session.get('client_id', None)
         if client_id:
             if client_id not in connected_clients:
                 connected_clients[client_id] = []
             connected_clients[client_id].append(project_name)
+
         print(f'{email_address}:{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())} start {project_name}')
         for uploaded_column in uploaded_columns:
             column_ok, column_new_file, input_column_file = storefile(uploaded_column,
                                                                       app.config['UPLOAD_FOLDER'],
                                                                       app.config['OUTPUT_FOLDER'],
                                                                       f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
-            # column_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_column.filename)}')
+
             column_filename = input_column_file
             column_filenames.append(column_filename)
             temp_file = os.path.join(app.config['UPLOAD_FOLDER'],
                                      f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-temp.pkl')
-            # print(f'column_filename:{column_filename},temp_file:{temp_file}')
+
         if uploaded_xlsx:
             xlsx_ok, xlsx_new_file, input_xlsx_file = storefile(uploaded_xlsx,
                                                                 app.config['UPLOAD_FOLDER'],
                                                                 app.config['OUTPUT_FOLDER'],
                                                                 f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
-            # xlsx_filename = os.path.join(app.config['UPLOAD_FOLDER'], f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}-{secure_filename(uploaded_xlsx.filename)}')
+
             xlsx_filename = input_xlsx_file
-            # print(f'xlsx_filename:{xlsx_filename}')
+
+        if uploaded_plans:
+            xlsx_ok, xlsx_new_file, input_plan_file = storefile(uploaded_plans,
+                                                                app.config['UPLOAD_FOLDER'],
+                                                                app.config['OUTPUT_FOLDER'],
+                                                                f'{project_name}-{time.strftime("%Y-%m-%d-%H-%M", time.localtime())}')
+            plan_filename = input_plan_file
+
         layer_config = {
             'text_layer': request.form['column_text_layer'].split('\r\n'),
             'line_layer': request.form['column_line_layer'].split('\r\n'),
@@ -708,8 +760,16 @@ def count_column():
             # 框框的圖層
             'block_layer': request.form['column_block_layer'].split('\r\n'),
             # 斷面圖層
-            'column_rc_layer': request.form['column_rc_layer'].split('\r\n'),
+            'column_rc_layer': request.form['column_column_rc_layer'].split('\r\n'),
+            'burst_layer_list': request.form['column_burst_layer_list'].split('\r\n'),
         }
+
+        plan_layer_config = {
+            'block_layer':  request.form['plan_block_layer'].split('\r\n'),
+            'floor_text_layer':  request.form['plan_floor_text_layer'].split('\r\n'),
+            'name_text_layer':  request.form['plan_serial_text_layer'].split('\r\n'),
+        }
+
         result_log_content['upload_xlsx'] = uploaded_xlsx
         result_log_content['upload_beams'] = uploaded_columns
         result_log_content['project_name'] = project_name
@@ -717,24 +777,45 @@ def count_column():
         result_log_content['template_name'] = template_name
         result_log_content['layer_config'] = layer_config
         # print(layer_config)
+
         if len(column_filenames) != 0 and temp_file != '' and column_ok:
+            pkl_file_folder = os.path.join(app.config['UPLOAD_FOLDER'])
+            hyper_parameter: dict = read_parameter_json(
+                template_name=template_name)['column']
+
+            hyper_parameter.update({'layer_config': layer_config,
+                                    'plan_layer_config': plan_layer_config,
+                                    'measure_type': measure_type})
+            column_excel, column_report, pkl = count_column_multifiles(
+                project_name=project_name,
+                column_filenames=column_filenames,
+                plan_filename=plan_filename,
+                floor_parameter_xlsx=xlsx_filename,
+                output_folder=app.config['OUTPUT_FOLDER'],
+                pkl_file_folder=pkl_file_folder,
+                client_id=client_id,
+                **hyper_parameter
+            )
             # column_excel = count_column_main(column_filename=column_filename,layer_config= layer_config,temp_file= temp_file,
             #                                  output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name,floor_parameter_xlsx=xlsx_filename)
-            column_excel, column_report, pkl = count_column_multiprocessing(column_filenames=column_filenames,
-                                                                            layer_config=layer_config,
-                                                                            temp_file=temp_file,
-                                                                            output_folder=app.config['OUTPUT_FOLDER'],
-                                                                            project_name=project_name,
-                                                                            template_name=template_name,
-                                                                            floor_parameter_xlsx=xlsx_filename,
-                                                                            progress_file=progress_file,
-                                                                            client_id=client_id)
+            # column_excel, column_report, pkl = count_column_multiprocessing(column_filenames=column_filenames,
+            #                                                                 layer_config=layer_config,
+            #                                                                 temp_file=temp_file,
+            #                                                                 output_folder=app.config['OUTPUT_FOLDER'],
+            #                                                                 project_name=project_name,
+            #                                                                 template_name=template_name,
+            #                                                                 floor_parameter_xlsx=xlsx_filename,
+            #                                                                 progress_file=progress_file,
+            #                                                                 client_id=client_id)
             if 'count_filenames' in session:
                 session['count_filenames'].extend(
                     [column_excel, column_report])
             else:
                 session['count_filenames'] = [column_excel, column_report]
+
             pkl = os.path.splitext(os.path.basename(pkl))[0]
+            session['pkl_file_folder'] = pkl_file_folder
+
             if 'column_pkl_files' in session:
                 session['column_pkl_files'].extend(pkl)
             else:
@@ -748,13 +829,14 @@ def count_column():
                     f'send_email:{email_address}, filenames:{session["count_filenames"]}')
             except Exception:
                 pass
-        response = Response()
+
         response.status_code = 200
         # response.data = json.dumps({'validate': f'{layer_config}'})
         response.data = json.dumps({'validate': f'計算完成，請至輸出結果查看'})
         response.content_type = 'application/json'
         # return response
     except Exception as ex:
+
         with open(r'result\error_log.txt', 'a') as error_log:
             error_log.write(
                 f'{project_name} | {ex} | column_layer = {layer_config} \n')
@@ -836,6 +918,18 @@ def clear_session():
     return 'Session data cleared.'
 
 
+@app.route('/get_template', methods=['POST'])
+def get_fillin_template():
+    if request.method == 'POST':
+        data: dict = request.get_json()
+
+        template = data.get('template')
+        element_type = data.get('element_type')
+
+        if element_type == 'beam':
+            return jsonify(read_parameter_json(template_name=template)['beam']['layer_config'])
+        if element_type == 'column':
+            return jsonify(read_parameter_json(template_name=template)['column']['layer_config'])
 # @app.route('/notify')
 # def notify():
 #     client_id = session.get('client_id')
