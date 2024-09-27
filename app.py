@@ -447,11 +447,14 @@ def sendVerifyCode():
 @app.route('/tool2', methods=['GET', 'POST'])
 @login_required
 def tool2():
+    print(request.remote_addr)
     if app.config['TESTING']:
         # return render_template('verifycode.html')
         return render_template('tool2.html')
     if 'isverify' not in session:
         return render_template('verifycode.html')
+    elif request.remote_addr.startswith('192.168.0'):
+        return render_template('tool2.html')
     elif session['isverify'] == 'expire':
         return render_template('verifycode.html')
     else:

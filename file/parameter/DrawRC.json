@@ -1,0 +1,123 @@
+{
+    "beam": {
+        "layer_config": {
+            "rebar_data_layer": [
+                "NBAR"
+            ],
+            "rebar_layer": [
+                "RBAR"
+            ],
+            "tie_text_layer": [
+                "NBAR"
+            ],
+            "block_layer": [
+                "DEFPOINTS"
+            ],
+            "beam_text_layer": [
+                "TITLE"
+            ],
+            "bounding_block_layer": [
+                "S-ARCH"
+            ],
+            "rc_block_layer": [
+                "OLINE"
+            ],
+            "s_dim_layer": [
+                "DIMS"
+            ],
+            "burst_layer_list": []
+        },
+        "name_pattern": {
+            "Grider": [
+                "(.*) ([G|B|E].*)"
+            ],
+            "FB": [
+                "(.*) (F[G|b|B].*)"
+            ],
+            "SB": [
+                "(.*) ([b|g].*)"
+            ]
+        },
+        "break_rebar_point": {},
+        "plan_layer_config": {
+            "block_layer": [
+                "AREA"
+            ],
+            "name_text_layer": [
+                "BTXT",
+                "CTXT",
+                "BTXT_S_"
+            ],
+            "floor_text_layer": [
+                "TEXT1"
+            ]
+        },
+        "entity_type": {
+            "rebar_layer": [
+                "AcDbLine"
+            ],
+            "rebar_data_layer": [
+                "AcDbText",
+                "AcDbMText"
+            ],
+            "rebar_data_leader_layer": [
+                "AcDbPolyline"
+            ],
+            "tie_text_layer": [
+                "AcDbMText"
+            ],
+            "rc_block_layer": [
+                "AcDbPolyline",
+                "AcDbLine"
+            ]
+        },
+        "middle_tie_pattern": ""
+    },
+    "column": {
+        "plan_layer_config": {
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "name_text_layer": [
+                "S-TEXTG",
+                "S-TEXTB",
+                "S-TEXTC"
+            ],
+            "floor_text_layer": [
+                "S-TITLE"
+            ]
+        },
+        "layer_config": {
+            "text_layer": [
+                "TABLE",
+                "SIZE"
+            ],
+            "line_layer": [
+                "TABLE"
+            ],
+            "rebar_text_layer": [
+                "NBAR"
+            ],
+            "rebar_layer": [
+                "RBAR"
+            ],
+            "tie_text_layer": [
+                "NBAR"
+            ],
+            "tie_layer": [
+                "RBAR"
+            ],
+            "block_layer": [
+                "DwFm"
+            ],
+            "column_rc_layer": [
+                "OLINE"
+            ],
+            "burst_layer_list": []
+        },
+        "line_order": 1,
+        "size_type": "section"
+    }
+}

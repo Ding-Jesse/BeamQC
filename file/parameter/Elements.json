@@ -1,0 +1,128 @@
+{
+    "beam": {
+        "layer_config": {
+            "rebar_data_layer": [
+                "S-LEADER"
+            ],
+            "rebar_layer": [
+                "S-REINF"
+            ],
+            "tie_text_layer": [
+                "S-TEXT"
+            ],
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "beam_text_layer": [
+                "S-RC"
+            ],
+            "bounding_block_layer": [
+                "S-ARCH"
+            ],
+            "rc_block_layer": [
+                "S-RC"
+            ],
+            "s_dim_layer": [
+                "S-DIM"
+            ],
+            "burst_layer_list": []
+        },
+        "name_pattern": {
+            "Grider": [
+                "(.*) ([G|B|E].*)"
+            ],
+            "FB": [
+                "(.*) (F[G|b|B].*)"
+            ],
+            "SB": [
+                "(.*) ([b|g].*)"
+            ]
+        },
+        "break_rebar_point": {},
+        "plan_layer_config": {
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "name_text_layer": [
+                "S-TEXTG",
+                "S-TEXTB",
+                "S-TEXTC"
+            ],
+            "floor_text_layer": [
+                "S-TITLE"
+            ]
+        },
+        "entity_type": {
+            "rebar_layer": [
+                "AcDbPolyline"
+            ],
+            "rebar_data_layer": [
+                "AcDbMText",
+                "AcDbText"
+            ],
+            "rebar_data_leader_layer": [
+                "AcDbLeader",
+                "AcDbPolyline"
+            ],
+            "tie_text_layer": [
+                "AcDbText"
+            ],
+            "rc_block_layer": [
+                "AcDbPolyline"
+            ]
+        },
+        "middle_tie_pattern": ""
+    },
+    "column": {
+        "plan_layer_config": {
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "name_text_layer": [
+                "S-TEXTG",
+                "S-TEXTB",
+                "S-TEXTC"
+            ],
+            "floor_text_layer": [
+                "S-TITLE"
+            ]
+        },
+        "layer_config": {
+            "text_layer": [
+                "S-TEXT"
+            ],
+            "line_layer": [
+                "S-TABLE"
+            ],
+            "rebar_text_layer": [
+                "S-TEXT"
+            ],
+            "rebar_layer": [
+                "S-REINFD"
+            ],
+            "tie_text_layer": [
+                "S-TEXT"
+            ],
+            "tie_layer": [
+                "S-REINF"
+            ],
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "column_rc_layer": [
+                "S-RC"
+            ],
+            "burst_layer_list": []
+        },
+        "line_order": 1,
+        "size_type": "section"
+    }
+}

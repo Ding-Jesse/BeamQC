@@ -1,0 +1,146 @@
+{
+    "beam": {
+        "layer_config": {
+            "rebar_data_layer": [
+                "主筋文字",
+                "主筋文字引線",
+                "扭力筋文字",
+                "扭力筋文字引線",
+                "扭力筋文字引線 no use"
+            ],
+            "rebar_layer": [
+                "主筋線",
+                "剪力筋線",
+                "扭力筋線"
+            ],
+            "tie_text_layer": [
+                "剪力筋文字"
+            ],
+            "block_layer": [
+                "_noprint"
+            ],
+            "beam_text_layer": [
+                "梁跨名稱"
+            ],
+            "bounding_block_layer": [],
+            "rc_block_layer": [
+                "邊界線",
+                "梁柱截斷記號",
+                "邊界線-梁支撐內線",
+                "邊界線-梁支撐外線"
+            ],
+            "s_dim_layer": [
+                "尺寸標註-字串"
+            ],
+            "burst_layer_list": []
+        },
+        "name_pattern": {
+            "Grider": [
+                "(.*) ([G|B|E].*)"
+            ],
+            "FB": [
+                "(.*) (F[G|b|B].*)"
+            ],
+            "SB": [
+                "(.*) ([b|g].*)"
+            ]
+        },
+        "break_rebar_point": {
+            "layer": [
+                "CT-3"
+            ],
+            "entity": [
+                "AcDbArc"
+            ]
+        },
+        "plan_layer_config": {
+            "block_layer": [
+                "AREA"
+            ],
+            "name_text_layer": [
+                "BTXT",
+                "CTXT",
+                "BTXT_S_"
+            ],
+            "floor_text_layer": [
+                "TEXT1"
+            ]
+        },
+        "entity_type": {
+            "rebar_layer": [
+                "AcDbPolyline"
+            ],
+            "rebar_data_layer": [
+                "AcDbMText",
+                "AcDbText"
+            ],
+            "rebar_data_leader_layer": [
+                "AcDbLeader",
+                "AcDbPolyline"
+            ],
+            "tie_text_layer": [
+                "AcDbText"
+            ],
+            "rc_block_layer": [
+                "AcDbPolyline",
+                "AcDbLine"
+            ]
+        },
+        "middle_tie_pattern": ""
+    },
+    "column": {
+        "plan_layer_config": {
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "name_text_layer": [
+                "S-TEXTG",
+                "S-TEXTB",
+                "S-TEXTC"
+            ],
+            "floor_text_layer": [
+                "S-TITLE"
+            ]
+        },
+        "layer_config": {
+            "text_layer": [
+                "文字-柱線名稱",
+                "文字-樓群名稱",
+                "文字-斷面尺寸"
+            ],
+            "line_layer": [
+                "GirdInner",
+                "GirdBoundary"
+            ],
+            "rebar_text_layer": [
+                "文字-主筋根數"
+            ],
+            "rebar_layer": [
+                "主筋斷面",
+                "#8",
+                "#10"
+            ],
+            "tie_text_layer": [
+                "文字-剪力筋 中央區",
+                "文字-剪力筋-BC",
+                "文字-剪力筋-圍束區",
+                "文字-剪力筋"
+            ],
+            "tie_layer": [
+                "箍筋線"
+            ],
+            "block_layer": [
+                "0",
+                "_noprint"
+            ],
+            "column_rc_layer": [
+                "柱斷面線"
+            ],
+            "burst_layer_list": []
+        },
+        "line_order": 1,
+        "size_type": "section"
+    }
+}

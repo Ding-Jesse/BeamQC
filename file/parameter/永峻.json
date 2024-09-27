@@ -1,0 +1,151 @@
+{
+    "beam": {
+        "layer_config": {
+            "rebar_data_layer": [
+                "TEXT-2",
+                "CT-1"
+            ],
+            "rebar_layer": [
+                "CT-3",
+                "CT-2"
+            ],
+            "tie_text_layer": [
+                "TEXT-2"
+            ],
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "beam_text_layer": [
+                "TEXT-3"
+            ],
+            "bounding_block_layer": [
+                "S-ARCH"
+            ],
+            "rc_block_layer": [
+                "CT-1",
+                "OLINE"
+            ],
+            "s_dim_layer": [
+                "TEXT-2",
+                "CT-1"
+            ],
+            "burst_layer_list": [
+                "XREF"
+            ]
+        },
+        "name_pattern": {
+            "Grider": [
+                "(.*) ([G|B|E].*)"
+            ],
+            "FB": [
+                "(.*) (F[G|b|B].*)"
+            ],
+            "SB": [
+                "(.*) ([b|g].*)"
+            ]
+        },
+        "break_rebar_point": {
+            "layer": [
+                "CT-3"
+            ],
+            "entity": [
+                "AcDbArc"
+            ]
+        },
+        "plan_layer_config": {
+            "block_layer": [
+                "AREA"
+            ],
+            "name_text_layer": [
+                "BTXT",
+                "CTXT",
+                "BTXT_S_"
+            ],
+            "floor_text_layer": [
+                "TEXT1"
+            ]
+        },
+        "entity_type": {
+            "rebar_layer": [
+                "AcDbLine"
+            ],
+            "rebar_data_layer": [
+                "AcDbText",
+                "AcDbMText"
+            ],
+            "rebar_data_leader_layer": [
+                "AcDbPolyline",
+                "AcDbLeader"
+            ],
+            "tie_text_layer": [
+                "AcDbText",
+                "AcDbMText",
+                "AcDbRotatedDimension",
+                "AcDbAlignedDimension"
+            ],
+            "rc_block_layer": [
+                "AcDbPolyline",
+                "AcDbLine"
+            ]
+        },
+        "middle_tie_pattern": "(\\d+)x(\\d+)-(#\\d+)"
+    },
+    "column": {
+        "plan_layer_config": {
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "name_text_layer": [
+                "S-TEXTG",
+                "S-TEXTB",
+                "S-TEXTC"
+            ],
+            "floor_text_layer": [
+                "S-TITLE"
+            ]
+        },
+        "layer_config": {
+            "text_layer": [
+                "TEXT-1",
+                "CT-1",
+                "手改"
+            ],
+            "line_layer": [
+                "CT-1"
+            ],
+            "rebar_text_layer": [
+                "TEXT-1",
+                "手改"
+            ],
+            "rebar_layer": [
+                "CT-3",
+                "手改"
+            ],
+            "tie_text_layer": [
+                "TEXT-1"
+            ],
+            "tie_layer": [
+                "CT-2",
+                "手改"
+            ],
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS",
+                "XREF"
+            ],
+            "column_rc_layer": [
+                "CT-1"
+            ],
+            "burst_layer_list": [
+                "XREF"
+            ]
+        },
+        "line_order": 5,
+        "size_type": "text"
+    }
+}

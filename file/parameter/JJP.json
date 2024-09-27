@@ -1,0 +1,139 @@
+{
+    "beam": {
+        "layer_config": {
+            "rebar_data_layer": [
+                "BARNOTE"
+            ],
+            "rebar_layer": [
+                "BARA",
+                "BARS",
+                "BART"
+            ],
+            "tie_text_layer": [
+                "BARNOTE"
+            ],
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "beam_text_layer": [
+                "TITLE"
+            ],
+            "bounding_block_layer": [
+                "S-ARCH"
+            ],
+            "rc_block_layer": [
+                "S-RC",
+                "OLINE"
+            ],
+            "s_dim_layer": [
+                "DIMS"
+            ],
+            "burst_layer_list": [
+                "XREF"
+            ]
+        },
+        "name_pattern": {
+            "Grider": [
+                "(.*) ([G|B|E].*)"
+            ],
+            "FB": [
+                "(.*) (F[G|b|B].*)"
+            ],
+            "SB": [
+                "(.*) ([b|g].*)"
+            ]
+        },
+        "break_rebar_point": {},
+        "plan_layer_config": {
+            "block_layer": [
+                "AREA"
+            ],
+            "name_text_layer": [
+                "BTXT",
+                "CTXT",
+                "BTXT_S_"
+            ],
+            "floor_text_layer": [
+                "TEXT1"
+            ]
+        },
+        "entity_type": {
+            "rebar_layer": [
+                "AcDbLine"
+            ],
+            "rebar_data_layer": [
+                "AcDbText",
+                "AcDbMText"
+            ],
+            "rebar_data_leader_layer": [
+                "AcDbPolyline",
+                "AcDbLeader"
+            ],
+            "tie_text_layer": [
+                "AcDbText",
+                "AcDbMText",
+                "AcDbRotatedDimension",
+                "AcDbAlignedDimension"
+            ],
+            "rc_block_layer": [
+                "AcDbPolyline",
+                "AcDbLine"
+            ]
+        },
+        "middle_tie_pattern": ""
+    },
+    "column": {
+        "plan_layer_config": {
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS"
+            ],
+            "name_text_layer": [
+                "S-TEXTG",
+                "S-TEXTB",
+                "S-TEXTC"
+            ],
+            "floor_text_layer": [
+                "S-TITLE"
+            ]
+        },
+        "layer_config": {
+            "text_layer": [
+                "TITLE",
+                "BARNOTE"
+            ],
+            "line_layer": [
+                "TABLE"
+            ],
+            "rebar_text_layer": [
+                "BARNOTE"
+            ],
+            "rebar_layer": [
+                "BARA"
+            ],
+            "tie_text_layer": [
+                "BARNOTE"
+            ],
+            "tie_layer": [
+                "BARS"
+            ],
+            "block_layer": [
+                "0",
+                "DwFm",
+                "DEFPOINTS",
+                "XREF"
+            ],
+            "column_rc_layer": [
+                "OLINE"
+            ],
+            "burst_layer_list": [
+                "XREF"
+            ]
+        },
+        "line_order": 1,
+        "size_type": "section"
+    }
+}
