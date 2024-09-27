@@ -23,6 +23,7 @@ conda install -c conda-forge flask-mail
 conda install -c anaconda pywin32
 conda install -c conda-forge dill
 pip install fpdf2 greenlet 
+pip install pymupdf
 ```
 
 ## File Structure

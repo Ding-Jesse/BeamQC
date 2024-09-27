@@ -1805,7 +1805,7 @@ def create_report(class_beam_list: list[Beam],
                                          beam_type=BeamType.Grider,
                                          project_name=project_name,
                                          output_folder=output_folder)
-        output_file_list.append(pdf_GB_file)
+        output_file_list.extend(pdf_GB_file)
 
     if fbeam_list:
         pdf_FB_file = create_scan_report(floor_list=floor_list,
@@ -1815,7 +1815,7 @@ def create_report(class_beam_list: list[Beam],
                                          beam_type=BeamType.FB,
                                          project_name=project_name,
                                          output_folder=output_folder)
-        output_file_list.append(pdf_FB_file)
+        output_file_list.extend(pdf_FB_file)
     if sbeam_list:
         pdf_SB_file = create_scan_report(floor_list=floor_list,
                                          beam_list=sbeam_list,
@@ -1824,7 +1824,7 @@ def create_report(class_beam_list: list[Beam],
                                          beam_type=BeamType.SB,
                                          project_name=project_name,
                                          output_folder=output_folder)
-        output_file_list.append(pdf_SB_file)
+        output_file_list.extend(pdf_SB_file)
     rebar_df, concrete_df, coupler_df, formwork_df, _ = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
     # header_list,ratio_dict,ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
@@ -1951,7 +1951,7 @@ def create_scan_report(floor_list: list[Floor],
                   end_row=len(ratio_df.index) + 4,
                   step_row=2,
                   step_col=3)
-    return pdf_report
+    return [pdf_report, pdf_report_appendix]
 
 
 def seperate_beam(class_beam_list: list[Beam]):
