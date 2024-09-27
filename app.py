@@ -451,10 +451,10 @@ def tool2():
     if app.config['TESTING']:
         # return render_template('verifycode.html')
         return render_template('tool2.html')
+    if request.remote_addr.startswith('192.168.0'):
+        return render_template('tool2.html')
     if 'isverify' not in session:
         return render_template('verifycode.html')
-    elif request.remote_addr.startswith('192.168.0'):
-        return render_template('tool2.html')
     elif session['isverify'] == 'expire':
         return render_template('verifycode.html')
     else:
