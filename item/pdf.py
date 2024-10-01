@@ -140,6 +140,42 @@ class PDF(FPDF):
                             new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln()
 
+    def add_text_in_columns(self, text, line_height,
+                            column_width=None, margin_between_columns=5, column_nums=2):
+        """Add text that wraps across two columns and pages as needed."""
+        self.set_font("標楷體", size=12)
+        # Calculate column width if not provided
+        if column_width is None:
+            column_width = (self.w - self.l_margin -
+                            self.r_margin) / column_nums
+
+        y_start = self.get_y()  # Get the current starting Y position
+        column = 0  # Start with the left column
+
+        # Manually split the text into lines that fit the column width
+        lines = self.multi_cell(column_width, line_height,
+                                text, dry_run=True, output="LINES")
+
+        for line in lines:
+            # Print the line in the current column
+            x_position = self.l_margin + \
+                (column * (column_width + margin_between_columns))
+            self.set_xy(x_position, self.get_y())
+            self.multi_cell(column_width, line_height, line, align='L')
+
+            # Check if there's enough space for the current line in the column
+            if self.get_y() + line_height > self.h - self.b_margin:
+                # If no space, move to the next column or add a new page
+                if column == 0:
+                    column = 1  # Switch to right column
+                    self.set_xy(self.l_margin + column_width +
+                                margin_between_columns, y_start)
+                else:
+                    self.add_page()  # Add a new page and reset to the left column
+                    column = 0
+                    y_start = self.get_y()
+                    self.set_xy(self.l_margin, y_start)
+
     def add_prop(self, prop_dict: dict, font: str):
         self.ln(10)
         self.set_font(font, size=12)
@@ -266,10 +302,10 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
                     results=kwargs['ratio_dict'], category_names=kwargs['header_list'])
                 (image_width, image_height), image_pos = pdf.add_image(
                     top_png_file, title="鋼筋比層樓分布(上層)", align="L")
-                pdf.add_text(texts=['- 鋼筋比 > 2.5% 表示斷面超過規範上限，需增加斷面尺寸',
-                                    '- 2.5% > 鋼筋比 > 2% 表示斷面接近臨界上限，同時可能有施工上的困難',
-                                    '- 2% > 鋼筋比 > 1.5% 表示斷面接近臨界上限',
-                                    '- 0.5% > 鋼筋比 表示斷面可能過大，經濟性不佳'],
+                pdf.add_text(texts=['- 鋼筋比 > 2.5% (F) 表示斷面超過規範上限，需增加斷面尺寸',
+                                    '- 2.5% > 鋼筋比 > 2% (E) 表示斷面接近臨界上限，同時可能有施工上的困難',
+                                    '- 2% > 鋼筋比 > 1.5% (D) 表示斷面接近臨界上限',
+                                    '- 0.5% > 鋼筋比 (A) 表示斷面可能過大，經濟性不佳'],
                              align='L',
                              x=image_pos[0] + 10,
                              y=image_pos[1] - image_height,
@@ -277,11 +313,16 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
                 pdf.add_page(orientation="landscape")
                 (image_width, image_height), image_pos = pdf.add_image(
                     bot_png_file, title="鋼筋比層樓分布(下層)", align="L")
-                pdf.add_text(texts=floor_ratio_summary,
-                             align='L',
-                             x=image_pos[0] + 10,
-                             y=image_pos[1] - image_height,
-                             line_height=8)
+                pdf.add_page()
+                pdf.add_text_in_columns(
+                    '\n'.join(floor_ratio_summary),
+                    line_height=8
+                )
+                # pdf.add_text(texts=floor_ratio_summary,
+                #              align='L',
+                #              x=image_pos[0] + 10,
+                #              y=image_pos[1] - image_height,
+                #              line_height=8)
             except:
                 pass
         if kwargs['report_type'].casefold() == 'column':
@@ -293,18 +334,22 @@ def create_scan_pdf(rebar_df: pd.DataFrame,
             if png_file:
                 (image_width, image_height), image_pos = pdf.add_image(
                     png_file, "鋼筋比層樓分布", align='L', page_width=(pdf.w - pdf.l_margin - pdf.r_margin) * 0.7)
-                pdf.add_text(texts=['- 鋼筋比 > 4% 表示斷面超過規範上限，需增加斷面尺寸',
-                                    '- 4% > 鋼筋比 > 3.5% 表示斷面接近臨界上限，同時可能有施工上的困難',
-                                    '- 1.5% > 鋼筋比 > 1% 表示斷面可能過大，經濟性不佳',
-                                    '- 1% > 鋼筋比 表示配筋小於規範下限，需增加配筋'],
+                pdf.add_text(texts=['- 鋼筋比 > 4% (H,I) 表示斷面超過規範上限，需增加斷面尺寸',
+                                    '- 4% > 鋼筋比 > 3.5% (G) 表示斷面接近臨界上限，同時可能有施工上的困難',
+                                    '- 1.5% > 鋼筋比 > 1% (C) 表示斷面可能過大，經濟性不佳',
+                                    '- 1% > 鋼筋比 (A) 表示配筋小於規範下限，需增加配筋'],
                              align='L',
                              x=image_pos[0] + 10,
                              y=image_pos[1] - image_height,
                              line_height=10)
                 pdf.add_page()
-                pdf.add_text(texts=floor_ratio_summary,
-                             align='L',
-                             line_height=8)
+                pdf.add_text_in_columns(
+                    '\n'.join(floor_ratio_summary),
+                    line_height=8
+                )
+                # pdf.add_text(texts=floor_ratio_summary,
+                #              align='L',
+                #              line_height=8)
         # pdf.image(top_png_file,h=pdf.eph - 35,keep_aspect_ratio=True)
 
     if 'header_list' in kwargs and 'ratio_dict' in kwargs:

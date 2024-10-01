@@ -20,6 +20,8 @@ from openpyxl import load_workbook
 from collections import Counter
 from src.logger import setup_custom_logger
 from utils.algorithm import match_points, for_loop_min_match
+from typing import Literal
+from utils.algorithm import convert_mm_to_cm
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡B']
@@ -703,7 +705,8 @@ def sort_plan(plan_filename: str,
               plan_data: dict,
               sizing: bool,
               mline_scaling: bool,
-              date):
+              date,
+              drawing_unit: Literal['cm', 'mm'] = "cm"):
     '''
     dic = {
         'mline':{
@@ -749,7 +752,8 @@ def sort_plan(plan_filename: str,
     # set (字串的coor, floor)，Ex. 求'1F'這個字串的座標在哪
     coor_to_floor_set = plan_data['coor_to_floor_set']
     # set (coor, [beam, size])，Ex. 求'B1-6'這個字串的座標在哪，如果後面有括號的話，順便紀錄尺寸，否則size = ''
-    coor_to_beam_set = plan_data['coor_to_beam_set']
+    coor_to_beam_set: set[tuple[tuple, list[str]]
+                          ] = plan_data['coor_to_beam_set']
     block_coor_list = plan_data['block_coor_list']  # 存取方框最左下角的點座標
     none_concat_size_text_list = plan_data['none_concat_size_text_list']
     # for sizing
@@ -767,6 +771,9 @@ def sort_plan(plan_filename: str,
     # 2023-0119
     for none_concat_size in none_concat_size_text_list:
         coor, size = none_concat_size
+        if drawing_unit == 'mm':
+            size = convert_mm_to_cm(size)
+
         temp_list = [s for s in coor_to_beam_set if s[1][1] == '']
         closet_beam = min(temp_list, key=lambda x: get_distance(x[0], coor))
         coor_to_beam_set.remove(closet_beam)
@@ -786,6 +793,8 @@ def sort_plan(plan_filename: str,
         for i, j in match_results:
             coor, beam_size = coor_to_size_beam_list[i]
             size_coor, size_string = coor_to_size_string_list[j]
+            if drawing_unit == 'mm':
+                size_string = convert_mm_to_cm(size_string)
             size_coor_set.add((beam_size, size_string, coor, size_coor))
 
         # size_coor_set = set()
@@ -809,8 +818,8 @@ def sort_plan(plan_filename: str,
     # 此處不會報錯，沒在框框裡就直接扔了
     floor_to_coor_set = set()
     for x in coor_to_floor_set:  # set (字串的coor, floor)
-        string_coor = x[0]
-        floor = x[1]
+        string_coor: tuple = x[0]
+        floor: str = x[1]
         for block_coor in block_coor_list:
             x_diff_left = string_coor[0] - block_coor[0][0]  # 和左下角的diff
             y_diff_left = string_coor[1] - block_coor[0][1]
@@ -940,6 +949,9 @@ def sort_plan(plan_filename: str,
         beam_rotate = x[1][2]
         min_floor = None
 
+        if drawing_unit == 'mm':
+            beam_size = convert_mm_to_cm(beam_size)
+
         # 我其實是list歐哈哈 (floor_list, block左下角和右上角的coor)
         block_list = [(floor_list, block_coor, string_coor) for floor_list, block_coor, string_coor in floor_to_coor_set if
                       (beam_coor[0] - block_coor[0][0]) * (beam_coor[0] - block_coor[1][0]) < 0 and
@@ -955,32 +967,6 @@ def sort_plan(plan_filename: str,
         if len(block_list) == 1:
             min_floor = block_list[0][0]
 
-        # for z in floor_to_coor_set:
-        #     floor_list = z[0]
-        #     block_coor = z[1]
-        #     x_diff_left = beam_coor[0] - block_coor[0][0]  # 和左下角的diff
-        #     y_diff_left = beam_coor[1] - block_coor[0][1]
-        #     x_diff_right = beam_coor[0] - block_coor[1][0]  # 和右上角的diff
-        #     y_diff_right = beam_coor[1] - block_coor[1][1]
-        #     if x_diff_left > 0 and y_diff_left > 0 and x_diff_right < 0 and y_diff_right < 0:
-        #         if min_floor == '' or min_floor == floor_list:
-        #             min_floor = floor_list
-
-        #         else:  # 有很多層在同一個block, 仍然透過字串的coor找樓層 -> 應從已知選項找最適合的，而不是全部重找，這樣會找到框框外面的東西
-        #             for y in coor_to_floor_set:  # set(字串的coor, floor)
-        #                 if y[1] == min_floor:
-        #                     string_coor = y[0]
-        #                     x_diff = abs(beam_coor[0] - string_coor[0])
-        #                     y_diff = beam_coor[1] - string_coor[1]
-        #                     total = x_diff + y_diff
-        #                 if y[1] == floor_list:
-        #                     string_coor = y[0]
-        #                     new_x_diff = abs(beam_coor[0] - string_coor[0])
-        #                     new_y_diff = beam_coor[1] - string_coor[1]
-        #                     new_total = new_x_diff + new_y_diff
-        #             if (new_y_diff > 0 and y_diff > 0 and new_total < total) or y_diff < 0:
-        #                 min_floor = floor_list
-
         floor_list = min_floor
 
         # 樓層找到之後要去表格對自己的size多大(如果size = ''的話)
@@ -992,9 +978,10 @@ def sort_plan(plan_filename: str,
                 set_plan.add((beam_floor, beam_name))
                 dic_plan[(beam_floor, beam_name)] = full_coor
                 continue
-            if beam_size == "":
+            if beam_size == '':
                 # (floor, size_beam, size_string, size_coor)
-                beam_size_coor_table = [(floor, size_beam, size_string, size_coor) for floor, size_beam, size_string, size_coor in
+                beam_size_coor_table = [(floor, size_beam, size_string, size_coor)
+                                        for floor, size_beam, size_string, size_coor in
                                         floor_beam_size_coor_set if floor == beam_floor]
                 # full match:g1,g2 ;
                 # header before "-" include number:GA,GB,DB1,B1
@@ -1037,80 +1024,6 @@ def sort_plan(plan_filename: str,
                         f'read_plan error in step 12: {beam_floor} {beam_name} cannot find size. ')
                     warning_list.append(
                         f'{beam_floor} {beam_name} cannot find size. ')
-
-        # if not floor_list is None:
-        #     for floor in floor_list:
-        #         if sizing or mline_scaling:
-        #             if beam_size == '':
-        #                 min_diff = inf
-        #                 min_size = ''
-        #                 for y in floor_beam_size_coor_set: #(floor, size_beam, size_string, size_coor)
-        #                     if y[0] == floor and y[1] == beam_name:  # 先看有沒有像g1, g2完全吻合的
-        #                         tmp_coor = y[3]
-        #                         diff = abs(
-        #                             beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
-        #                         if diff < min_diff:
-        #                             min_diff = diff
-        #                             min_size = y[2]
-        #                 if min_size != '':
-        #                     beam_size = min_size
-        #                 else:
-        #                     header = beam_name
-        #                     for char in header:
-        #                         if char.isdigit():
-        #                             header = header.split(char)[0]
-        #                             break
-        #                     for y in floor_beam_size_coor_set:
-        #                         # 再看頭一不一樣(去掉數字的頭)
-        #                         if y[0] == floor and y[1] == header:
-        #                             tmp_coor = y[3]
-        #                             diff = abs(
-        #                                 beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
-        #                             if diff < min_diff:
-        #                                 min_diff = diff
-        #                                 min_size = y[2]
-        #                 if min_size != '':
-        #                     beam_size = min_size
-        #                 else:
-        #                     for y in floor_beam_size_coor_set:
-        #                         # 再看頭有沒有包含到(ex. GA-1 算在 G)
-        #                         if y[0] == floor and y[1] in header:
-        #                             tmp_coor = y[3]
-        #                             diff = abs(
-        #                                 beam_coor[0] - tmp_coor[0]) + abs(beam_coor[1] - tmp_coor[1])
-        #                             if diff < min_diff:
-        #                                 min_diff = diff
-        #                                 min_size = y[2]
-        #                     beam_size = min_size
-        #             # if floor=='10F' and beam_name =='B1-4':
-        #             #     print(check_list)
-        #             if beam_size != '':
-        #                 if (floor, beam_name, '', beam_rotate) in dic_plan:
-        #                     set_plan.remove(
-        #                         (floor, beam_name, '', beam_rotate))
-        #                     dic_plan.pop((floor, beam_name, '', beam_rotate))
-        #                     error(
-        #                         f'read_plan error in step 12: {floor} {beam_name} duplicate. ')
-        #                     warning_list.append(
-        #                         f'{floor} {beam_name} duplicate. ')
-        #                 set_plan.add(
-        #                     (floor, beam_name, beam_size, beam_rotate))
-        #                 dic_plan[(floor, beam_name, beam_size,
-        #                           beam_rotate)] = full_coor
-        #                 check_list.append((floor, beam_name))
-        #             else:
-        #                 if (floor, beam_name) not in check_list:
-        #                     set_plan.add((floor, beam_name, '', beam_rotate))
-        #                     dic_plan[(floor, beam_name, '',
-        #                               beam_rotate)] = full_coor
-        #                     error(
-        #                         f'read_plan error in step 12: {floor} {beam_name} cannot find size. ')
-        #                     warning_list.append(
-        #                         f'{floor} {beam_name} cannot find size. ')
-
-        #         else:  # 不用對尺寸
-        #             set_plan.add((floor, beam_name))
-        #             dic_plan[(floor, beam_name)] = full_coor
 
     # doc_plan.Close(SaveChanges=False)
     progress('平面圖讀取進度 12/13')
@@ -1422,7 +1335,9 @@ def read_beam(beam_filename, layer_config):
     return floor_to_beam_set
 
 
-def sort_beam(floor_to_beam_set: set, sizing: bool):
+def sort_beam(floor_to_beam_set: set,
+              sizing: bool,
+              drawing_unit: Literal['cm', 'mm']):
     '''
         result_dict = {
             'beam':[]
@@ -1468,12 +1383,16 @@ def sort_beam(floor_to_beam_set: set, sizing: bool):
     dic_beam = {}
     set_beam = set()
     for x in floor_to_beam_set:
-        floor = x[0]
+        floor: str = x[0]
         beam = x[1]
         coor = x[2]
         size = x[3]
         floor_list = []
         to_bool = False
+
+        if drawing_unit == 'mm':
+            beam_size = convert_mm_to_cm(beam_size)
+
         for char in weird_to_list:
             if char in floor:
                 to_char = char
@@ -2012,6 +1931,7 @@ def run_plan(plan_filename,
              mline_scaling,
              date,
              client_id,
+             drawing_unit,
              pkl=""):
     start_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     global main_logger
@@ -2032,7 +1952,8 @@ def run_plan(plan_filename,
                                                                    layer_config=layer_config,
                                                                    sizing=sizing,
                                                                    mline_scaling=mline_scaling,
-                                                                   date=date)
+                                                                   date=date,
+                                                                   drawing_unit=drawing_unit)
     end_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     cad_data = output_progress_report(layer_config=layer_config,
                                       start_date=start_date,
@@ -2041,6 +1962,7 @@ def run_plan(plan_filename,
                                       warning_list=warning_list,
                                       plan_filename=plan_filename,
                                       plan_data=plan_data)
+
     return (set_plan, dic_plan, mline_error_list, cad_data)
 
 
@@ -2048,6 +1970,7 @@ def run_beam(beam_filename,
              layer_config,
              sizing,
              client_id,
+             drawing_unit,
              pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
@@ -2059,7 +1982,8 @@ def run_beam(beam_filename,
     else:
         floor_to_beam_set = save_temp_file.read_temp(pkl)
     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-                                   sizing=sizing)
+                                   sizing=sizing,
+                                   drawing_unit=drawing_unit)
     return (set_beam, dic_beam)
 
 

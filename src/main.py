@@ -28,7 +28,9 @@ def main_functionV3(beam_filenames,
                     mline_scaling,
                     client_id,
                     plan_pkl="",
-                    beam_pkl="") -> str:
+                    beam_pkl="",
+                    plan_drawing_unit='cm',
+                    beam_drawing_unit='cm') -> str:
     plan_result_dict = None
     beam_result_dict = None
 
@@ -55,12 +57,14 @@ def main_functionV3(beam_filenames,
                                                     mline_scaling,
                                                     date,
                                                     client_id,
+                                                    plan_drawing_unit,
                                                     plan_pkl)))
     for beam_filename in beam_filenames:
         res_beam.append(pool.apply_async(run_beam, (beam_filename,
                                                     layer_config,
                                                     sizing,
                                                     client_id,
+                                                    beam_drawing_unit,
                                                     beam_pkl)))
 
     plan_drawing = 0
@@ -185,6 +189,10 @@ def main_col_function(col_filenames,
                       output_directory,
                       project_name,
                       client_id,
+                      plan_drawing_unit='cm',
+                      column_drawing_unit='cm',
+                      column_bottom_line=1,
+                      exclude_string=[],
                       plan_pkl: str = "",
                       col_pkl: str = ""):
     '''
@@ -215,12 +223,16 @@ def main_col_function(col_filenames,
         res_plan.append(pool.apply_async(plan_to_col.run_plan, (plan_dwg_file,
                                                                 layer_config,
                                                                 client_id,
+                                                                plan_drawing_unit,
                                                                 plan_pkl)))
 
     for col_dwg_file in col_filenames:
         res_col.append(pool.apply_async(plan_to_col.run_col, (col_dwg_file,
                                                               layer_config,
                                                               client_id,
+                                                              column_drawing_unit,
+                                                              column_bottom_line,
+                                                              exclude_string,
                                                               col_pkl)))
 
     plan_drawing = 0

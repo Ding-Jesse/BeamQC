@@ -1026,19 +1026,21 @@ def combine_beam_boundingbox(coor_to_block_list: list[tuple[tuple[tuple, tuple],
     same_block_rc_block_list = []
     # rank the border line (horztion > vertical)
     temp = []
+
+    if measure_type == 'mm':
+        tol = 1200
+    else:
+        tol = 100
+
     for data in coor_to_rc_block_list:
-        if abs(data[0][0][0] - data[0][1][0]) > abs(data[0][0][1] - data[0][1][1]):
+        # determine priority horz >> vertical
+        if abs(data[0][0][0] - data[0][1][0]) > tol // 2:
             rank = 0
         else:
             rank = 1
         temp.append((*data, rank))
 
     coor_to_rc_block_list = temp
-
-    if measure_type == 'mm':
-        tol = 1200
-    else:
-        tol = 100
 
     for i, beam in enumerate(class_beam_list):
         if i % 100 == 0:
@@ -1758,7 +1760,8 @@ def create_report(class_beam_list: list[Beam],
                   cad_data: Counter,
                   plan_filename: str = '',
                   plan_layer_config: dict = None,
-                  plan_pkl: str = ''):
+                  plan_pkl: str = '',
+                  output_beam_type: list[Literal['GB', 'SB', 'FB']] = []):
     progress('產生報表')
     excel_filename = (
         f'{output_folder}/'
@@ -1807,6 +1810,9 @@ def create_report(class_beam_list: list[Beam],
                                          output_folder=output_folder)
         output_file_list.extend(pdf_GB_file)
 
+        if 'GB' in output_beam_type:
+            return
+
     if fbeam_list:
         pdf_FB_file = create_scan_report(floor_list=floor_list,
                                          beam_list=fbeam_list,
@@ -1816,6 +1822,8 @@ def create_report(class_beam_list: list[Beam],
                                          project_name=project_name,
                                          output_folder=output_folder)
         output_file_list.extend(pdf_FB_file)
+        if 'FB' in output_beam_type:
+            return
     if sbeam_list:
         pdf_SB_file = create_scan_report(floor_list=floor_list,
                                          beam_list=sbeam_list,
@@ -1825,6 +1833,8 @@ def create_report(class_beam_list: list[Beam],
                                          project_name=project_name,
                                          output_folder=output_folder)
         output_file_list.extend(pdf_SB_file)
+        if 'SB' in output_beam_type:
+            return
     rebar_df, concrete_df, coupler_df, formwork_df, _ = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
     # header_list,ratio_dict,ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
@@ -2632,6 +2642,8 @@ def count_beam_multifiles(project_name: str,
                                          output_folder=output_folder,
                                          project_name=project_name,
                                          cad_data=cad_counter,
+                                         output_beam_type=kwargs.get(
+                                             'beam_type', []),
                                          **plan)
         return output_file_list
 
@@ -2736,12 +2748,15 @@ if __name__ == '__main__':
     parameter['measure_type'] = "cm"
     count_beam_multifiles(
         project_name='2024-0923',
-        beam_filenames=[r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0926.dwg'],
+        beam_filenames=[r'D:\Desktop\BeamQC\TEST\2024-0923\S2-1-S2-30.dwg'],
         floor_parameter_xlsx=r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-floor_1.xlsx',
         pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
         output_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        pkl=[r'TEST\2024-0923\2024-0923-20240926_105528-2024-0926-beam-data-0.pkl'],
-        ** parameter
+        # pkl=[r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0923-20240930_165101-2F-Test-beam-data-0.pkl'],
+        # beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\beam-all.pkl',
+        # cad_data_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\cad_list.pkl',
+        # beam_type=['GB'],
+        **parameter
     )
     # from multiprocessing import Process, Pool
     # 檔案路徑區

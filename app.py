@@ -138,6 +138,14 @@ def upload_file():
             table_line_layer = request.form['table_line_layer']
             column_block_layer = request.form['column_block_layer']
 
+            plan_drawing_unit = request.form['plan_drawing_unit']
+            beam_drawing_unit = request.form['beam_drawing_unit']
+            column_drawing_unit = request.form['column_drawing_unit']
+
+            column_offset_line = request.form['column_offset_line']
+            column_exclude_string = request.form['column_exclude_string']
+            column_exclude_string = column_exclude_string.split('\r\n'),
+
             layer_config = {
                 'text_layer': text_layer.split('\r\n'),
                 'block_layer': block_layer.split('\r\n'),
@@ -218,7 +226,9 @@ def upload_file():
                                               layer_config=layer_config,
                                               sizing=sizing,
                                               mline_scaling=mline_scaling,
-                                              client_id=client_id)
+                                              client_id=client_id,
+                                              plan_drawing_unit=plan_drawing_unit,
+                                              beam_drawing_unit=beam_drawing_unit)
                 filenames_beam = [output_file]
                 filenames.extend(filenames_beam)
             if column_ok and plan_ok:
@@ -230,8 +240,14 @@ def upload_file():
                                                 output_directory=app.config['OUTPUT_FOLDER'],
                                                 project_name=project_name,
                                                 layer_config=col_layer_config,
-                                                client_id=client_id)
+                                                client_id=client_id,
+                                                plan_drawing_unit=plan_drawing_unit,
+                                                column_drawing_unit=column_drawing_unit,
+                                                column_bottom_line=column_offset_line,
+                                                exclude_string=column_exclude_string)
+
                 filenames_column = [output_file]
+
                 filenames.extend(filenames_column)
             if column_ok or beam_ok:
                 if 'filenames' in session:

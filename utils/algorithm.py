@@ -1,4 +1,5 @@
 import numpy as np
+import re
 from scipy.optimize import linear_sum_assignment
 
 
@@ -50,3 +51,49 @@ def for_loop_min_match(points1, points2):
         total_distance += min_distance
 
     return matched_pairs, total_distance
+
+
+def convert_mm_to_cm(text):
+    # Define a function to convert mm to cm (divide by 10)
+    def replace_mm(match):
+        # Get the matched number as a string, then convert to float
+        mm_value = int(match.group(0))  # Convert string to integer
+        # Divide by 10 to convert mm to cm
+        cm_value = mm_value / 10.0  # Use float division
+        # Return the result formatted to one decimal place if needed
+        # Remove trailing zeros and decimal if not necessary
+        return f"{cm_value:.1f}".rstrip('0').rstrip('.')
+
+    # Use re.sub to find all numbers and apply the conversion
+    result = re.sub(r'\d+', replace_mm, text)
+    return result
+
+
+def find_all_matching_patterns(text, patterns):
+    matching_patterns = []
+    for pattern in patterns:
+        if re.search(pattern, text):
+            matching_patterns.append(pattern)
+    return matching_patterns  # Return all matching patterns
+
+
+def extract_dimensions(text):
+    '''
+    # Example usage
+    text1 = "100x100(cm)"
+    text2 = "100.5x100.5(cm)"
+
+    ### Extracting dimensions
+    dimensions1 = extract_dimensions(text1) \n
+    dimensions2 = extract_dimensions(text2) \n
+
+    print(dimensions1)  # Output: 100x100 \n
+    print(dimensions2)  # Output: 100.5x100.5 \n
+    '''
+    # Updated regular expression to match two sets of digits (with optional decimal) separated by "x"
+    match = re.search(r'\d+(\.\d+)?x\d+(\.\d+)?', text)
+
+    # If a match is found, return it; otherwise, return None
+    if match:
+        return match.group()
+    return None

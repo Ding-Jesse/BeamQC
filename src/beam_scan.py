@@ -352,7 +352,7 @@ def set_check_scan(beam_scan: BeamScan):
         return pass_syntax
 
     def index_0207(b: Beam):
-        if b.depth >= 90:
+        if b.depth > 90:
             if not b.middle_tie:
                 middle_tie_count = 0
             else:

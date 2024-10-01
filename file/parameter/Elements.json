@@ -31,13 +31,13 @@
         },
         "name_pattern": {
             "Grider": [
-                "(.*) ([G|B|E].*)"
+                "(.*) ([G|B|E|WB|DB|CG|CB].*)"
             ],
             "FB": [
-                "(.*) (F[G|b|B].*)"
+                "(.*) (F[G|b|B|WB].*)"
             ],
             "SB": [
-                "(.*) ([b|g].*)"
+                "(.*) ([b|g|cb|cg].*)"
             ]
         },
         "break_rebar_point": {},

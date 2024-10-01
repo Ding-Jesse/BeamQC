@@ -8,6 +8,7 @@ import os
 import pandas as pd
 import sys
 import src.save_temp_file as save_temp_file
+from typing import Literal
 from gzip import READ
 from multiprocessing.spawn import prepare
 from tkinter import HIDDEN
@@ -18,7 +19,7 @@ from functools import cmp_to_key
 from src.plan_to_beam import turn_floor_to_float, turn_floor_to_string, turn_floor_to_list, floor_exist, vtFloat, mycmp
 from src.logger import setup_custom_logger
 from collections import defaultdict
-from utils.algorithm import match_points
+from utils.algorithm import match_points, convert_mm_to_cm, find_all_matching_patterns, extract_dimensions
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡', '、']
 special_char_pattern = r'[、|,]'
@@ -189,8 +190,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                    'S' not in object.TextString:
+                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -276,7 +277,8 @@ def read_plan(plan_filename: str, layer_config: dict):
     }
 
 
-def sort_plan(plan_data: dict):
+def sort_plan(plan_data: dict,
+              drawing_unit: Literal['cm', 'mm'] = 'cm'):
     # Step 8. 透過 coor_to_floor_set 以及 block_coor_list 完成 floor_to_coor_set，格式為(floor, block左下角和右上角的coor)
     # 此處不會報錯，沒在框框裡就直接扔了
     block_coor_list = plan_data['block_coor_list']
@@ -299,11 +301,15 @@ def sort_plan(plan_data: dict):
                 floor_to_coor_set.add((floor, block_coor, string_coor))
     for floor, block_coor, floor_string_coor in floor_to_coor_set:
         floor_table_size_dict[floor] = {}
-        floor_table_size = [(string_coor, text) for string_coor, text in table_to_size_list if string_coor[0] - block_coor[0][0] > 0 and
+
+        floor_table_size = [(string_coor, text if drawing_unit == 'cm' else convert_mm_to_cm(text))
+                            for string_coor, text in table_to_size_list
+                            if string_coor[0] - block_coor[0][0] > 0 and
                             string_coor[1] - block_coor[0][1] > 0 and
                             string_coor[0] - block_coor[1][0] < 0 and
                             string_coor[1] - block_coor[1][1] < 0]
-        floor_table_line = [(coor1, coor2) for coor1, coor2 in table_line_list if coor1[0] - block_coor[0][0] > 0 and
+        floor_table_line = [(coor1, coor2) for coor1, coor2 in table_line_list
+                            if coor1[0] - block_coor[0][0] > 0 and
                             coor1[1] - block_coor[0][1] > 0 and
                             coor2[0] - block_coor[1][0] < 0 and
                             coor2[1] - block_coor[1][1] < 0 and
@@ -416,7 +422,7 @@ def sort_plan(plan_data: dict):
         col_coor = x[0][0]
         col_full_coor = x[0]
         col_name = x[1]
-        min_diff = 1000
+        min_diff = 1000 if drawing_unit == 'cm' else 10000
         match_size = ''
         match_size_coor = ''
 
@@ -426,6 +432,9 @@ def sort_plan(plan_data: dict):
 
             match_size = closest_size[1]
             match_size_coor = closest_size[0]
+
+            if drawing_unit == 'mm':
+                match_size = convert_mm_to_cm(match_size)
 
             left = min(col_full_coor[0][0], match_size_coor[0][0])
             right = max(col_full_coor[1][0], match_size_coor[1][0])
@@ -519,6 +528,11 @@ def sort_plan(plan_data: dict):
                       (start_pt[1] + end_pt[1]) / 2)
             x_block_length = round(abs(start_pt[0] - end_pt[0]), 2)
             y_block_length = round(abs(start_pt[1] - end_pt[1]), 2)
+
+            if drawing_unit == 'mm':
+                x_block_length /= 10.0
+                y_block_length /= 10.0
+
             floor_column_block_entity_dict[floor].append(
                 (mid_pt, (start_pt, end_pt), (x_block_length, y_block_length)))
 
@@ -737,7 +751,10 @@ def read_col(col_filename: str, layer_config: dict):
     }
 
 
-def sort_col(col_data: dict):
+def sort_col(col_data: dict,
+             drawing_unit: Literal['cm', 'mm'] = 'cm',
+             bottom_line_offset=1,
+             exclude_string: list[str] = []):
     # Step 8. 完成col_to_line_set 格式:(col, left, right, up)
     '''
 
@@ -784,10 +801,12 @@ def sort_col(col_data: dict):
         new_coor_to_floor_line_list = list(tmp_set)
         new_coor_to_floor_line_list.sort(key=lambda x: x[0])
         try:
-            for y in range(len(new_coor_to_floor_line_list)):  # 再看y座標被哪兩條線夾住，下面那條要往下平移一格
+            # 再看y座標被哪兩條線夾住，下面那條要往下平移一格
+            for y, line in enumerate(new_coor_to_floor_line_list):
                 if new_coor_to_floor_line_list[y][0] < coor[0][1] < new_coor_to_floor_line_list[y+1][0]:
                     floor_to_line_set.add(
-                        (floor, new_coor_to_floor_line_list[y-1][0], new_coor_to_floor_line_list[y+1][0], coor[0][0]))
+                        (floor, new_coor_to_floor_line_list[y - bottom_line_offset][0],
+                         new_coor_to_floor_line_list[y+1][0], coor[0][0]))
         except:
             pass
     progress('柱配筋圖讀取進度 9/10')
@@ -798,10 +817,18 @@ def sort_col(col_data: dict):
     for x in coor_to_size_set:
         coor = x[0]
         size = x[1]
+
+        if find_all_matching_patterns(text=size, patterns=exclude_string):
+            continue
+
+        size = extract_dimensions(size)
+
+        if drawing_unit == 'mm':
+            size = convert_mm_to_cm(size)
         min_floor = ''
         min_floor_coor = ''
         min_floor_diff = 10000
-        min_col = ''
+        min_col: str = ''
         min_col_coor = ''
         min_col_diff = 10000
         for y in floor_to_line_set:  # (floor, down, up, left)
@@ -1260,6 +1287,7 @@ def write_result_log(plan_error_list, col_error_list, set_plan, set_col, block_e
 def run_plan(plan_filename: str,
              layer_config: dict,
              client_id: str,
+             drawing_unit: str = 'cm',
              pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
@@ -1271,8 +1299,9 @@ def run_plan(plan_filename: str,
     else:
         plan_col_set = save_temp_file.read_temp(
             tmp_file=pkl)
-    set_plan, dic_plan, block_error_list, column_block_match_list = sort_plan(
-        plan_data=plan_col_set)
+    set_plan, dic_plan, \
+        block_error_list, column_block_match_list = sort_plan(plan_data=plan_col_set,
+                                                              drawing_unit=drawing_unit)
     # output_txt = f'{os.path.splitext(plan_new_filename)[0]}_result.txt'
     return (set_plan, dic_plan, block_error_list, column_block_match_list)
 
@@ -1280,6 +1309,9 @@ def run_plan(plan_filename: str,
 def run_col(col_filename: str,
             layer_config: dict,
             client_id: str,
+            drawing_unit='cm',
+            bottom_line_offset=1,
+            exclude_string=[],
             pkl: str = ""):
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
@@ -1289,9 +1321,11 @@ def run_col(col_filename: str,
         save_temp_file.save_pkl(
             data=floor_col_set, tmp_file=f'{os.path.splitext(col_filename)[0]}_col_set.pkl')
     else:
-        floor_col_set = save_temp_file.read_temp(
-            tmp_file=pkl)
-    set_col, dic_col = sort_col(col_data=floor_col_set)
+        floor_col_set = save_temp_file.read_temp(tmp_file=pkl)
+    set_col, dic_col = sort_col(col_data=floor_col_set,
+                                drawing_unit=drawing_unit,
+                                bottom_line_offset=bottom_line_offset,
+                                exclude_string=exclude_string)
     return (set_col, dic_col)
 
 
@@ -1313,16 +1347,19 @@ if __name__ == '__main__':
         'column_block_layer': ['S-COL']
     }
     set_plan, dic_plan, block_error_list, block_match_result_list = run_plan(
-        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0819\2024-08-21-16-28_P2023-07A 慈濟中壢園區案5FB1-XSb-PLAN.dwg',
+        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\XS-PLAN.dwg',
         layer_config=layer_config,
-        client_id='0524-temp_col',
-        pkl=r""
+        client_id='0930-temp_col',
+        pkl=r"TEST\2024-0930\XS-PLAN_plan_to_col.pkl",
+        drawing_unit='mm'
     )
     set_col, dic_col = run_col(
-        col_filename=r'D:\Desktop\BeamQC\TEST\2024-0522\427\XS-COL.dwg',
+        col_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\XS-COL.dwg',
         layer_config=layer_config,
-        client_id='0524-temp-col',
-        pkl=r'TEST\2024-0819\2024-08-21-16-28_P2023-07A 慈濟中壢園區案5FB1-XS-COL_col_set.pkl'
+        client_id='0930-temp-col',
+        pkl=r'',
+        bottom_line_offset=2,
+        exclude_string=['mm']
     )
 
     date = time.strftime("%Y-%m-%d", time.localtime())
@@ -1350,3 +1387,10 @@ if __name__ == '__main__':
                                                                      block_error_list=block_error_list,
                                                                      block_match_list=block_match_result_list
                                                                      )
+    from main import OutputExcel
+    output_folder = r'TEST\2024-0930'
+    for sheet_name, df_list in excel_data.items():
+        OutputExcel(df_list=df_list,
+                    df_spacing=1,
+                    file_path=os.path.join(output_folder, 'test.xlsx'),
+                    sheet_name=sheet_name)
