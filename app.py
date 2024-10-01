@@ -144,7 +144,7 @@ def upload_file():
 
             column_offset_line = request.form['column_offset_line']
             column_exclude_string = request.form['column_exclude_string']
-            column_exclude_string = column_exclude_string.split('\r\n'),
+            column_exclude_string = column_exclude_string.split('\r\n')
 
             layer_config = {
                 'text_layer': text_layer.split('\r\n'),
@@ -281,7 +281,7 @@ def upload_file():
                     "Line": entry.lineno,
                     "Function": entry.name,
                     "Code Context": entry.line,
-                    "Error Type": exc_type,
+                    "Error Type": str(exc_type),
                     "Value": exc_value
                 }})
             error_detail.update({
