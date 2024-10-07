@@ -190,8 +190,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                'S' not in object.TextString:
+                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                    'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -691,7 +691,7 @@ def read_col(col_filename: str, layer_config: dict):
                         coor_to_col_set.add(
                             ((coor1, coor2), object.TextString))
 
-                    elif 'x' in object.TextString or 'X' in object.TextString:
+                    elif 'x' in object.TextString or 'X' in object.TextString or '詳平面' in object.TextString:
                         size = object.TextString.replace('X', 'x').strip()
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
@@ -971,28 +971,29 @@ def write_plan(plan_filename,
     error_num = 0
     error_list = []
     for x in list1:
-        if x[0] != 'FBF':
-            wrong_data = 0
-            for y in list2:
-                if x[0] == y[0] and x[1] == y[1]:
-                    error_list.append((x, 0, y[2]))
-                    # f.write(f'{x}: 尺寸有誤，在XS-COL那邊是{y[2]}\n')
-                    wrong_data = 1
-                    break
-            if not wrong_data:
-                error_list.append((x, 1))
-                # f.write(f'{x}: 找不到這根柱子\n')
+        if x[0] == 'FBF':
+            continue
+        wrong_data = 0
+        for y in list2:
+            if x[0] == y[0] and x[1] == y[1]:
+                error_list.append((x, 0, y[2]))
+                # f.write(f'{x}: 尺寸有誤，在XS-COL那邊是{y[2]}\n')
+                wrong_data = 1
+                break
+        if not wrong_data:
+            error_list.append((x, 1))
+            # f.write(f'{x}: 找不到這根柱子\n')
 
-            error_num += 1
+        error_num += 1
 
-            if drawing:
-                coor = dic_plan[x]
-                coor_list = [coor[0] - 20, coor[3] - 20, 0, coor[1] + 20, coor[3] - 20, 0, coor[1] +
-                             20, coor[2] + 20, 0, coor[0] - 20, coor[2] + 20, 0, coor[0] - 20, coor[3] - 20, 0]
-                points = vtFloat(coor_list)
-                pointobj = msp_plan.AddPolyline(points)
-                for i in range(4):
-                    pointobj.SetWidth(i, 10, 10)
+        if drawing:
+            coor = dic_plan[x]
+            coor_list = [coor[0] - 20, coor[3] - 20, 0, coor[1] + 20, coor[3] - 20, 0, coor[1] +
+                         20, coor[2] + 20, 0, coor[0] - 20, coor[2] + 20, 0, coor[0] - 20, coor[3] - 20, 0]
+            points = vtFloat(coor_list)
+            pointobj = msp_plan.AddPolyline(points)
+            for i in range(4):
+                pointobj.SetWidth(i, 10, 10)
     if drawing:
         for block in block_match:
             floor, col_block_item, col_item = block
@@ -1350,15 +1351,15 @@ if __name__ == '__main__':
         plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\XS-PLAN.dwg',
         layer_config=layer_config,
         client_id='0930-temp_col',
-        pkl=r"TEST\2024-0930\XS-PLAN_plan_to_col.pkl",
-        drawing_unit='mm'
+        pkl=r"TEST\2024-0930\2024-10-04-14-26_副都心col-XS-PLAN_plan_to_col.pkl",
+        drawing_unit='cm'
     )
     set_col, dic_col = run_col(
-        col_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\XS-COL.dwg',
+        col_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\2024-10-04-14-26_副都心col-XS-COL.dwg',
         layer_config=layer_config,
         client_id='0930-temp-col',
-        pkl=r'',
-        bottom_line_offset=2,
+        pkl=r'TEST\2024-0930\2024-10-04-14-26_副都心col-XS-COL_col_set.pkl',
+        bottom_line_offset=1,
         exclude_string=['mm']
     )
 
@@ -1392,5 +1393,5 @@ if __name__ == '__main__':
     for sheet_name, df_list in excel_data.items():
         OutputExcel(df_list=df_list,
                     df_spacing=1,
-                    file_path=os.path.join(output_folder, 'test.xlsx'),
+                    file_path=os.path.join(output_folder, 'test2.xlsx'),
                     sheet_name=sheet_name)

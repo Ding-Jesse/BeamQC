@@ -2747,12 +2747,12 @@ if __name__ == '__main__':
     parameter = read_parameter_json('Elements')['beam']
     parameter['measure_type'] = "cm"
     count_beam_multifiles(
-        project_name='2024-0923',
+        project_name='',
         beam_filenames=[r'D:\Desktop\BeamQC\TEST\2024-0923\S2-1-S2-30.dwg'],
         floor_parameter_xlsx=r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-floor_1.xlsx',
         pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
         output_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        # pkl=[r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0923-20240930_165101-2F-Test-beam-data-0.pkl'],
+        pkl=[r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0923-20240930_165101-2F-Test-beam-data-0.pkl'],
         # beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\beam-all.pkl',
         # cad_data_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\cad_list.pkl',
         # beam_type=['GB'],

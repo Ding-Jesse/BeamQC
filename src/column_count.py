@@ -520,6 +520,13 @@ def create_report(output_column_list: list[Column],
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'柱_report.pdf'
     )
+
+    pdf_report_appendix = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'柱_appendix.pdf'
+    )
     if plan_filename or plan_pkl:
         cal_column_in_plan(column_list=output_column_list,
                            plan_filename=plan_filename,
@@ -583,7 +590,8 @@ def create_report(output_column_list: list[Column],
                     ratio_dict=ratio_dict,
                     report_type='column',
                     item_name='柱',
-                    detail_report=detail_report)
+                    detail_report=detail_report,
+                    appendix=pdf_report_appendix)
     return excel_filename, pdf_report
 
 
@@ -1213,13 +1221,13 @@ if __name__ == '__main__':
 
     parameter = read_parameter_json('Elements')['column']
     count_column_multifiles(
-        project_name='2024-0924',
+        project_name='',
         column_filenames=[
             r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0926-COL.dwg'],
         floor_parameter_xlsx=r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-24-16-02-floor_1.xlsx',
         output_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
         pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        pkl=[r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0924-20240926_133937-2024-0926-COL-beam-data-0.pkl'],
+        column_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\column-3.pkl',
         **parameter
     )
     # sys.argv[1] # XS-COL的路徑

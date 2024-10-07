@@ -96,4 +96,4 @@ def extract_dimensions(text):
     # If a match is found, return it; otherwise, return None
     if match:
         return match.group()
-    return None
+    return ''
