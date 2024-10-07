@@ -143,6 +143,8 @@ class Beam():
     ng_message: list[str] = field(default_factory=list)
     protect_layer: float = 0
     plan_count: float = 0
+    top_y = 0
+    bot_y = 0
     # coor = Point
     # bounding_box = (Point,Point)
 
@@ -438,7 +440,8 @@ class Beam():
             elif abs(rebar.start_pt.y - bot_y) >= self.depth/2:
                 check_rebar_dim(self.rebar['top_second'], rebar=rebar)
                 self.rebar['top_second'].append(rebar)
-
+        self.top_y = top_y
+        self.bot_y = bot_y
         # for pos,rebar in self.rebar.items():
         #     # if 'second' in pos:
         #     #     if len(rebar):
@@ -474,6 +477,7 @@ class Beam():
         #                 rebar.insert(i+1,connect_rebar[0])
         #             else:
         #                 print(f'{self.serial}')
+
     def sort_beam_tie(self):
         if not self.tie_list:
             return
@@ -743,8 +747,9 @@ class Beam():
         fydb = RebarDiameter(rebar.size)
         fytdb = RebarDiameter(tie.size)
         spacing = tie.spacing
-        if self.beam_type == BeamType.Grider and self.floor_object.is_seismic:
-            spacing = 10
+        if self.floor_object is not None:
+            if self.beam_type == BeamType.Grider and self.floor_object.is_seismic:
+                spacing = 10
         width_ = self.width
         fynum = rebar.number
         avh = RebarArea(tie.size)

@@ -1735,7 +1735,22 @@ def cal_beam_rebar(data={},
     save_temp_file.save_pkl(
         test_data, r'tests\data\test-data-4.pkl'
     )
+
+    assign_floor_prop()
     return class_beam_list, cad_data
+
+
+def assign_floor_prop(beam_list: list[Beam],
+                      parameter_df: pd.DataFrame):
+    for floor_name in parameter_df.index:
+        floor_name: str
+        temp_floor = Floor(str(floor_name))
+        temp_floor.set_beam_prop(parameter_df.loc[floor_name])
+        current_floor_beam = [b for b in beam_list
+                              if b.floor == floor_name or
+                              b.floor.replace('F', '') == floor_name.replace('F', '')]
+        for beam in current_floor_beam:
+            beam.set_prop(temp_floor)
 
 
 def cal_beam_in_plan(beam_list: list[Beam],
@@ -2128,6 +2143,17 @@ def draw_rebar_line(class_beam_list: list[Beam],
     return output_dwg
 
 
+def redraw_beam(class_beam_list: list[Beam],
+                msp_beam: object,
+                doc_beam: object,
+                output_folder: str,
+                project_name: str):
+    error_count = 0
+    date = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    output_dwg = os.path.join(
+        output_folder, f'{project_name}_{date}_Markon.dwg')
+
+
 def sort_beam(class_beam_list: list[Beam]):
     for beam in class_beam_list:
         beam.sort_beam_rebar()
@@ -2501,14 +2527,18 @@ def floor_parameter(beam_list: list[Beam],
     parameter_df: pd.DataFrame
     floor_list: list[Floor]
     floor_list = []
+
     parameter_df = read_parameter_df(floor_parameter_xlsx, '梁參數表')
     parameter_df.set_index(['樓層'], inplace=True)
+
     for floor_name in parameter_df.index:
         temp_floor = Floor(str(floor_name))
         floor_list.append(temp_floor)
         temp_floor.set_beam_prop(parameter_df.loc[floor_name])
-        temp_floor.add_beam(
-            [b for b in beam_list if b.floor == temp_floor.floor_name or b.floor.replace('F', '') == temp_floor.floor_name.replace('F', '')])
+        temp_floor.add_beam([b for b in beam_list if
+                             b.floor == temp_floor.floor_name or
+                             b.floor.replace('F', '') ==
+                             temp_floor.floor_name.replace('F', '')])
     return floor_list
 # combine dim with text arrow
 
@@ -2736,6 +2766,8 @@ def count_beam_multifiles(project_name: str,
                                          project_name=project_name,
                                          cad_data=cad_counter,
                                          **plan)
+        save_temp_file.save_pkl(
+            all_beam_list, tmp_file=result_pkl)
 
     return output_file_list, output_dwg_list, result_pkl
 
