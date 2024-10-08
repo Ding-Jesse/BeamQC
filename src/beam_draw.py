@@ -14,10 +14,10 @@ from itertools import product
 
 def draw_beam_rebar_dxf():
 
-    output_folder = r'TEST\2024-0930'
+    output_folder = r'TEST\2024-1008'
 
     beam_list = save_temp_file.read_temp(
-        r'TEST\2024-0923\2024-0923-20240930_173909-beam-object-all.pkl')
+        r'TEST\2024-1008\梁\2024-1008-20241008_181447-beam-object.pkl')
     # Create a new DXF document
     doc = ezdxf.new()
 
@@ -26,7 +26,7 @@ def draw_beam_rebar_dxf():
     # Create a new drawing in the document
     msp = doc.modelspace()
 
-    for b in beam_list[0:3]:
+    for b in beam_list:
         draw_data = draw_beam(b)
 
         draw_text(draw_data['text'], msp)
@@ -36,7 +36,7 @@ def draw_beam_rebar_dxf():
         draw_dim(draw_data['dim'], msp)
 
     # Save the DXF file
-    doc.saveas(f'{output_folder}\\redraw.dxf')
+    doc.saveas(f'{output_folder}\\redraw-all-3.dxf')
 
 
 def init_doc_layers(doc: Drawing):
@@ -121,12 +121,13 @@ def draw_beam(b: Beam):
     middle_tie_list = []
     # Name
     text_list.append(
-        (f'{b.floor} {b.serial} ({b.width}x{b.depth})', b.get_coor()))
+        (f'{b.floor} {b.serial} ({b.width}x{b.depth})', b.get_coor(), 20))
     # Block
-    polyline_list.append([(b.start_pt.x, b.bot_y),
-                          (b.start_pt.x, b.top_y),
-                          (b.end_pt.x, b.top_y),
-                          (b.end_pt.x, b.bot_y)])
+    polyline_list.append([(b.start_pt.x, b.bot_y - 6),
+                          (b.start_pt.x, b.top_y + 6),
+                          (b.end_pt.x, b.top_y + 6),
+                          (b.end_pt.x, b.bot_y - 6),
+                          (b.start_pt.x, b.bot_y - 6)])
     # Rebar
     for pos, pos2 in product([RebarType.Top.value, RebarType.Bottom.value],
                              [RebarType.Left.value, RebarType.Middle.value, RebarType.Right.value]):
@@ -135,24 +136,25 @@ def draw_beam(b: Beam):
             rebar_list.append([(rebar.start_pt.x, rebar.start_pt.y),
                                (rebar.end_pt.x, rebar.end_pt.y)])
             mid_x = (rebar.start_pt.x + rebar.end_pt.x) / 2
-            dim_line_list.append(
-                [(mid_x, rebar.start_pt.y), rebar.arrow_coor[0]])
-        if b.rebar_table[f'{pos}_length'][pos2]:
-            dim_list.append(((rebar.start_pt.x, rebar.start_pt.y),
-                            (rebar.end_pt.x, rebar.end_pt.y),
-                            str(b.rebar_table[f'{pos}_length'][pos2][0]),
-                            pos, 30))
+            # dim_line_list.append(
+            #     [(mid_x, rebar.start_pt.y), rebar.arrow_coor[0]])
+
+            if b.rebar_table[f'{pos}_length'][pos2] and i == 0:
+                dim_list.append(((rebar.start_pt.x, rebar.start_pt.y),
+                                (rebar.end_pt.x, rebar.end_pt.y),
+                                str(b.rebar_table[f'{pos}_length'][pos2][0]),
+                                pos, 30))
     # Tie
     for pos in [RebarType.Left.value, RebarType.Middle.value, RebarType.Right.value]:
         if b.tie[pos]:
-            rebar = b.tie[RebarType.Left.value]
+            rebar = b.tie[pos]
             text_list.append(
                 (rebar.text, (rebar.start_pt.x, rebar.start_pt.y)))
 
     for middle_tie in b.middle_tie:
         text_list.append((middle_tie.text, middle_tie.arrow_coor[0]))
         middle_tie_list.append([(middle_tie.start_pt.x, middle_tie.start_pt.y),
-                                (middle_tie.end_pt.x, middle_tie.end_pt.y)])
+                                (middle_tie.start_pt.x + middle_tie.length, middle_tie.end_pt.y)])
     # Dim
 
     return {
@@ -195,7 +197,7 @@ def draw_polyline(polyline_dict: dict,
 
 
 def draw_dim(dim_dict: dict[str, list], msp: Modelspace):
-    direction: Literal["top", "bot", "left", "right"]
+    direction: Literal["top", "bottom", "left", "right"]
     for layer, dim_list in dim_dict.items():
         for i, dim in enumerate(dim_list):
             # spacing = 35 * ((i % 2) + 1) + 15 * (i % 2)
@@ -205,7 +207,7 @@ def draw_dim(dim_dict: dict[str, list], msp: Modelspace):
                 angle = 0
                 text_rotation = 0
                 base = (p1[0], p1[1] + spacing)
-            if direction == "bot":
+            if direction == "bottom":
                 angle = 0
                 text_rotation = 0
                 base = (p1[0], p1[1] - spacing)

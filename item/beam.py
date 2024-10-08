@@ -5,7 +5,7 @@ from collections import defaultdict
 from item.excepteions import BeamFloorNameError
 from typing import Tuple
 from item.rebar import RebarInfo, RebarArea, RebarFy, RebarDiameter
-from item import floor
+from item.floor import Floor
 from item.point import Point
 from enum import Enum
 from dataclasses import dataclass, field
@@ -207,6 +207,7 @@ class Beam():
         self.fy = 0
         self.fc = 0
         self.measure_type = 'cm'
+        self.height = 0
         # self.get_beam_info()
 
     def add_rebar(self, **kwargs):
@@ -237,7 +238,9 @@ class Beam():
     def get_coor(self):
         return (self.coor.x, self.coor.y)
 
-    def get_beam_info(self, floor_list: list[str], measure_type='cm', name_pattern: dict = {}):
+    def get_beam_info(self, floor_list: list[str],
+                      measure_type='cm',
+                      name_pattern: dict = None):
         '''
         assign beam name type, seperate floor, name and section type
         inputs = {
@@ -246,6 +249,8 @@ class Beam():
             'SB':[]
         }
         '''
+        if name_pattern is None:
+            name_pattern = {}
         floor_serial_spacing_char = ' '
         self.measure_type = measure_type
         if name_pattern:
@@ -259,6 +264,8 @@ class Beam():
                         match_floor = re.sub(r'\(|\)', '', match_floor)  # 去除()
                         match_serial = match_obj.group(2)
                         match_serial.replace(' ', '')  # 去除編號與尺寸的間隔
+                        if beam_type == 'FB' and match_floor == '':
+                            match_floor = floor_list[-1]
                         break
                 if match_floor != '' and match_serial != '':
 
@@ -391,7 +398,6 @@ class Beam():
                                        rebar.end_pt.x) / factor
             return
 
-        min_diff = 30
         if not self.rebar_list:
             return
 
@@ -442,41 +448,6 @@ class Beam():
                 self.rebar['top_second'].append(rebar)
         self.top_y = top_y
         self.bot_y = bot_y
-        # for pos,rebar in self.rebar.items():
-        #     # if 'second' in pos:
-        #     #     if len(rebar):
-        #     #         left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-        #     #         while left_rebar.start_pt.x > self.start_pt.x:
-        #     #     continue
-        #     if len(rebar) == 0: continue
-        #     left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-        #     while abs(left_rebar.start_pt.x - self.start_pt.x) > min_diff :
-        #         connect_rebar = [r for r in self.rebar_add_list if abs(r.end_pt.x - left_rebar.start_pt.x) < 0.1 and r.start_pt.y == left_rebar.start_pt.y]
-        #         if connect_rebar:
-        #             rebar.append(connect_rebar[0])
-        #             self.rebar_add_list.remove(connect_rebar[0])
-        #             left_rebar = min(rebar,key=lambda r:r.start_pt.x)
-        #         else:
-        #             print(f'{self.floor}{self.serial}left rebar error')
-        #             break
-        #     right_rebar = max(rebar,key=lambda r:r.end_pt.x)
-        #     while abs(right_rebar.end_pt.x - self.end_pt.x) > min_diff:
-        #         connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - right_rebar.end_pt.x) < 0.1 and r.start_pt.y == right_rebar.end_pt.y]
-        #         if connect_rebar:
-        #             rebar.append(connect_rebar[0])
-        #             self.rebar_add_list.remove(connect_rebar[0])
-        #             right_rebar = max(rebar,key=lambda r:r.end_pt.x)
-        #         else:
-        #             print(f'{self.floor}{self.serial}right rebar error')
-        #             break
-        #     rebar.sort(key=lambda r:(round(r.start_pt.y),round(r.start_pt.x)))
-        #     for i in range(0,len(rebar)-1):
-        #         if abs(rebar[i].end_pt.x - rebar[i+1].start_pt.x) > 50:
-        #             connect_rebar = [r for r in self.rebar_add_list if abs(r.start_pt.x - rebar[i].end_pt.x) < 0.1 and r.start_pt.y == rebar[i].end_pt.y]
-        #             if connect_rebar:
-        #                 rebar.insert(i+1,connect_rebar[0])
-        #             else:
-        #                 print(f'{self.serial}')
 
     def sort_beam_tie(self):
         if not self.tie_list:
@@ -572,7 +543,7 @@ class Beam():
     def write_beam(self, df: pd.DataFrame):
         pass
 
-    def set_prop(self, floor: floor.Floor):
+    def set_prop(self, floor: Floor):
         self.height = floor.height
         self.fc = floor.material_list['fc']
         self.fy = floor.material_list['fy']

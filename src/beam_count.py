@@ -195,6 +195,7 @@ def sort_beam_cad(msp_beam,
     coor_to_dim_text = []
     coor_to_dim_line = []
     coor_to_break_point = []
+    coor_to_arrow_line = []
 
     count = 0
     total = msp_beam.Count
@@ -231,14 +232,18 @@ def sort_beam_cad(msp_beam,
                 elif object.Layer in rebar_data_layer and object.ObjectName in entity_config['rebar_data_leader_layer']:
                     # object.Coordinates 有九個參數 -> 箭頭尖點座標，直角的座標，文字接出去的座標，都有x, y, z
                     if object.ObjectName == 'AcDbLine':
-                        pass
-                    if hasattr(object, 'Coordinates') and len(object.Coordinates) >= 8:
+                        coor1 = (round(object.startPoint[0], 2), round(
+                            object.startPoint[1], 2))
+                        coor2 = (round(object.endPoint[0], 2), round(
+                            object.endPoint[1], 2))
+                        coor_to_arrow_line.append((coor1, coor2))
+                    elif hasattr(object, 'Coordinates') and len(object.Coordinates) >= 8:
                         coor_to_arrow_dic[(round(object.Coordinates[0], 2), round(object.Coordinates[1], 2))] = (
                             round(object.Coordinates[6], 2), round(object.Coordinates[7], 2))
                     elif hasattr(object, 'Coordinates'):
                         coor_to_arrow_dic[(round(object.Coordinates[0], 2), round(object.Coordinates[1], 2))] = (
                             round(object.Coordinates[-2], 2), round(object.Coordinates[-1], 2))
-                    if hasattr(object, 'startPoint'):
+                    elif hasattr(object, 'startPoint'):
                         coor_to_arrow_dic[(round(object.startPoint[0], 2), round(object.startPoint[1], 2))] = (
                             round(object.endPoint[0], 2), round(object.endPoint[1], 2))
                 # 抓鋼筋本人和箍筋本人
@@ -394,7 +399,8 @@ def sort_beam_cad(msp_beam,
                              'coor_to_dim_list': coor_to_dim_list,
                              'coor_to_dim_line': coor_to_dim_line,
                              'coor_to_dim_text': coor_to_dim_text,
-                             'coor_to_break_point': coor_to_break_point
+                             'coor_to_break_point': coor_to_break_point,
+                             'coor_to_arrow_line': coor_to_arrow_line
                              }, temp_file)
     try:
         if not redraw:
@@ -457,57 +463,15 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                     coor_to_rebar_list: list,
                     coor_to_dim_list: list[tuple[tuple[float, float], float, tuple[tuple[float, float], tuple[float, float]]]],
                     coor_to_bend_rebar_list: list[tuple[tuple[float, float], tuple[float, float], float]],
-                    measure_type='cm'):
-    start = time.time()
-    # #method 1
-    # new_coor_to_arrow_dic = {}
-    # for x in coor_to_arrow_dic: #此時的coor_to_arrow_dic為尖點座標->文字端坐標
-    #     arrow_coor = x
-    #     min_diff = 100
-    #      # 先看y是不是最近，再看x有沒有被夾到
-    #     min_head_coor = ''
-    #     min_length = ''
-    #     min_mid_coor = ''
-    #     for y in coor_to_rebar_list: # (頭座標，尾座標，長度)
-    #         head_coor = y[0]
-    #         tail_coor = y[1]
-    #         mid_coor = (round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])#
-    #         length = y[2]
-    #         y_diff = abs(mid_coor[1] - arrow_coor[1])
-    #         if y_diff < min_diff and (head_coor[0] - arrow_coor[0]) * (tail_coor[0] - arrow_coor[0]) <= 0:
-    #             min_diff = y_diff
-    #             min_head_coor = head_coor
-    #             min_tail_coor = tail_coor
-    #             min_length = length
-    #             min_mid_coor = mid_coor
-
-    #     if min_head_coor != '':
-    #         new_coor_to_arrow_dic[x] = (coor_to_arrow_dic[x], min_length, min_mid_coor) # 新的coor_to_arrow_dic為尖點座標 -> (文字端坐標，鋼筋長度，鋼筋中點座標)
-    #         # coor_to_rebar_list.remove((min_head_coor, min_tail_coor, min_length))
-    # print(f'Method 1:{time.time() - start}')
-
+                    measure_type='cm',
+                    **kwargs):
     start = time.time()
     # method 2
     new_coor_to_arrow_dic = {}
     no_arrow_line_list = []
     no_arrow_dim_list = []
     min_diff = 1
-
-    # method 3
-    # for i,dim in enumerate(coor_to_dim_list):
-    #     text_postion, text_value, line_1_point,line_2_point = dim
-    #     arrow_dict = {k: v for k, v in coor_to_arrow_dic.items() if (line_1_point[0] - k[0]) * (line_2_point[0] - k[0]) <= 0}
-    #     if arrow_dict:
-    #         value_pair = min(arrow_dict.items(),key=lambda x:abs(text_postion[1] - x[0][1]))
-    #         if(abs(value_pair[0][1] - text_postion[1])> min_diff):
-    #             no_arrow_dim_list.append(dim)
-    #             continue
-    #         key,value = arrow_dict.items()
-    #         rebar_coor1 = (text_postion[0],key[1])
-    #         rebar_coor2 = (value[0],value[1])
-    #         new_coor_to_arrow_dic.update({rebar_coor1:(rebar_coor2,text_value,text_postion)})
-    #         arrow_dict.pop(key)
-    # return new_coor_to_arrow_dic,no_arrow_line_list
+    dim_spacing = kwargs.get('dim_spacing', 200)
     factor = 1
     if measure_type == 'mm':
         factor = 5
@@ -522,57 +486,56 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
         length = rebar[2]
         arrow_dict = {k: v for k, v in coor_to_arrow_dic.items() if (
             head_coor[0] - k[0]) * (tail_coor[0] - k[0]) <= 0}
-        if arrow_dict:
-            value_pair = min(arrow_dict.items(),
-                             key=lambda x: abs(mid_coor[1] - x[0][1]))
-            if (abs(value_pair[0][1] - mid_coor[1]) > min_diff):
-                no_arrow_line_list.append(rebar)
-                continue
-            for key, value in {k: v for k, v in arrow_dict.items() if abs(k[1] - value_pair[0][1]) < min_diff}.items():
-                with_dim = False
-                mid_coor = (
-                    round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])
-                length = rebar[2]
+        if not arrow_dict:
+            continue
+        value_pair = min(arrow_dict.items(),
+                         key=lambda x: abs(mid_coor[1] - x[0][1]))
+        if (abs(value_pair[0][1] - mid_coor[1]) > min_diff):
+            no_arrow_line_list.append(rebar)
+            continue
+        for key, value in {k: v for k, v in arrow_dict.items() if abs(k[1] - value_pair[0][1]) < min_diff}.items():
+            with_dim = False
+            mid_coor = (
+                round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])
+            length = rebar[2]
 
-                rebar_coor1 = key
-                rebar_coor2 = value
-                # 下層筋
-                if key[1] > value[1]:
-                    dim_match_line = True
-                    dim_list = [dim for dim in coor_to_dim_list if (
-                        dim[2][0][0] == head_coor[0]) and (dim[2][1][0] == tail_coor[0])]
-                    if not dim_list:
-                        # 處理只有單邊有標註線之梁配筋
-                        if one_side:
-                            dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
-                                dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
-                        else:
-                            dim_match_line = False
-                            dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
-                                dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
-                    # dim_list = [dim for dim in coor_to_dim_list if ((abs(dim[0][1] - key[1]) < 100) and (
-                    #     dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0) or ((dim[0][1] > key[1]) and (
-                    #         dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0)]
+            rebar_coor1 = key
+            rebar_coor2 = value
+            # 下層筋
+            if key[1] > value[1]:
+                dim_match_line = True
+                dim_list = [dim for dim in coor_to_dim_list if (
+                    dim[2][0][0] == head_coor[0]) and (dim[2][1][0] == tail_coor[0])]
+                if not dim_list:
+                    # 處理只有單邊有標註線之梁配筋
+                    if one_side:
+                        dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
+                            dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
+                    else:
+                        dim_match_line = False
+                        dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < key[1]) and (
+                            dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
 
-                # 上層筋
-                else:
-                    dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] > key[1]) and (
-                        dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
-                if dim_list:
-                    dim = min(dim_list, key=lambda dim: abs(
-                        dim[0][1] - key[1]))
-                    text_postion, text_value, (line_1_point,
-                                               line_2_point) = dim
-                    if abs(text_postion[1] - key[1]) < 200 * factor or (dim_match_line and abs(text_postion[1] - key[1]) < 500 * factor):
-                        rebar_coor1 = (
-                            (line_1_point[0] + line_2_point[0])/2, head_coor[1])
-                        rebar_coor2 = (value[0], value[1])
-                        length = text_value
-                        with_dim = True
-                        mid_coor = (
-                            (line_1_point[0] + line_2_point[0])/2, head_coor[1])
-                new_coor_to_arrow_dic.update(
-                    {rebar_coor1: (rebar_coor2, length, mid_coor, with_dim)})
+            # 上層筋
+            else:
+                dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] > key[1]) and (
+                    dim[2][0][0] - key[0]) * (dim[2][1][0] - key[0]) <= 0]
+            if dim_list:
+                dim = min(dim_list, key=lambda dim: abs(
+                    dim[0][1] - key[1]))
+                text_postion, text_value, \
+                    (line_1_point, line_2_point) = dim
+                if abs(text_postion[1] - key[1]) < dim_spacing * factor or \
+                        (dim_match_line and abs(text_postion[1] - key[1]) < dim_spacing * 2.5 * factor):
+                    rebar_coor1 = ((line_1_point[0] + line_2_point[0])/2,
+                                   head_coor[1])
+                    rebar_coor2 = (value[0], value[1])
+                    length = text_value
+                    with_dim = True
+                    mid_coor = (
+                        (line_1_point[0] + line_2_point[0])/2, head_coor[1])
+            new_coor_to_arrow_dic.update(
+                {rebar_coor1: (rebar_coor2, length, mid_coor, with_dim, (mid_coor, rebar[2]))})
     for i, bend_rebar in enumerate(coor_to_bend_rebar_list):
         if i % 100 == 0:
             progress(f"整理彎鉤鋼筋與標示 進度:{i}/{len(coor_to_rebar_list)}")
@@ -580,7 +543,7 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
         bend_coor = bend_rebar[0]
         line_coor = bend_rebar[1]
         mid_coor = (round((bend_coor[0] + line_coor[0]) / 2, 2), line_coor[1])
-        length = rebar[2]
+        length = bend_rebar[2]
         if length <= 100:
             continue
         arrow_dict = {k: v for k, v in coor_to_arrow_dic.items() if (
@@ -627,17 +590,15 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                         mid_coor = (
                             (line_1_point[0] + line_2_point[0])/2, line_coor[1])
                 new_coor_to_arrow_dic.update(
-                    {rebar_coor1: (rebar_coor2, length, mid_coor, with_dim)})
+                    {rebar_coor1: (rebar_coor2, length, mid_coor, with_dim, (mid_coor, bend_rebar[2]))})
     progress(f'sort arrow to line:{time.time() - start}')
     return new_coor_to_arrow_dic, no_arrow_line_list
 
 
 # 整理箭頭與鋼筋文字對應
-
-
 def sort_arrow_to_word(coor_to_arrow_dic: dict,
                        coor_to_data_list: list,
-                       middle_tie_pattern: str = '',
+                       middle_tie_pattern: dict = '',
                        measure_type: str = 'cm'):
 
     def _get_distance(pt1, pt2):
@@ -693,7 +654,8 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
         if i % 100 == 0:
             progress(f"整理箭頭與鋼筋文字對應 進度:{i}/{len(coor_to_arrow_dic.items())}")
         arrow_head, arrow_data = data
-        arrow_tail, rebar_length, line_coor, with_dim = arrow_data
+        arrow_tail, rebar_length, line_coor, with_dim, origin_rebar = arrow_data
+
         rebar_data_temp = []
         if arrow_head[1] > arrow_tail[1]:
             # 箭頭朝上
@@ -718,7 +680,7 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
                 f'{arrow_head} / {arrow_data} cant find pair arrow')
             # print(f'{arrow_head} / {arrow_data} cant find pair arrow')
             continue
-        rebar_data = list(arrow_data)
+
         if '-' not in text:
             progress(f'{text} not satisfied  rebar rule')
             # print(f'{text} not satisfied rule')
@@ -729,12 +691,21 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
             continue
 
         if middle_tie_pattern:
-            match_middle_tie = re.search(middle_tie_pattern, text)
+            match_middle_tie = re.search(middle_tie_pattern['pattern'], text)
             if match_middle_tie:
                 progress(f'{text} match middle tie rule {middle_tie_pattern}')
-                middle_number = int(match_middle_tie.group(2))
-                middle_size = match_middle_tie.group(3)
+                middle_number = int(match_middle_tie.group(
+                    middle_tie_pattern['num']))
+                middle_size = match_middle_tie.group(
+                    middle_tie_pattern['size'])
                 text = f'{middle_number}-{middle_size}E.F.'
+        # 腰筋不受標註線影響
+        if 'E.F' in text and with_dim:
+            line_coor = origin_rebar[0]
+            rebar_length = origin_rebar[1]
+            with_dim = False
+
+        rebar_data = [arrow_tail, rebar_length, line_coor, with_dim]
 
         number = text.split('-')[0]
         size = text.split('-')[1]
@@ -755,6 +726,95 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
 
     progress(f'sort arrow to word:{time.time() - start}')
     return new_coor_to_arrow_dic, head_to_data_dic, tail_to_data_dic
+
+
+def sort_line_to_word(coor_to_rebar_list: list,
+                      coor_to_data_list: list,
+                      coor_to_dim_list: list,
+                      rebar_pattern: str = r'(\d+)-(#\d)',
+                      middle_tie_pattern: str = r'(\d+)-(#\d+)E.F',
+                      tie_pattern: str = r'(#\d+)@(\d+)',
+                      measure_type: str = 'cm'):
+    '''
+    For the case with no arrow
+    coor_to_rebar_list = [(head , tail , length)]
+    '''
+    min_diff = 50
+    new_coor_to_arrow_dic = {}
+    no_arrow_line_list = []
+    factor = 1
+    if measure_type == 'mm':
+        factor = 5
+
+    coor_to_data_list = [(text, coor) for text, coor in coor_to_data_list if
+                         (re.match(middle_tie_pattern, text) or
+                          re.match(rebar_pattern, text)) and
+                         not re.search(tie_pattern, text)]
+    coor_to_rebar_list = [
+        rebar for rebar in coor_to_rebar_list if rebar[0] == (7821.03, 7124.74)]
+    for i, rebar in enumerate(coor_to_rebar_list):
+        if i % 100 == 0:
+            progress(f"整理直線鋼筋與標示 進度:{i}/{len(coor_to_rebar_list)}")
+        head_coor = rebar[0]
+        tail_coor = rebar[1]
+        mid_coor = (round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])
+        length = rebar[2]
+        text_list = [(text, coor) for text, coor in coor_to_data_list if (
+            head_coor[0] - coor[0]) * (tail_coor[0] - coor[0]) <= 0]
+
+        if not text_list:
+            continue
+
+        closet_text = min(text_list,
+                          key=lambda x: abs(mid_coor[1] - x[1][1]))
+
+        closet_distance = abs(closet_text[1][1] - mid_coor[1])
+
+        if closet_distance > min_diff * factor:
+            no_arrow_line_list.append(rebar)
+            continue
+
+        for text, coor in [(text, coor) for text, coor in text_list if
+                           abs(coor[1] - closet_text[1][1]) <= (min_diff * factor)]:
+            with_dim = False
+            rebar_coor1 = mid_coor
+            rebar_coor2 = coor
+            # 下層筋
+            if mid_coor[1] > coor[1]:
+                dim_match_line = True
+                dim_list = [dim for dim in coor_to_dim_list if (
+                    dim[2][0][0] == head_coor[0]) and (dim[2][1][0] == tail_coor[0])]
+                if not dim_list:
+                    # 處理只有單邊有標註線之梁配筋
+                    if one_side:
+                        dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < coor[1]) and (
+                            dim[2][0][0] - coor[0]) * (dim[2][1][0] - coor[0]) <= 0]
+                    else:
+                        dim_match_line = False
+                        dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] < coor[1]) and (
+                            dim[2][0][0] - coor[0]) * (dim[2][1][0] - coor[0]) <= 0]
+            # 上層筋
+            else:
+                dim_list = [dim for dim in coor_to_dim_list if (dim[0][1] > coor[1]) and (
+                    dim[2][0][0] - coor[0]) * (dim[2][1][0] - coor[0]) <= 0]
+            if dim_list:
+                dim = min(dim_list, key=lambda dim: abs(
+                    dim[0][1] - coor[1]))
+                text_postion, text_value, (line_1_point,
+                                           line_2_point) = dim
+                if abs(text_postion[1] - coor[1]) < 200 * factor or \
+                        (dim_match_line and abs(text_postion[1] - coor[1]) < 500 * factor):
+                    rebar_coor1 = (
+                        (line_1_point[0] + line_2_point[0])/2, head_coor[1])
+                    rebar_coor2 = coor
+                    length = text_value
+                    with_dim = True
+                    mid_coor = (
+                        (line_1_point[0] + line_2_point[0])/2, head_coor[1])
+            new_coor_to_arrow_dic.update(
+                {rebar_coor1: (rebar_coor2, length, mid_coor, with_dim, (mid_coor, rebar[2]))})
+
+    return new_coor_to_arrow_dic, no_arrow_line_list
 
 
 def sort_noconcat_line(no_concat_line_list, head_to_data_dic: dict, tail_to_data_dic: dict):
@@ -923,14 +983,92 @@ def sort_rebar_bend_line(rebar_bend_list: list, rebar_line_list: list):
                 # print(f'{horz_coor} {rebar_number}-{rebar_size} => {new_number}-{rebar_size}')
 
 
+def sort_line_to_arrow(coor_to_arrow_line: list,
+                       coor_to_data_list: list,
+                       rebar_pattern: str = r'(\d+)-(#\d)',
+                       middle_tie_pattern: str = r'(\d+)-(#\d+)E.F',
+                       tie_pattern: str = r'(#\d+)@(\d+)',
+                       measure_type: str = 'cm'):
+    '''
+    For the dwg that the leader is line object
+    coor_to_arrow_line = [(head , tail)]
+    one arrow to one text
+    '''
+    def _get_distance(pt1, pt2):
+        # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
+        return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
+    min_diff = 5 if measure_type == 'cm' else 50
+    coor_to_arrow_dict = {}
+    coor_to_data_list = [(text, coor) for text, coor in coor_to_data_list if
+                         (re.match(middle_tie_pattern, text) or
+                         re.match(rebar_pattern, text)) and
+                         not re.search(tie_pattern, text)]
+
+    horz_coor_to_arrow_line = [(head, tail) for (head, tail) in coor_to_arrow_line if
+                               abs(head[1] - tail[1]) < 1]
+    vert_coor_to_arrow_line = [(head, tail) for (head, tail) in coor_to_arrow_line if
+                               abs(head[0] - tail[0]) < 1]
+    for text, coor in coor_to_data_list:
+        # First find horz line
+        nearby_horz_lines = [(head, tail) for head, tail in horz_coor_to_arrow_line if
+                             (abs(head[0] - coor[0]) < min_diff and abs(head[1] - coor[1]) < min_diff) or
+                             (abs(tail[0] - coor[0]) < min_diff and abs(tail[1] - coor[1]) < min_diff)]
+        if not nearby_horz_lines:
+            continue
+
+        for line in nearby_horz_lines:
+            # define where is text pos , other is arrow line
+            head, tail = line
+            text_pos = arrow_pos = None
+            nearest_arrow_line = None
+            if abs(head[0] - coor[0]) + abs(head[1] - coor[1]) < \
+                    abs(tail[0] - coor[0]) + abs(tail[1] - coor[1]):
+                text_pos = head
+                arrow_pos = tail
+            else:
+                text_pos = tail
+                arrow_pos = head
+            # Then find the line to arrow pos
+            possible_arrow_lines = [(head, tail) for (head, tail) in vert_coor_to_arrow_line if
+                                    head == arrow_pos or tail == arrow_pos]
+
+            if len(possible_arrow_lines) >= 1:
+                nearest_arrow_line = possible_arrow_lines[0]
+
+            if nearest_arrow_line is None:
+                possible_arrow_lines = [(head, tail) for (head, tail) in vert_coor_to_arrow_line if
+                                        ((head[1] - arrow_pos[1]) * (tail[1] - arrow_pos[1]) < 0) and
+                                        head[0] == arrow_pos[0]]
+
+            if len(possible_arrow_lines) >= 1:
+                nearest_arrow_line = possible_arrow_lines[0]
+
+            if nearest_arrow_line is None:
+                continue
+
+            # Find which is line pos
+            line_pos = nearest_arrow_line[0] if nearest_arrow_line[1] == arrow_pos else nearest_arrow_line[1]
+            coor_to_arrow_dict.update({line_pos: text_pos})
+
+    return coor_to_arrow_dict
+
+
 def count_tie(coor_to_tie_text_list: list,
-              coor_to_tie_list):
+              coor_to_tie_list,
+              tie_pattern=None):
     def extract_tie(tie: str):
         new_tie = re.findall(r'\d*-\d*#\d@\d+', tie)
         if len(new_tie) == 0:
             new_tie = re.findall(r'\d#\d@\d+', tie)
         if len(new_tie) == 0:
             new_tie = re.findall(r'#\d@\d+', tie)
+        if tie_pattern:
+            match = re.match(tie_pattern['pattern'], tie)
+            if match is None:
+                return ''
+            if match.group(tie_pattern['num']):
+                return f"{match.group(tie_pattern['num'])}-{match.group(tie_pattern['size'])}@{match.group(tie_pattern['spacing'])}"
+            return f"{match.group(tie_pattern['size'])}@{match.group(tie_pattern['spacing'])}"
         if len(new_tie) == 0:
             return tie
         return new_tie[0]
@@ -941,7 +1079,7 @@ def count_tie(coor_to_tie_text_list: list,
     coor_sorted_tie_list = []
     for tie, coor in coor_to_tie_text_list:  # (字串，座標)
         tie = extract_tie(tie=tie)
-        if '-' in tie:
+        if '-' in tie and '@' in tie:
             tie_num = tie.split('-')[0]
             tie_text = tie.split('-')[1]
             if tie_num.isdigit():  # 已經算好有幾根就直接用
@@ -1426,7 +1564,8 @@ def cal_beam_rebar(data={},
                    rebar_parameter_excel='',
                    measure_type='cm',
                    name_pattern: dict = {},
-                   middle_tie_pattern: str = ''):
+                   middle_tie_pattern: str = '',
+                   **kwargs):
     # output_txt = f'{output_folder}{project_name}'
     progress('================start cal_beam_rebar================')
     if not data:
@@ -1456,6 +1595,10 @@ def cal_beam_rebar(data={},
     if 'coor_to_dim_line' in data:
         coor_to_dim_line = data['coor_to_dim_line']
 
+    coor_to_arrow_line = []
+    if 'coor_to_arrow_line' in data:
+        coor_to_arrow_line = data['coor_to_arrow_line']
+
     coor_to_break_point = []
     if 'coor_to_break_point' in data:
         coor_to_break_point = data['coor_to_break_point']
@@ -1475,19 +1618,29 @@ def cal_beam_rebar(data={},
     readRebarExcel(file_path=rebar_parameter_excel)
 
     # 2023-0505 add floor xlsx to found floor
-    parameter_df = read_parameter_df(rebar_parameter_excel, '梁參數表')
+    parameter_df: pd.DataFrame = read_parameter_df(
+        rebar_parameter_excel, '梁參數表')
     floor_list = parameter_df['樓層'].tolist()
 
     def fix_floor_list(floor):
         if floor[-1] != 'F':
             floor += 'F'
         return floor
-    floor_list = list(map(lambda f: fix_floor_list(f), floor_list))
+    floor_list = list(map(fix_floor_list, floor_list))
 
     # Extra Step: For dim is not dimension
     if not coor_to_dim_list:
         coor_to_dim_list = sort_dim_line_and_text(
             coor_to_dim_text, coor_to_dim_line)
+
+    # Extra Step: leader is not leader
+    if coor_to_arrow_line:
+        coor_to_arrow_dic = sort_line_to_arrow(coor_to_arrow_line=coor_to_arrow_line,
+                                               coor_to_data_list=coor_to_data_list,
+                                               rebar_pattern=kwargs['rebar_pattern']['pattern'],
+                                               tie_pattern=kwargs['tie_pattern']['pattern'],
+                                               middle_tie_pattern=middle_tie_pattern['pattern'],
+                                               measure_type=measure_type)
     # Step 8. 對應箭頭跟鋼筋
     start = time.time()
     test_data = {}
@@ -1502,11 +1655,22 @@ def cal_beam_rebar(data={},
     break_down_line(coor_to_rebar_list=coor_to_rebar_list,
                     coor_to_break_point=coor_to_break_point)
 
-    coor_to_arrow_dic, no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,
-                                                            coor_to_rebar_list,
-                                                            coor_to_dim_list=coor_to_dim_list,
-                                                            coor_to_bend_rebar_list=coor_to_bend_rebar_list,
-                                                            measure_type=measure_type)
+    if len(coor_to_arrow_dic) == 0:
+        coor_to_arrow_dic, no_arrow_line_list = sort_line_to_word(coor_to_rebar_list,
+                                                                  coor_to_data_list=coor_to_data_list,
+                                                                  coor_to_dim_list=coor_to_dim_list,
+                                                                  rebar_pattern=kwargs['rebar_pattern']['pattern'],
+                                                                  tie_pattern=kwargs['tie_pattern']['pattern'],
+                                                                  middle_tie_pattern=middle_tie_pattern['pattern'],
+                                                                  measure_type=measure_type
+                                                                  )
+    else:
+        coor_to_arrow_dic, no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,
+                                                                coor_to_rebar_list,
+                                                                coor_to_dim_list=coor_to_dim_list,
+                                                                coor_to_bend_rebar_list=coor_to_bend_rebar_list,
+                                                                measure_type=measure_type,
+                                                                dim_spacing=kwargs.get('dim_spacing', 200))
     test_data.update({'sort_arrow_line_data': {
         'inputs': temp,
         'outputs': {
@@ -1610,7 +1774,8 @@ def cal_beam_rebar(data={},
         'coor_to_tie_list': copy.deepcopy(coor_to_tie_list),
     }
     coor_sorted_tie_list = count_tie(coor_to_tie_text_list=coor_to_tie_text_list,
-                                     coor_to_tie_list=coor_to_tie_list)
+                                     coor_to_tie_list=coor_to_tie_list,
+                                     tie_pattern=kwargs['tie_pattern'])
     test_data.update({'count_tie_data': {
         'inputs': temp,
         'outputs': {
@@ -1736,21 +1901,33 @@ def cal_beam_rebar(data={},
         test_data, r'tests\data\test-data-4.pkl'
     )
 
-    assign_floor_prop()
+    assign_floor_prop(class_beam_list,
+                      parameter_df=parameter_df)
+
     return class_beam_list, cad_data
 
 
 def assign_floor_prop(beam_list: list[Beam],
                       parameter_df: pd.DataFrame):
+    '''
+    #### assign excel floor parameter to beam
+    '''
+    floor_list: list[Floor] = []
+    parameter_df.set_index(['樓層'], inplace=True)
+
     for floor_name in parameter_df.index:
         floor_name: str
         temp_floor = Floor(str(floor_name))
+        floor_list.append(temp_floor)
         temp_floor.set_beam_prop(parameter_df.loc[floor_name])
+
         current_floor_beam = [b for b in beam_list
                               if b.floor == floor_name or
                               b.floor.replace('F', '') == floor_name.replace('F', '')]
         for beam in current_floor_beam:
             beam.set_prop(temp_floor)
+
+    return floor_list
 
 
 def cal_beam_in_plan(beam_list: list[Beam],
@@ -1776,7 +1953,10 @@ def create_report(class_beam_list: list[Beam],
                   plan_filename: str = '',
                   plan_layer_config: dict = None,
                   plan_pkl: str = '',
-                  output_beam_type: list[Literal['GB', 'SB', 'FB']] = []):
+                  output_beam_type: list[Literal['GB', 'SB', 'FB']] = None):
+
+    if output_beam_type is None:
+        output_beam_type = []
     progress('產生報表')
     excel_filename = (
         f'{output_folder}/'
@@ -1806,8 +1986,12 @@ def create_report(class_beam_list: list[Beam],
 
     cad_df = pd.DataFrame.from_dict(
         data=cad_data, orient='index', columns=['數量'])
-    floor_list = floor_parameter(
-        beam_list=class_beam_list, floor_parameter_xlsx=floor_parameter_xlsx)
+
+    parameter_df = read_parameter_df(floor_parameter_xlsx, '梁參數表')
+    floor_list = assign_floor_prop(class_beam_list, parameter_df)
+
+    # floor_list = floor_parameter(
+    #     beam_list=class_beam_list, floor_parameter_xlsx=floor_parameter_xlsx)
     beam_df = output_beam(class_beam_list=class_beam_list)
     fbeam_list, sbeam_list, beam_list = seperate_beam(
         class_beam_list=class_beam_list)
@@ -1852,14 +2036,8 @@ def create_report(class_beam_list: list[Beam],
             return
     rebar_df, concrete_df, coupler_df, formwork_df, _ = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
-    # header_list,ratio_dict,ratio_df = summary_floor_rebar_ratio(floor_list=floor_list)
 
-    # enoc_df,code_df = beam_check(beam_list=beam_list,beam_scan_list=bs_list)
-    # sb_enoc_df, sb_code_df= beam_check(beam_list=sbeam_list,beam_scan_list=sb_bs_list)
-    # fb_enoc_df, fb_code_df= beam_check(beam_list=fbeam_list,beam_scan_list=fb_bs_list)
-    # ng_df = output_detail_scan_report(beam_list=beam_list + sbeam_list + fbeam_list)
-
-    rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
+    # rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
 
     OutputExcel(df_list=[beam_df], file_path=excel_filename, sheet_name='梁統整表')
 
@@ -1872,8 +2050,8 @@ def create_report(class_beam_list: list[Beam],
 
     OutputExcel(df_list=[cad_df], file_path=excel_filename,
                 sheet_name='CAD統計表')
-    OutputExcel(df_list=[rcad_df],
-                file_path=excel_filename_rcad, sheet_name='RCAD撿料')
+    # OutputExcel(df_list=[rcad_df],
+    #             file_path=excel_filename_rcad, sheet_name='RCAD撿料')
     output_file_list.append(excel_filename)
     output_file_list.append(excel_filename_rcad)
 
@@ -2007,7 +2185,7 @@ def add_beam_to_list(coor_to_beam_list: list,
                      floor_list: list,
                      measure_type: str,
                      name_pattern: dict = {}):
-    floor_pattern = r'(\d+F)|(R\d+)|(PR)|(BS)|(B\d+)|(MF)|(RF)|(PF)|(FS)'
+    floor_pattern = r'(\d+F|R\d+|PR|BS|B\d+|MF|RF|PF|FS)'
     for beam in coor_to_beam_list:
         try:
             b = Beam(beam[0], beam[1][0], beam[1][1])
@@ -2018,22 +2196,12 @@ def add_beam_to_list(coor_to_beam_list: list,
             print(f'{beam[0]} beam serial error')
             continue
         if re.search(floor_pattern, b.floor) and b.serial != '':
-            # print(f'{b.floor} {b.serial} accept')
+            b.floor = re.search(floor_pattern, b.floor).group()
+            # regex the floor name to prevent special name
             class_beam_list.append(b)
         else:
             pass
             # print(b.floor)
-    # DEBUG # 畫線把文字跟左右的線連在一起
-    # coor_list1 = [min_left_coor[0], min_left_coor[1], 0, x[1][0], x[1][1], 0]
-    # coor_list2 = [min_right_coor[0], min_right_coor[1], 0, x[1][0], x[1][1], 0]
-    # points1 = vtFloat(coor_list1)
-    # points2 = vtFloat(coor_list2)
-    # line1 = msp_beam.AddPolyline(points1)
-    # line2 = msp_beam.AddPolyline(points2)
-    # line1.SetWidth(0, 2, 2)
-    # line2.SetWidth(0, 2, 2)
-    # line1.color = 101
-    # line2.color = 101
 
 
 def draw_rebar_line(class_beam_list: list[Beam],
@@ -2400,20 +2568,6 @@ def sort_dim_line_and_text(coor_to_dim_text: list, coor_to_dim_line: list):
 
     return output
 
-# def count_beam_main(beam_filename, layer_config, temp_file='temp_1221_1F.pkl', output_folder='', project_name='', template_name=''):
-#     progress_file = './result/tmp'
-#     start = time.time()
-#     msp_beam, doc_beam = read_beam_cad(
-#         beam_filename=beam_filename, progress_file=progress_file)
-#     sort_beam_cad(msp_beam=msp_beam, layer_config=layer_config, entity_config=get_template(
-#         template_name), progress_file=progress_file, temp_file=temp_file)
-#     output_txt, output_txt_2, output_excel, class_beam_list = cal_beam_rebar(data=save_temp_file.read_temp(
-#         temp_file), output_folder=output_folder, project_name=project_name, progress_file=progress_file)
-#     output_dwg = draw_rebar_line(class_beam_list=class_beam_list, msp_beam=msp_beam,
-#                                  doc_beam=doc_beam, output_folder=output_folder, project_name=project_name)
-#     print(f'Total Time:{time.time() - start}')
-#     return os.path.basename(output_txt), os.path.basename(output_txt_2), os.path.basename(output_excel), os.path.basename(output_dwg)
-
 
 def count_beam_multiprocessing(beam_filenames: list,
                                layer_config: dict,
@@ -2525,21 +2679,25 @@ def get_template(name: Literal["ELEMENTS", "DRAWRC", "RCAD", "OTHER"]):
 def floor_parameter(beam_list: list[Beam],
                     floor_parameter_xlsx: str):
     parameter_df: pd.DataFrame
-    floor_list: list[Floor]
-    floor_list = []
+    # floor_list: list[Floor]
+    # floor_list = []
 
     parameter_df = read_parameter_df(floor_parameter_xlsx, '梁參數表')
-    parameter_df.set_index(['樓層'], inplace=True)
+    return assign_floor_prop(beam_list, parameter_df)
+    # parameter_df.set_index(['樓層'], inplace=True)
 
-    for floor_name in parameter_df.index:
-        temp_floor = Floor(str(floor_name))
-        floor_list.append(temp_floor)
-        temp_floor.set_beam_prop(parameter_df.loc[floor_name])
-        temp_floor.add_beam([b for b in beam_list if
-                             b.floor == temp_floor.floor_name or
-                             b.floor.replace('F', '') ==
-                             temp_floor.floor_name.replace('F', '')])
-    return floor_list
+    # assign_floor_prop
+
+    # for floor_name in parameter_df.index:
+    #     temp_floor = Floor(str(floor_name))
+    #     floor_list.append(temp_floor)
+    #     temp_floor.set_beam_prop(parameter_df.loc[floor_name])
+    #     temp_floor.add_beam([b for b in beam_list if
+    #                          b.floor == temp_floor.floor_name or
+    #                          b.floor.replace('F', '') ==
+    #                          temp_floor.floor_name.replace('F', '')])
+    # return floor_list
+
 # combine dim with text arrow
 
 
@@ -2689,7 +2847,8 @@ def count_beam_multifiles(project_name: str,
             class_beam_list, cad_data = cal_beam_rebar(data=save_temp_file.read_temp(filename),
                                                        rebar_parameter_excel=floor_parameter_xlsx,
                                                        name_pattern=name_pattern,
-                                                       measure_type=measure_type)
+                                                       measure_type=measure_type,
+                                                       **kwargs)
             all_beam_list.extend(class_beam_list)
 
             cad_counter.update(cad_data)
@@ -2776,15 +2935,15 @@ if __name__ == '__main__':
     from main import GetAllFiles
     import json
 
-    parameter = read_parameter_json('Elements')['beam']
+    parameter = read_parameter_json('府中')['beam']
     parameter['measure_type'] = "cm"
     count_beam_multifiles(
-        project_name='',
-        beam_filenames=[r'D:\Desktop\BeamQC\TEST\2024-0923\S2-1-S2-30.dwg'],
-        floor_parameter_xlsx=r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-floor_1.xlsx',
-        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        pkl=[r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0923-20240930_165101-2F-Test-beam-data-0.pkl'],
+        project_name='2024-1008',
+        beam_filenames=[r'D:\Desktop\BeamQC\TEST\2024-1008\S2\sample.dwg'],
+        floor_parameter_xlsx=r'TEST\2024-1008\floor.xlsx',
+        pkl_file_folder=r'TEST\2024-1008\梁',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1008\梁',
+        pkl=[r'TEST\2024-1008\梁\2024-1008-20241008_172920-sample-beam-data-0.pkl'],
         # beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\beam-all.pkl',
         # cad_data_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\cad_list.pkl',
         # beam_type=['GB'],

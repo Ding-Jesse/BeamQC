@@ -192,13 +192,15 @@ def main_col_function(col_filenames,
                       plan_drawing_unit='cm',
                       column_drawing_unit='cm',
                       column_bottom_line=1,
-                      exclude_string=[],
+                      exclude_string: list = None,
                       plan_pkl: str = "",
                       col_pkl: str = ""):
     '''
     Args:
         layer_config:{text_layer,line_layer,block_layer,floor_layer,col_layer}
     '''
+    if exclude_string is None:
+        exclude_string = []
     start = time.time()
     plan_result_dict = None
     col_result_dict = None
