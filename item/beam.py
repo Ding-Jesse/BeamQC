@@ -240,7 +240,8 @@ class Beam():
 
     def get_beam_info(self, floor_list: list[str],
                       measure_type='cm',
-                      name_pattern: dict = None):
+                      name_pattern: dict = None,
+                      floor_pattern: str = ''):
         '''
         assign beam name type, seperate floor, name and section type
         inputs = {
@@ -253,10 +254,12 @@ class Beam():
             name_pattern = {}
         floor_serial_spacing_char = ' '
         self.measure_type = measure_type
+
         if name_pattern:
-            match_floor = ''
-            match_serial = ''
             for beam_type, patterns in name_pattern.items():
+                match_floor = ''
+                match_serial = ''
+                match_obj = None
                 for pattern in patterns:
                     match_obj = re.search(pattern, self.serial)
                     if match_obj:
@@ -264,9 +267,13 @@ class Beam():
                         match_floor = re.sub(r'\(|\)', '', match_floor)  # 去除()
                         match_serial = match_obj.group(2)
                         match_serial.replace(' ', '')  # 去除編號與尺寸的間隔
-                        if beam_type == 'FB' and match_floor == '':
-                            match_floor = floor_list[-1]
                         break
+
+                if beam_type == 'FB' and \
+                        match_obj and \
+                        match_floor == '':
+                    match_floor = floor_list[-1]
+
                 if match_floor != '' and match_serial != '':
 
                     self.floor = match_floor
@@ -279,6 +286,7 @@ class Beam():
                     if beam_type == 'SB':
                         self.beam_type = BeamType.SB
                     break
+
         else:
             if self.serial.count(floor_serial_spacing_char) <= 1:
                 # temp = self.serial.split(floor_serial_spacing_char)[0]
@@ -312,9 +320,14 @@ class Beam():
                 self.beam_type = BeamType.FB
             if re.search(r'^b', self.serial):
                 self.beam_type = BeamType.SB
+
         if re.search(commom_pattern, self.floor):
             sep = re.search(commom_pattern, self.floor).group(0)
             for floor_text in self.floor.split(sep):
+                if floor_pattern:
+                    match_obj = re.search(floor_pattern, floor_text)
+                    if match_obj:
+                        floor_text = match_obj.group()
                 self.multi_floor.append(floor_text)
             self.floor = self.multi_floor[0]
         if re.search(stash_pattern, self.floor):
@@ -322,9 +335,18 @@ class Beam():
                 floor_tuple = re.findall(stash_pattern, self.floor)
                 for floors in floor_tuple:
                     first_floor = floors[0]
+                    second_floor = floors[-1]
+                    if floor_pattern:
+                        match_obj = re.search(floor_pattern, first_floor)
+                        if match_obj:
+                            first_floor = match_obj.group()
+                        match_obj = re.search(floor_pattern, second_floor)
+                        if match_obj:
+                            second_floor = match_obj.group()
+
                     if first_floor[-1] != 'F':
                         first_floor += 'F'
-                    second_floor = floors[-1]
+
                     if second_floor[-1] != 'F':
                         second_floor += 'F'
 
@@ -349,14 +371,16 @@ class Beam():
         matches = re.findall(r"\((.*?)\)", self.serial, re.MULTILINE)
         if len(matches) == 0 or len(re.findall(r"X|x", matches[0], re.MULTILINE)) == 0:
             return
-        split_char = re.findall(r"X|x", matches[0])[0]
-        try:
-            self.depth = int(matches[0].split(split_char)[1])
-            self.width = int(matches[0].split(split_char)[0])
+        # split_char = re.findall(r"X|x", matches[0])[0]
+
+        matches_size = re.search(r'(\d+)[X|x](\d+)', matches[0])
+        if matches_size:
+            self.depth = int(matches_size.group(2))
+            self.width = int(matches_size.group(1))
             if measure_type == 'mm':
                 self.depth /= 10
                 self.width /= 10
-        except:
+        else:
             self.depth = 0
             self.width = 0
 
@@ -461,6 +485,19 @@ class Beam():
                 self.tie['middle'] = tie
             if i == 2:
                 self.tie['right'] = tie
+
+    def sort_middle_tie(self):
+        '''
+        for the middle tie type is mutli line assign not one line assign
+        '''
+        if not self.middle_tie:
+            return
+
+        middle_tie = self.middle_tie[0]
+
+        if middle_tie.number != len(self.middle_tie):
+            middle_tie.set_new_property(number=len(
+                self.middle_tie), size=middle_tie.size)
 
     def cal_rebar(self):
         # if E.F in rebar_add_list , will show on floor rebar size
@@ -586,26 +623,45 @@ class Beam():
             if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x) >= min_diff):
                 self.rebar_table['top_length']['middle'].append(rebar.length)
                 continue
+
         if len(self.rebar_table['top']['middle']) > 1 and len(self.rebar_table['top']['left']) == 0:
             self.rebar_table['top']['left'].append(
                 self.rebar_table['top']['middle'].pop(0))
             self.rebar_table['top_length']['left'].append(
                 self.rebar_table['top_length']['middle'].pop(0))
             self.start_pt.x = self.rebar_table['top']['left'][0].start_pt.x
+
         if len(self.rebar_table['top']['middle']) > 1 and len(self.rebar_table['top']['right']) == 0:
             self.rebar_table['top']['right'].append(
                 self.rebar_table['top']['middle'].pop())
             self.rebar_table['top_length']['right'].append(
                 self.rebar_table['top_length']['middle'].pop())
             self.end_pt.x = self.rebar_table['top']['right'][0].end_pt.x
+
         for rebar in self.rebar['top_second']:
-            if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
-                self.rebar_table['top']['left'].append(rebar)
-            if abs(rebar.end_pt.x - self.end_pt.x) < min_diff:
-                self.rebar_table['top']['right'].append(rebar)
-            if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x) >= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
-                self.rebar_table['top']['middle'].append(rebar)
+            temp = min(list(self.rebar_table['top'].values()),
+                       key=lambda r_table:
+                       abs(rebar.arrow_coor[0][0] - r_table[0].arrow_coor[0]
+                           [0]) if r_table else float('inf')
+                       )
+            diff_dis = abs(rebar.arrow_coor[0][0] - temp[0].arrow_coor[0][0])
+            for r_list in [v for v in list(self.rebar_table['top'].values()) if v and
+                           abs(rebar.arrow_coor[0][0] - v[0].arrow_coor[0][0]) == diff_dis]:
+                r_list.append(rebar)
+
+        # for rebar in self.rebar['top_second']:
+
+        #     if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
+        #         self.rebar_table['top']['left'].append(rebar)
+        #     if abs(rebar.end_pt.x - self.end_pt.x) < min_diff:
+        #         self.rebar_table['top']['right'].append(rebar)
+        #     if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and
+        #             abs(rebar.end_pt.x - self.end_pt.x) >= min_diff) or \
+        #             (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
+        #         self.rebar_table['top']['middle'].append(rebar)
+
         self.rebar['bot_first'].sort(key=lambda r: r.arrow_coor[0][0])
+
         for i, rebar in enumerate(self.rebar['bot_first']):
             if i == 0:
                 self.rebar_table['bottom']['left'] = [rebar]
@@ -620,28 +676,13 @@ class Beam():
             if i == 2:
                 self.rebar_table['bottom']['right'] = [rebar]
                 self.rebar_table['bottom_length']['right'].append(rebar.length)
-        # for rebar in self.rebar['bot_first']:
-        #     if abs(rebar.start_pt.x - self.start_pt.x) < min_diff :
-        #         self.rebar_table['bottom']['left'].append(rebar)
-        #     if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
-        #         self.rebar_table['bottom']['right'].append(rebar)
-        #     if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff) or (rebar.start_pt.x == self.start_pt.x and rebar.end_pt.x == self.end_pt.x):
-        #         self.rebar_table['bottom']['middle'].append(rebar)
-        #     if abs(rebar.start_pt.x - self.start_pt.x) < min_diff:
-        #         self.rebar_table['bottom_length']['left'].append(rebar.length)
-        #         continue
-        #     if abs(rebar.end_pt.x - self.end_pt.x)< min_diff:
-        #         self.rebar_table['bottom_length']['right'].append(rebar.length)
-        #         continue
-        #     if (abs(rebar.start_pt.x - self.start_pt.x) >= min_diff and abs(rebar.end_pt.x - self.end_pt.x)>= min_diff):
-        #         self.rebar_table['bottom_length']['middle'].append(rebar.length)
-        #         continue
 
         for rebar in self.rebar['bot_second']:
-            temp = min(self.rebar_table['bottom'].items(), key=lambda r_table: abs(
-                rebar.arrow_coor[0][0] - r_table[1][0].arrow_coor[0][0]))[1]
+            temp = min(self.rebar_table['bottom'].items(),
+                       key=lambda r_table: abs(rebar.arrow_coor[0][0] - r_table[1][0].arrow_coor[0][0]))[1]
             diff_dis = abs(rebar.arrow_coor[0][0] - temp[0].arrow_coor[0][0])
-            for r_list in [v for k, v in self.rebar_table['bottom'].items() if abs(rebar.arrow_coor[0][0] - v[0].arrow_coor[0][0]) == diff_dis]:
+            for r_list in [v for k, v in self.rebar_table['bottom'].items() if
+                           abs(rebar.arrow_coor[0][0] - v[0].arrow_coor[0][0]) == diff_dis]:
                 r_list.append(rebar)
             # temp.append(rebar)
         # for rebar in self.rebar['bot_second']:

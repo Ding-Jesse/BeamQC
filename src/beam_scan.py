@@ -146,7 +146,8 @@ def set_check_scan(beam_scan: BeamScan):
         clear_depth = (
             b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < clear_depth * 4 and b.middle_tie:
-            if 0.0025 * b.width * clear_depth > b.middle_tie[0].As*2:
+            middle_tie_As = b.middle_tie[0].As * 2
+            if 0.0025 * b.width * clear_depth > middle_tie_As:
                 b.ng_message.append(
                     f'0102:0.0025 * {b.width} * {clear_depth} > 2 * {round(b.middle_tie[0].As,2)} => {round(0.0025 * b.width * clear_depth,2)} > {round(b.middle_tie[0].As*2)}')
                 return fail_syntax
@@ -156,9 +157,10 @@ def set_check_scan(beam_scan: BeamScan):
         clear_depth = (
             b.depth - b.floor_object.slab_height['top'] - b.floor_object.slab_height['bot'])
         if b.length < clear_depth * 4 and b.middle_tie:
-            if 0.0025 * b.width * clear_depth * 1.5 < b.middle_tie[0].As:
+            middle_tie_As = b.middle_tie[0].As * 2
+            if 0.0025 * b.width * clear_depth * 1.5 < middle_tie_As:
                 b.ng_message.append(
-                    f'0103:0.0025 *{b.width} * {clear_depth} < 1.5 * {round(b.middle_tie[0].As,2)} => {round(0.0025 * b.width * clear_depth,2)} < {round(1.5*b.middle_tie[0].As,2)}')
+                    f'0103:0.0025 *{b.width} * {clear_depth} < 1.5 * {round(middle_tie_As,2)} => {round(0.0025 * b.width * clear_depth,2)} < {round(1.5*middle_tie_As,2)}')
                 return fail_syntax
         return pass_syntax
 
@@ -539,7 +541,7 @@ def set_check_scan(beam_scan: BeamScan):
 
     def index_0222(b: Beam):
         if b.length < b.depth * 4 and b.middle_tie:
-            if 0.0025 * b.width * 1.5 < b.middle_tie[0].As:
+            if 0.0025 * b.width * 1.5 < b.middle_tie[0].As * 2:
                 return fail_syntax
         return pass_syntax
 

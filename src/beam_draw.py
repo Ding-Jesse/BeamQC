@@ -17,7 +17,7 @@ def draw_beam_rebar_dxf():
     output_folder = r'TEST\2024-1008'
 
     beam_list = save_temp_file.read_temp(
-        r'TEST\2024-1008\梁\2024-1008-20241008_181447-beam-object.pkl')
+        r'TEST\2024-1008\梁\2024-1008-20241009_165315-beam-object.pkl')
     # Create a new DXF document
     doc = ezdxf.new()
 
@@ -25,18 +25,20 @@ def draw_beam_rebar_dxf():
 
     # Create a new drawing in the document
     msp = doc.modelspace()
-
+    # beam_list = [beam for beam in beam_list if beam.serial in ['FB9b']]
     for b in beam_list:
-        draw_data = draw_beam(b)
+        try:
+            draw_data = draw_beam(b)
 
-        draw_text(draw_data['text'], msp)
+            draw_text(draw_data['text'], msp)
 
-        draw_polyline(draw_data['polyline'], msp)
+            draw_polyline(draw_data['polyline'], msp)
 
-        draw_dim(draw_data['dim'], msp)
-
+            draw_dim(draw_data['dim'], msp)
+        except ZeroDivisionError:
+            pass
     # Save the DXF file
-    doc.saveas(f'{output_folder}\\redraw-all-3.dxf')
+    doc.saveas(f'{output_folder}\\redraw-all-8.dxf')
 
 
 def init_doc_layers(doc: Drawing):
@@ -114,6 +116,7 @@ def draw_beam(b: Beam):
     b.sort_rebar_table()
     text_list = []
     polyline_list: list[tuple] = []
+    bounding_box_list: list[tuple] = []
     rebar_list: list[tuple] = []
     dim_list: list[tuple] = []
     dim_line_list = []
@@ -128,6 +131,12 @@ def draw_beam(b: Beam):
                           (b.end_pt.x, b.top_y + 6),
                           (b.end_pt.x, b.bot_y - 6),
                           (b.start_pt.x, b.bot_y - 6)])
+    bounding_box = b.get_bounding_box()
+    bounding_box_list.append([bounding_box[0],
+                              (bounding_box[0][0], bounding_box[1][1]),
+                              bounding_box[1],
+                              (bounding_box[1][0], bounding_box[0][1]),
+                              bounding_box[0]])
     # Rebar
     for pos, pos2 in product([RebarType.Top.value, RebarType.Bottom.value],
                              [RebarType.Left.value, RebarType.Middle.value, RebarType.Right.value]):
@@ -165,7 +174,8 @@ def draw_beam(b: Beam):
             'S-REINF': tie_list,
             'S-REINFH': middle_tie_list,
             'S-RC': polyline_list,
-            'S-DIM': dim_line_list},
+            'S-DIM': dim_line_list,
+            'Page': bounding_box_list},
         'dim': {
             'S-DIM': dim_list}
     }

@@ -779,6 +779,9 @@ def add_cover(cover_pdf_path, content_pdf_path, output_pdf, cover_title=''):
     # Add the cover page
     combined_pdf.insert_pdf(cover_pdf)
 
+    # Add the cover page
+    combined_pdf.insert_pdf(r'assets\分項目錄.pdf')
+
     # Add the content pages
     combined_pdf.insert_pdf(content_pdf)
 
