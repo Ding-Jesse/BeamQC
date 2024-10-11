@@ -23,6 +23,7 @@ from collections import Counter
 from item.rebar import isRebarSize, readRebarExcel
 from item.pdf import create_scan_pdf
 from src.logger import setup_custom_logger
+from src.beam_draw import draw_beam_rebar_dxf
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 one_side = False
 global main_logger
@@ -474,7 +475,6 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                     coor_to_rebar_list: list,
                     coor_to_dim_list: list[tuple[tuple[float, float], float, tuple[tuple[float, float], tuple[float, float]]]],
                     coor_to_bend_rebar_list: list[tuple[tuple[float, float], tuple[float, float], float]],
-                    measure_type='cm',
                     **kwargs):
     start = time.time()
     # method 2
@@ -483,9 +483,6 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
 
     min_diff = 1
     dim_spacing = kwargs.get('dim_spacing', 200)
-    factor = 1
-    if measure_type == 'mm':
-        factor = 5
 
     coor_to_rebar_list.sort()
     # coor_to_rebar_list = [coor_to_rebar_list[2055]]
@@ -511,7 +508,6 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
             with_dim = False
             mid_coor = (
                 round((head_coor[0] + tail_coor[0]) / 2, 2), head_coor[1])
-            length = rebar[2]
 
             rebar_coor1 = key
             rebar_coor2 = value
@@ -540,8 +536,8 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
                     dim[0][1] - key[1]))
                 text_postion, text_value, \
                     (line_1_point, line_2_point) = dim
-                if abs(text_postion[1] - key[1]) < dim_spacing * factor or \
-                        (dim_match_line and abs(text_postion[1] - key[1]) < dim_spacing * 2.5 * factor):
+                if abs(text_postion[1] - key[1]) < dim_spacing or \
+                        (dim_match_line and abs(text_postion[1] - key[1]) < dim_spacing * 2.5):
                     rebar_coor1 = ((line_1_point[0] + line_2_point[0])/2,
                                    head_coor[1])
                     rebar_coor2 = (value[0], value[1])
@@ -615,55 +611,26 @@ def sort_arrow_line(coor_to_arrow_dic: dict,
 # 整理箭頭與鋼筋文字對應
 def sort_arrow_to_word(coor_to_arrow_dic: dict,
                        coor_to_data_list: list,
-                       middle_tie_pattern: dict = '',
-                       measure_type: str = 'cm'):
+                       middle_tie_pattern: dict,
+                       rebar_pattern: dict,
+                       **kwargs):
 
     def _get_distance(pt1, pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
         # 避免抓到其他層的主筋資料
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1]) * 3
-    # start = time.time()
-    # new_coor_to_arrow_dic = {}
-    # head_to_data_dic = {} # 座標 -> (number, size)
-    # tail_to_data_dic = {}
-    # for x in coor_to_arrow_dic: # 新的coor_to_arrow_dic為尖點座標 -> (文字端坐標，鋼筋長度，鋼筋中點座標)
-    #     if len(coor_to_arrow_dic[x]) == 3:
-    #         arrow_coor = coor_to_arrow_dic[x][0]
-    #         length = coor_to_arrow_dic[x][1]
-    #         rebar_mid_coor = coor_to_arrow_dic[x][2]
-    #         min_diff = 100
-    #         min_data = ''
-    #         min_data_coor = ''
-    #         for y in coor_to_data_list: # for 鋼筋的 (字串，座標)
-    #             data = y[0]
-    #             data_coor = y[1]
-    #             x_diff = abs(arrow_coor[0] - data_coor[0])
-    #             y_diff = abs(arrow_coor[1] - data_coor[1])
-    #             total = x_diff + y_diff
-    #             if total < min_diff:
-    #                 min_diff = total
-    #                 min_data = data
-    #                 min_data_coor = data_coor
-    #         if min_data != '':
-    #             if '-' in min_data:
-    #                 number = min_data.split('-')[0]
-    #                 size =  min_data.split('-')[1]
-    #                 new_coor_to_arrow_dic[x] = (arrow_coor, length, rebar_mid_coor, number, size, min_data_coor) # 新的coor_to_arrow_dic為尖點座標 -> (箭頭文字端坐標，鋼筋長度，鋼筋中點座標，數量，尺寸，文字座標)
-    #                 head_to_data_dic[(rebar_mid_coor[0] - length / 2, rebar_mid_coor[1])] = (number, size)
-    #                 tail_to_data_dic[(rebar_mid_coor[0] + length / 2, rebar_mid_coor[1])] = (number, size)
-    #             else:
-    #                 error(f"There are no '-' in {min_data}. ")
-    # print(f'Method 1:{time.time() - start}')
-    start = time.time()
 
-    min_diff = 100
-    if measure_type == 'mm':
-        min_diff = 1000
+    start = time.time()
+    min_diff = kwargs.get('arrow_to_word_min_diff', 100)
 
     new_coor_to_arrow_dic = {}
     head_to_data_dic = {}  # 座標 -> (number, size)
     tail_to_data_dic = {}
-    text: str
+
+    # tie_text_coor_list = [(text,coor) for text,coor in coor_to_data_list if re.match(tie_pattern['pattern'])]
+    rebar_text_coor_list = [(text, coor) for text, coor in coor_to_data_list if
+                            re.search(rebar_pattern['pattern'], text) or
+                            re.search(middle_tie_pattern['pattern'], text)]
 
     # method 2
     # 腰筋會抓到上層筋
@@ -677,63 +644,60 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
         if arrow_head[1] > arrow_tail[1]:
             # 箭頭朝上
             rebar_data_temp = [
-                r for r in coor_to_data_list if '@' not in r[0] and r[1][1] <= arrow_head[1]]
+                (text, coor) for text, coor in rebar_text_coor_list if coor[1] <= arrow_head[1]]
         if arrow_head[1] < arrow_tail[1]:
             # 箭頭朝下
             rebar_data_temp = [
-                r for r in coor_to_data_list if '@' not in r[0] and r[1][1] >= arrow_head[1]]
+                (text, coor) for text, coor in rebar_text_coor_list if coor[1] >= arrow_head[1]]
+
         if not rebar_data_temp:
             progress(
                 f'arrow head:{arrow_head} has no rebar data')
-            # print(f'arrow head:{arrow_head} has no rebar data')
-            rebar_data_temp = [r for r in coor_to_data_list if '@' not in r[0]]
+
+            rebar_data_temp = rebar_text_coor_list
+
         if not rebar_data_temp:
             raise NoRebarDataError
 
         text, coor = min(rebar_data_temp,
                          key=lambda rebar_text: _get_distance(arrow_data[0], rebar_text[1]))
+
         if (abs(arrow_tail[1] - coor[1]) > min_diff):
             progress(
                 f'{arrow_head} / {arrow_data} cant find pair arrow')
-            # print(f'{arrow_head} / {arrow_data} cant find pair arrow')
             continue
 
-        if '-' not in text:
-            progress(f'{text} not satisfied  rebar rule')
-            # print(f'{text} not satisfied rule')
-            continue
-        if '@' in text:
-            progress(f'{text} not satisfied tie rule')
-            # print(f'{text} not satisfied rule')
-            continue
+        # Decide the rebar size and number
+        number = size = ''
 
-        if middle_tie_pattern:
-            match_middle_tie = re.search(middle_tie_pattern['pattern'], text)
-            if match_middle_tie:
-                progress(f'{text} match middle tie rule {middle_tie_pattern}')
-                middle_number = int(match_middle_tie.group(
-                    middle_tie_pattern['num']))
-                middle_size = match_middle_tie.group(
-                    middle_tie_pattern['size'])
-                text = f'{middle_number}-{middle_size}E.F.'
-        # 腰筋不受標註線影響
-        if 'E.F' in text and with_dim:
-            line_coor = origin_rebar[0]
-            rebar_length = origin_rebar[1]
-            with_dim = False
+        match_middle_tie = re.search(middle_tie_pattern['pattern'], text)
+        match_rebar = re.search(rebar_pattern['pattern'], text)
+
+        if match_middle_tie:
+            # progress(f'{text} match middle tie rule {middle_tie_pattern}')
+            number = match_middle_tie.group(middle_tie_pattern['num'])
+            size = match_middle_tie.group(middle_tie_pattern['size']) + 'E.F.'
+            text = f'{number}-{size}E.F.'
+            # 腰筋不受標註線影響
+            if with_dim:
+                line_coor = origin_rebar[0]
+                rebar_length = origin_rebar[1]
+                with_dim = False
+        elif match_rebar:
+            number = match_rebar.group(rebar_pattern['num'])
+            size = match_rebar.group(rebar_pattern['size'])
 
         rebar_data = [arrow_tail, rebar_length, line_coor, with_dim]
 
-        number = text.split('-')[0]
-        size = text.split('-')[1]
+        # number = text.split('-')[0]
+        # size = text.split('-')[1]
         if not isRebarSize(size):
             progress(f'{size} not satisfied rebar rule')
-            # print(size)
             continue
         if not number.isdigit():
             progress(f'{text} not satisfied rebar rule')
-            # print(text)
             continue
+
         rebar_data.extend([number, size, coor])
         new_coor_to_arrow_dic.update({arrow_head: (*rebar_data,)})
         head_to_data_dic.update({(line_coor[0] - rebar_length/2, line_coor[1]): {
@@ -834,7 +798,9 @@ def sort_line_to_word(coor_to_rebar_list: list,
     return new_coor_to_arrow_dic, no_arrow_line_list
 
 
-def sort_noconcat_line(no_concat_line_list, head_to_data_dic: dict, tail_to_data_dic: dict):
+def sort_noconcat_line(no_concat_line_list,
+                       head_to_data_dic: dict,
+                       tail_to_data_dic: dict):
     # start = time.time()
     coor_to_rebar_list_straight = []  # (頭座標，尾座標，長度，number，size)
 
@@ -1002,7 +968,9 @@ def sort_rebar_bend_line(rebar_bend_list: list, rebar_line_list: list):
 
 def sort_line_to_arrow(coor_to_arrow_line: list,
                        coor_to_data_list: list,
-                       measure_type: str = 'cm',
+                       rebar_pattern: dict = None,
+                       middle_tie_pattern: dict = None,
+                       tie_pattern: dict = None,
                        **kwargs):
     '''
     For the dwg that the leader is line object
@@ -1010,20 +978,18 @@ def sort_line_to_arrow(coor_to_arrow_line: list,
     one arrow to one text
     There will be a problem if there are multi vertical line in a leader
     '''
-    rebar_pattern: str = kwargs.get(
-        'rebar_pattern', {'pattern': r'(\d+)-(#\d)'})['pattern']
-    middle_tie_pattern: str = kwargs.get(
-        'middle_tie_pattern', {'pattern': r'(\d+)-(#\d+)E.F'})['pattern']
-    tie_pattern: str = kwargs.get(
-        'tie_pattern', {'pattern': r'(#\d+)@(\d+)'})['pattern']
-    leader_spacing = kwargs.get('leader_spacing', 6)
+    rebar_pattern_str: str = rebar_pattern['pattern']
+    middle_tie_pattern_str: str = middle_tie_pattern['pattern']
+    tie_pattern_str: str = tie_pattern['pattern']
 
-    min_diff = 5 if measure_type == 'cm' else 50
+    leader_spacing = kwargs.get('leader_spacing', 6)
+    min_diff = kwargs.get('sort_line_to_arrow_mid_diff', 5)
+
     coor_to_arrow_dict = {}
     coor_to_data_list = [(text, coor) for text, coor in coor_to_data_list if
-                         (re.match(middle_tie_pattern, text) or
-                         re.match(rebar_pattern, text)) and
-                         not re.search(tie_pattern, text)]
+                         (re.match(middle_tie_pattern_str, text) or
+                         re.match(rebar_pattern_str, text)) and
+                         not re.search(tie_pattern_str, text)]
 
     horz_coor_to_arrow_line = [(head, tail) for (head, tail) in coor_to_arrow_line if
                                abs(head[1] - tail[1]) < 1]
@@ -1141,97 +1107,88 @@ def sort_line_to_arrow(coor_to_arrow_line: list,
 
 
 def count_tie(coor_to_tie_text_list: list,
-              coor_to_tie_list,
-              tie_pattern=None):
+              coor_to_tie_list: list,
+              tie_pattern: dict = None,
+              **kwargs):
+    '''
+    Sort Tie to format
+    - '15-2#4@15',  # With a number before and after the hyphen
+    - '2#3@20',     # With a number before the rebar
+    - '13-#3@15',   # With a number prefix and hyphen
+    - '#3@10'       # Without prefix 
+    '''
     def extract_tie(tie: str):
-        new_tie = re.findall(r'\d*-\d*#\d@\d+', tie)
-        if len(new_tie) == 0:
-            new_tie = re.findall(r'\d#\d@\d+', tie)
-        if len(new_tie) == 0:
-            new_tie = re.findall(r'#\d@\d+', tie)
-        if tie_pattern:
-            match = re.match(tie_pattern['pattern'], tie)
-            if match is None:
-                return ''
-            if match.group(tie_pattern['multi']):
-                return f"{match.group(tie_pattern['num'])}-{match.group(tie_pattern['multi'])}{match.group(tie_pattern['size'])}@{match.group(tie_pattern['spacing'])}"
-            if match.group(tie_pattern['num']):
-                return f"{match.group(tie_pattern['num'])}-{match.group(tie_pattern['size'])}@{match.group(tie_pattern['spacing'])}"
-            return f"{match.group(tie_pattern['size'])}@{match.group(tie_pattern['spacing'])}"
-        if len(new_tie) == 0:
-            return tie
-        return new_tie[0]
-    tie_num = ''
-    tie_text = ''
-    count = 1
-    size = ''
-    coor_sorted_tie_list = []
-    for tie, coor in coor_to_tie_text_list:  # (字串，座標)
-        tie = extract_tie(tie=tie)
-        if '-' in tie and '@' in tie:
-            tie_num = tie.split('-')[0]
-            tie_text = tie.split('-')[1]
-            if tie_num.isdigit():  # 已經算好有幾根就直接用
-                count = int(tie_num)
-                size = tie_text.split('@')[0]  # 用'-'和'@'來切
-                if size.split('#')[0].isdigit():
-                    count *= int(size.split('#')[0])
-                    size = f"#{size.split('#')[1]}"
-                coor_sorted_tie_list.append((tie, coor, tie_num, count, size))
-                # for block in coor_to_block_list:
-                #     if inblock(block=block[0],pt=coor):
-                #         # print(f'pt:{coor} in block:{block[0]}')
-                #         # y[2] 是該格的tie_count_dic: size -> number
-                #         if size not in block[2]:
-                #             block[2][size] = count
-                #         else:
-                #             block[2][size] += count
-                #         break
+        match = re.search(tie_pattern['pattern'], tie)
+        if match is None:
+            return None
 
-        else:  # 沒算好自己算
-            if not '@' in tie or not '#' in tie:
-                error(f'{tie} wrong format ex:#4@20')
+        tie_string = tie_num = size = spacing = multi = None
+        tie_num = match.group(tie_pattern['num'])
+        size = match.group(tie_pattern['size'])
+        spacing = match.group(tie_pattern['spacing'])
+        multi = match.group(tie_pattern['multi'])
+
+        if multi and tie_num:
+            tie_string = f"{tie_num}-{multi}{size}@{spacing}"
+        elif tie_num:
+            tie_string = f"{tie_num}-{size}@{spacing}"
+        else:
+            tie_string = f"{size}@{spacing}"
+
+        return {
+            'tie_string': tie_string,
+            'tie_num': tie_num,
+            'size': size,
+            'spacing': spacing,
+            'multi': multi
+        }
+
+    if tie_pattern is None:
+        error('No tie pattern in kwargs at count_tie')
+        return []
+
+    coor_sorted_tie_list = []
+    for tie_text, coor in coor_to_tie_text_list:  # (字串，座標)
+
+        tie = extract_tie(tie=tie_text)
+
+        if tie is None:
+            error(f'{tie_text} wrong tie format')
+            continue
+
+        tie_num = tie['tie_num']
+        tie_string = tie['tie_string']
+        multi = 1 if tie['multi'] == '' else int(tie['multi'])
+
+        if tie_num == '':
+            spacing = int(tie['spacing'])
+
+            if spacing <= 0:
+                error(f'{tie_text} wrong tie spacing')
                 continue
-            size = tie.split('@')[0]  # 用'@'來切
-            try:
-                spacing = int(tie.split('@')[1])
-            except Exception:
-                continue
-            assert spacing != 0, f'{coor} spacing is zero'
 
             tie_left_list = [(bottom, top, length) for bottom, top, length in coor_to_tie_list if (
                 bottom[0] < coor[0]) and (min(bottom[1], top[1]) < coor[1]) and (max(bottom[1], top[1]) > coor[1])]
             tie_right_list = [(bottom, top, length) for bottom, top, length in coor_to_tie_list if (
                 bottom[0] > coor[0]) and (min(bottom[1], top[1]) < coor[1]) and (max(bottom[1], top[1]) > coor[1])]
-        # for bottom,top,length in coor_to_tie_list: # (下座標，上座標，長度)
-        #     if bottom[0] < coor[0] and y[0][1] < x[1][1] and x[1][1] < y[1][1]: # 箍筋在文字左邊且diff最小且文字有被上下的y夾住
-        #         left_diff = x[1][0] - y[0][0]
-        #         min_left_coor = y[0]
-        #     elif y[0][0] > x[1][0] and y[0][0] - x[1][0] < right_diff and y[0][1] < x[1][1] and x[1][1] < y[1][1]: # 箍筋在文字右邊且diff最小且文字有被上下的y夾住
-        #         right_diff = y[0][0] - x[1][0]
-        #         min_right_coor = y[0]
-            if not (tie_left_list and tie_right_list):
-                print(f'{tie} {coor} no line bounded')
-                continue
-
             left_tie = min(tie_left_list, key=lambda t: abs(t[0][0] - coor[0]))
             right_tie = min(
                 tie_right_list, key=lambda t: abs(t[0][0] - coor[0]))
 
-            count = int(abs(left_tie[0][0] - right_tie[0][0]) / spacing)
-            if size.split('#')[0].isdigit():
-                count *= int(size.split('#')[0])
-                size = f"#{size.split('#')[1]}"
-            coor_sorted_tie_list.append((tie, coor, tie_num, count, size))
-            # for block in coor_to_block_list:
-            #     if inblock(block=block[0],pt=coor):
-            #         # print(f'pt:{coor} in block:{block[0]}')
-            #         # y[2] 是該格的tie_count_dic: size -> number
-            #         if size not in block[2]:
-            #             block[2][size] = count
-            #         else:
-            #             block[2][size] += count
-            #         break
+            if not (tie_left_list and tie_right_list):
+                error(f'{tie_text} {coor} no line bounded')
+                continue
+
+            count = int(
+                abs(left_tie[0][0] - right_tie[0][0]) / spacing) * multi
+        else:
+
+            count = int(tie_num) * multi
+
+        size = tie['size']
+
+        coor_sorted_tie_list.append((tie_string, coor, tie_num, count, size))
+
     return coor_sorted_tie_list
 
 # 組合手動框選與梁文字
@@ -1341,24 +1298,12 @@ def combine_beam_boundingbox(coor_to_block_list: list[tuple[tuple[tuple, tuple],
 
 def combine_beam_tie(coor_sorted_tie_list: list,
                      class_beam_list: list[Beam],
+                     tie_pattern: dict = None,
                      **kwargs):
     # ((左下，右上),beam_name, list of tie, tie_count_dic, list of rebar,rebar_length_dic)
     def _get_distance(pt1, pt2):
         # return sqrt((pt1[0]-pt2[0])**2+(pt1[1]-pt2[1])**2)
         return abs(pt1[0]-pt2[0]) + abs(pt1[1]-pt2[1])
-    # for tie,coor,tie_num,count,size in coor_sorted_tie_list:
-    #     bounding_box = [block for block in coor_to_beam_list if inblock(block=block[4],pt=coor)]
-    #     if len(bounding_box) == 0:
-    #         coor_sorted_beam_list = [beam for beam in coor_to_beam_list if beam[1][1] < coor[1]]
-    #         if len(coor_sorted_beam_list) == 0:continue
-    #         nearest_beam = min(coor_sorted_beam_list,key=lambda b:_get_distance(b[1],coor))
-    #     else:
-    #         nearest_beam  = min(bounding_box,key=lambda b:_get_distance(b[1],coor))
-    #     nearest_beam[2].append(tie)
-    #     if size in nearest_beam[3]:
-    #         nearest_beam[3][size] += count
-    #     else:
-    #         nearest_beam[3][size] = count
 
     for i, data in enumerate(coor_sorted_tie_list):
         if i % 100 == 0:
@@ -1376,11 +1321,12 @@ def combine_beam_tie(coor_sorted_tie_list: list,
         else:
             nearest_beam = min(
                 bounding_box, key=lambda b: _get_distance(b.get_coor(), coor))
-        match_obj = re.search(r'(\d*)([#|D]\d+)[@](\d+)', tie)
+        match_obj = re.search(tie_pattern['pattern'], tie)
         if match_obj:
             nearest_beam.add_tie(tie, coor, tie_num, count, size)
         else:
             progress(f'{tie} does not match tie type')
+
 # 截斷主筋
 
 
@@ -1587,16 +1533,11 @@ def inblock(block: tuple, pt: tuple):
 
 def cal_beam_rebar(data: dict = None,
                    rebar_parameter_excel='',
-                   measure_type='cm',
-                   name_pattern: dict = None,
                    **kwargs):
     # output_txt = f'{output_folder}{project_name}'
     progress('================start cal_beam_rebar================')
     if data is None:
         return
-
-    if name_pattern is None:
-        name_pattern = {}
 
     cad_data = {}
     coor_to_rebar_list = data['coor_to_rebar_list']  # (頭座標，尾座標，長度)
@@ -1665,7 +1606,6 @@ def cal_beam_rebar(data: dict = None,
     if coor_to_arrow_line:
         coor_to_arrow_dic = sort_line_to_arrow(coor_to_arrow_line=coor_to_arrow_line,
                                                coor_to_data_list=coor_to_data_list,
-                                               measure_type=measure_type,
                                                **kwargs)
     # Step 8. 對應箭頭跟鋼筋
     start = time.time()
@@ -1675,12 +1615,12 @@ def cal_beam_rebar(data: dict = None,
         'coor_to_rebar_list': copy.deepcopy(coor_to_rebar_list),
         'coor_to_dim_list': copy.deepcopy(coor_to_dim_list),
         'coor_to_bend_rebar_list': copy.deepcopy(coor_to_bend_rebar_list),
-        'measure_type': measure_type
     }
 
     break_down_line(coor_to_rebar_list=coor_to_rebar_list,
                     coor_to_break_point=coor_to_break_point)
 
+    no_arrow_line_list = []
     if len(coor_to_arrow_dic) == 0:
         pass
         # coor_to_arrow_dic, no_arrow_line_list = sort_line_to_word(coor_to_rebar_list,
@@ -1692,12 +1632,12 @@ def cal_beam_rebar(data: dict = None,
         #                                                           measure_type=measure_type
         #                                                           )
     else:
-        coor_to_arrow_dic, no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,
-                                                                coor_to_rebar_list,
-                                                                coor_to_dim_list=coor_to_dim_list,
-                                                                coor_to_bend_rebar_list=coor_to_bend_rebar_list,
-                                                                measure_type=measure_type,
-                                                                **kwargs)
+        coor_to_arrow_dic, \
+            no_arrow_line_list = sort_arrow_line(coor_to_arrow_dic,
+                                                 coor_to_rebar_list,
+                                                 coor_to_dim_list=coor_to_dim_list,
+                                                 coor_to_bend_rebar_list=coor_to_bend_rebar_list,
+                                                 **kwargs)
     test_data.update({'sort_arrow_line_data': {
         'inputs': temp,
         'outputs': {
@@ -1721,8 +1661,7 @@ def cal_beam_rebar(data: dict = None,
             head_to_data_dic, \
             tail_to_data_dic = sort_arrow_to_word(coor_to_arrow_dic=coor_to_arrow_dic,
                                                   coor_to_data_list=coor_to_data_list,
-                                                  middle_tie_pattern=kwargs['middle_tie_pattern'],
-                                                  measure_type=measure_type)
+                                                  **kwargs)
     except NoRebarDataError:
         print('NoRebarData')
 
@@ -1802,7 +1741,7 @@ def cal_beam_rebar(data: dict = None,
     }
     coor_sorted_tie_list = count_tie(coor_to_tie_text_list=coor_to_tie_text_list,
                                      coor_to_tie_list=coor_to_tie_list,
-                                     tie_pattern=kwargs['tie_pattern'])
+                                     **kwargs)
     test_data.update({'count_tie_data': {
         'inputs': temp,
         'outputs': {
@@ -1812,15 +1751,13 @@ def cal_beam_rebar(data: dict = None,
     temp = {
         'coor_to_beam_list': copy.deepcopy(coor_to_beam_list),
         'floor_list': copy.deepcopy(floor_list),
-        'measure_type': copy.deepcopy(measure_type),
         'class_beam_list': []
     }
     class_beam_list = []
     add_beam_to_list(coor_to_beam_list=coor_to_beam_list,
                      class_beam_list=class_beam_list,
                      floor_list=floor_list,
-                     measure_type=measure_type,
-                     name_pattern=name_pattern)
+                     **kwargs)
     test_data.update({'add_beam_to_list_data': {
         'inputs': temp,
         'outputs': {
@@ -1836,7 +1773,6 @@ def cal_beam_rebar(data: dict = None,
         'coor_to_bounding_block_list': copy.deepcopy(coor_to_bounding_block_list),
         'class_beam_list': copy.deepcopy(class_beam_list),
         'coor_to_rc_block_list': copy.deepcopy(coor_to_rc_block_list),
-        'measure_type': measure_type
     }
     combine_beam_boundingbox(coor_to_block_list=coor_to_block_list,
                              coor_to_bounding_block_list=coor_to_bounding_block_list,
@@ -1877,12 +1813,13 @@ def cal_beam_rebar(data: dict = None,
         'coor_to_bend_rebar_list': copy.deepcopy(coor_to_bend_rebar_list)
     }
     combine_beam_tie(coor_sorted_tie_list=coor_sorted_tie_list,
-                     class_beam_list=class_beam_list)
+                     class_beam_list=class_beam_list,
+                     **kwargs)
     combine_beam_rebar(coor_to_arrow_dic=coor_to_arrow_dic,
                        coor_to_rebar_list_straight=coor_to_rebar_list_straight,
                        coor_to_bend_rebar_list=coor_to_bend_rebar_list,
                        class_beam_list=class_beam_list,
-                       measure_type=measure_type)
+                       ** kwargs)
     test_data.update({'combine_beam_data': {
         'inputs': temp,
         'outputs': {
@@ -2085,6 +2022,9 @@ def create_report(class_beam_list: list[Beam],
     output_file_list.append(excel_filename)
     output_file_list.append(excel_filename_rcad)
 
+    draw_beam_rebar_dxf(output_folder=output_folder,
+                        beam_list=class_beam_list)
+
     return output_file_list
 
 
@@ -2204,7 +2144,7 @@ def remove_duplicates_beams(class_beam_list: list[Beam]):
     for beam in class_beam_list[:]:
         if (beam.floor, beam.serial, beam.width, beam.depth) in exists_beam:
             class_beam_list.remove(beam)
-            print(
+            progress(
                 f'Remove {(beam.floor , beam.serial , beam.width , beam.depth)}')
         else:
             exists_beam.add((beam.floor, beam.serial, beam.width, beam.depth))
@@ -2214,30 +2154,48 @@ def add_beam_to_list(coor_to_beam_list: list,
                      class_beam_list: list,
                      floor_list: list,
                      measure_type: str,
-                     name_pattern: dict = {}):
+                     name_pattern: dict = None,
+                     size_pattern: dict = None,
+                     **kwargs):
+    '''
+    Convert Beam Text to a Beam Object Based on
+    - 0.first sub the floor text with "General" to prevent special prefix
+    - 1.floor match floor pattern
+    - 2.serial match name pattern (Grider >> FB >> SB )
+    '''
     def regex_beam_string(pattern, beam_string):
         if pattern is None:
             return beam_string
         return re.sub(pattern, '', beam_string)
+
+    if name_pattern is None:
+        error('No name pattern in kwargs at add_beam_to_list')
+        return
+
+    if size_pattern is None:
+        error('No size pattern in kwargs at add_beam_to_list')
+        return
+
     floor_pattern = r'(\d+F|R\d+|PR|BS|B\d+|MF|RF|PF|FS)F*'
+
     for beam in coor_to_beam_list:
         try:
             serial = regex_beam_string(
                 name_pattern.get('General', None), beam[0])
             b = Beam(serial, beam[1][0], beam[1][1])
-            b.get_beam_info(floor_list=floor_list,
-                            measure_type=measure_type,
-                            name_pattern=name_pattern,
-                            floor_pattern=floor_pattern)
+
+            b: Beam = b.get_beam_info(floor_list=floor_list,
+                                      measure_type=measure_type,
+                                      name_pattern=name_pattern,
+                                      floor_pattern=floor_pattern,
+                                      size_pattern=size_pattern)
         except BeamFloorNameError:
-            print(f'{beam[0]} beam serial error')
+            error(f'{beam} beam serial error at add_beam_to_list')
             continue
-        if re.search(floor_pattern, b.floor) and b.serial != '':
-            b.floor = re.search(floor_pattern, b.floor).group()
-            # regex the floor name to prevent special name
+        if b is not None:
             class_beam_list.append(b)
         else:
-            print(b.floor)
+            error(f'{beam} floor name error at add_beam_to_list')
 
 
 def draw_rebar_line(class_beam_list: list[Beam],
@@ -2551,7 +2509,9 @@ def output_rcad_beam(class_beam_list: list[Beam]):
     return rcad_beam
 
 
-def sort_dim_line_and_text(coor_to_dim_text: list, coor_to_dim_line: list):
+def sort_dim_line_and_text(coor_to_dim_text: list,
+                           coor_to_dim_line: list,
+                           **kwargs):
     '''
     coor_to_dim_text = [[object.TextString, midpoint]]
     coor_to_dim_line = [[(coor1,coor2), '', text_coor]]
@@ -2559,7 +2519,7 @@ def sort_dim_line_and_text(coor_to_dim_text: list, coor_to_dim_line: list):
     output = (object.TextPosition, object.Measurement, (coor1, coor2))
     '''
     output = []
-    min_diff = 300
+    min_diff = kwargs.get('sort_dim_line_and_text_min_diff', 300)
 
     for dim_text in coor_to_dim_text:
         text, point = dim_text
@@ -2976,21 +2936,19 @@ if __name__ == '__main__':
     from main import GetAllFiles
     import json
 
-    parameter = read_parameter_json('府中')['beam']
+    parameter = read_parameter_json('Elements')['beam']
     parameter['measure_type'] = "cm"
     count_beam_multifiles(
-        project_name='2024-1008',
+        project_name='2024-1011',
         beam_filenames=[
-            r'D:\Desktop\BeamQC\TEST\2024-1008\S2\23B05-S2-21~25(小梁).dwg'],
-        floor_parameter_xlsx=r'TEST\2024-1008\floor.xlsx',
-        pkl_file_folder=r'TEST\2024-1008\梁',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1008\梁',
-        pkl=[r'TEST\2024-1008\梁\2024-1008-20241009_134210-23B05-S2-01~09(地梁)-beam-data-0.pkl',
-             r'TEST\2024-1008\梁\2024-1008-20241009_111506-23B05-S2-11~15(B4~PRF大梁)-beam-data-0.pkl',
-             r'TEST\2024-1008\梁\2024-1008-20241009_162830-23B05-S2-21~25(小梁)-beam-data-0.pkl'],
-        plan_pkl=r'TEST\2024-1008\ALL_plan_count_set.pkl',
-        # beam_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\beam-all.pkl',
-        # cad_data_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\cad_list.pkl',
+            r'D:\Desktop\BeamQC\TEST\2024-1011'],
+        floor_parameter_xlsx=r'TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-24-16-02-floor_1.xlsx',
+        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1011',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1011',
+        pkl=[r'TEST\2024-1011\2024-0923-20240930_173909-S2-1-S2-30-beam-data-0.pkl'],
+        # plan_pkl=r'TEST\2024-1008\ALL_plan_count_set.pkl',
+        # beam_pkl=r'TEST\2024-1011\2024-1011-20241011_155100-beam-object.pkl',
+        # cad_data_pkl=r'TEST\2024-1011\2024-1011-20241011_155100-cad-data.pkl',
         # beam_type=['GB'],
         **parameter
     )

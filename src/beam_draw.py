@@ -1,5 +1,6 @@
 import ezdxf
 import ezdxf.path
+import os
 import save_temp_file
 from item.beam import Beam, RebarType
 from ezdxf import readfile
@@ -12,12 +13,17 @@ from ezdxf.tools.standards import linetypes  # some predefined linetypes
 from itertools import product
 
 
-def draw_beam_rebar_dxf():
-
-    output_folder = r'TEST\2024-1008'
-
-    beam_list = save_temp_file.read_temp(
-        r'TEST\2024-1008\梁\2024-1008-20241009_165315-beam-object.pkl')
+def draw_beam_rebar_dxf(output_folder: str = r'TEST\2024-1008',
+                        beam_list: list = None,
+                        beam_tmp_file: str = r'TEST\2024-1008\梁\2024-1008-20241009_165315-beam-object.pkl'):
+    '''
+    Draw Beam Rebar Dxf , if beam list then use beam list , else use temp file
+    '''
+    if beam_list is None:
+        if os.path.exists(beam_tmp_file):
+            beam_list = save_temp_file.read_temp(beam_tmp_file)
+        else:
+            return
     # Create a new DXF document
     doc = ezdxf.new()
 
@@ -38,7 +44,8 @@ def draw_beam_rebar_dxf():
         except ZeroDivisionError:
             pass
     # Save the DXF file
-    doc.saveas(f'{output_folder}\\redraw-all-8.dxf')
+    doc.saveas(
+        f'{output_folder}\\redraw-{os.path.splitext(os.path.basename(beam_tmp_file))[0]}.dxf')
 
 
 def init_doc_layers(doc: Drawing):

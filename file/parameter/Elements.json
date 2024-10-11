@@ -30,6 +30,7 @@
             "burst_layer_list": []
         },
         "name_pattern": {
+            "General": "",
             "Grider": [
                 "(.*) ([G|B|E|WB|DB|CG|CB].*)"
             ],
@@ -73,9 +74,39 @@
             ],
             "rc_block_layer": [
                 "AcDbPolyline"
+            ],
+            "dim_layer": [
+                "AcDbAlignedDimension"
             ]
         },
-        "middle_tie_pattern": ""
+        "middle_tie_pattern": {
+            "pattern": "(\\d+)-(#\\d+)E.F",
+            "num": 1,
+            "size": 2,
+            "type": "single"
+        },
+        "tie_pattern": {
+            "pattern": "(\\d*)-?(\\d*)(#\\d+)@(\\d+)",
+            "num": 1,
+            "size": 3,
+            "spacing": 4,
+            "multi": 2
+        },
+        "rebar_pattern": {
+            "pattern": "(\\d+)-(#\\d+)",
+            "num": 1,
+            "size": 2
+        },
+        "size_pattern": {
+            "pattern": "\\((\\d+)[X|x](\\d+)\\)",
+            "depth": 2,
+            "width": 1
+        },
+        "dim_spacing": 200,
+        "leader_spacing": 6,
+        "arrow_to_word_min_diff": 100,
+        "sort_line_to_arrow_mid_diff": 5,
+        "sort_dim_line_and_text_min_diff": 300
     },
     "column": {
         "plan_layer_config": {

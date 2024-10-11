@@ -1282,7 +1282,9 @@ def read_beam(beam_filename, layer_config):
                 else:
                     object_layer = object.Layer
 
-                if object_layer in text_layer and object.ObjectName == "AcDbText" and ' ' in object.TextString:
+                if object_layer in text_layer and \
+                        object.ObjectName == "AcDbText" and\
+                        ' ' in object.TextString:
                     pre_beam = (object.TextString.split(' ')[
                                 1]).split('(')[0]  # 把括號以後的東西拔掉
                     if pre_beam == '':

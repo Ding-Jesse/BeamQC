@@ -4,11 +4,12 @@ import pandas as pd
 from collections import defaultdict
 from item.excepteions import BeamFloorNameError
 from typing import Tuple
+from enum import Enum
+from dataclasses import dataclass, field
 from item.rebar import RebarInfo, RebarArea, RebarFy, RebarDiameter
 from item.floor import Floor
 from item.point import Point
-from enum import Enum
-from dataclasses import dataclass, field
+
 commom_pattern = r'(,)|(、)'
 stash_pattern = r'(\w+)[-|~](\w+)'
 
@@ -241,18 +242,23 @@ class Beam():
     def get_beam_info(self, floor_list: list[str],
                       measure_type='cm',
                       name_pattern: dict = None,
+                      size_pattern: dict = None,
                       floor_pattern: str = ''):
         '''
-        assign beam name type, seperate floor, name and section type
-        inputs = {
+        - Seperate Floor with pattern like "、|,|~"
+        - assign beam name type, seperate floor, name and section type
+        - inputs = {
             'Grider':[],
             'FB':[],
             'SB':[]
         }
         '''
         if name_pattern is None:
-            name_pattern = {}
-        floor_serial_spacing_char = ' '
+            return None
+        if size_pattern is None:
+            return None
+
+        # floor_serial_spacing_char = ' '
         self.measure_type = measure_type
 
         if name_pattern:
@@ -260,6 +266,7 @@ class Beam():
                 match_floor = ''
                 match_serial = ''
                 match_obj = None
+
                 for pattern in patterns:
                     match_obj = re.search(pattern, self.serial)
                     if match_obj:
@@ -269,58 +276,23 @@ class Beam():
                         match_serial.replace(' ', '')  # 去除編號與尺寸的間隔
                         break
 
-                if beam_type == 'FB' and \
-                        match_obj and \
-                        match_floor == '':
-                    match_floor = floor_list[-1]
-
-                if match_floor != '' and match_serial != '':
-
-                    self.floor = match_floor
-                    self.serial = match_serial
+                if match_obj:
 
                     if beam_type == 'Grider':
                         self.beam_type = BeamType.Grider
                     if beam_type == 'FB':
                         self.beam_type = BeamType.FB
+                        if match_floor == '':
+                            match_floor = floor_list[-1]
                     if beam_type == 'SB':
                         self.beam_type = BeamType.SB
+
+                    self.floor = match_floor
+                    self.serial = match_serial
+
                     break
 
-        else:
-            if self.serial.count(floor_serial_spacing_char) <= 1:
-                # temp = self.serial.split(floor_serial_spacing_char)[0]
-                # temp_matchobj = re.search(r'\((.*)\)(.*\(.*\))', self.serial)
-                # temp_matchobj = re.search(r'(.*)/([G|B|FB].*)', self.serial)
-                # 1 EB2(700x900)
-                temp_matchobj = re.search(r'(.*) ([G|B|E].*)', self.serial)
-                if temp_matchobj:
-                    self.floor = temp_matchobj.group(1)
-                    self.serial = temp_matchobj.group(2)
-                else:
-                    temp_matchobj = re.search(r'(.*)([G|B].*)', self.serial)
-                    if not temp_matchobj:
-                        return
-                    self.floor = temp_matchobj.group(1)
-                    self.serial = temp_matchobj.group(2)
-                    # raise BeamFloorNameError
-            else:
-                self.floor = self.serial.split(' ')[0]
-                if self.floor == '':
-                    raise BeamFloorNameError
-                if "(" in self.floor and ")" in self.floor:
-                    temp_matchobj = re.search(r'\((.*)\)', self.floor)
-                    self.floor = temp_matchobj.group(1)
-                self.serial = ''.join(self.serial.split(
-                    floor_serial_spacing_char)[1:])
-            self.beam_type = BeamType.Other
-            if re.search(r'^[B|G]', self.serial):
-                self.beam_type = BeamType.Grider
-            if re.search(r'^F', self.serial):
-                self.beam_type = BeamType.FB
-            if re.search(r'^b', self.serial):
-                self.beam_type = BeamType.SB
-
+        # Seperate Floor with pattern like "、,"
         if re.search(commom_pattern, self.floor):
             sep = re.search(commom_pattern, self.floor).group(0)
             for floor_text in self.floor.split(sep):
@@ -359,30 +331,31 @@ class Beam():
                     self.floor = self.multi_floor[0]
             except:
                 pass
+
         if self.floor == '':
-            return
+            return None
+
         if self.floor[-1] != 'F':
             self.floor += 'F'
 
-        # get beam width/depth
-        # temp_serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
-        # self.serial = ''.join(self.serial.split(floor_serial_spacing_char)[1:])
-        temp_serial = self.serial
-        matches = re.findall(r"\((.*?)\)", self.serial, re.MULTILINE)
-        if len(matches) == 0 or len(re.findall(r"X|x", matches[0], re.MULTILINE)) == 0:
-            return
-        # split_char = re.findall(r"X|x", matches[0])[0]
+        # regex the floor name to prevent special name
+        self.floor = re.search(floor_pattern, self.floor).group()
 
-        matches_size = re.search(r'(\d+)[X|x](\d+)', matches[0])
+        # get beam width/depth
+        temp_serial = self.serial
+        matches_size = re.search(size_pattern['pattern'], self.serial)
         if matches_size:
-            self.depth = int(matches_size.group(2))
-            self.width = int(matches_size.group(1))
+            text_depth = int(matches_size.group(size_pattern['depth']))
+            text_width = int(matches_size.group(size_pattern['width']))
             if measure_type == 'mm':
-                self.depth /= 10
-                self.width /= 10
+                text_depth /= 10
+                text_width /= 10
         else:
-            self.depth = 0
-            self.width = 0
+            text_depth = 0
+            text_width = 0
+
+        self.depth = text_depth
+        self.width = text_width
 
         # get beam serial/type
         match_obj = re.search(r'(.+)\((.*?)\)', temp_serial)
@@ -394,6 +367,8 @@ class Beam():
                 for serial_text in self.serial.split(sep):
                     self.multi_serial.append(serial_text)
                 self.serial = self.multi_serial[0]
+
+        return self
 
     def get_loading(self, band_width):
         # t/m
