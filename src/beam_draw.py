@@ -44,8 +44,9 @@ def draw_beam_rebar_dxf(output_folder: str = r'TEST\2024-1008',
         except ZeroDivisionError:
             pass
     # Save the DXF file
-    doc.saveas(
-        f'{output_folder}\\redraw-{os.path.splitext(os.path.basename(beam_tmp_file))[0]}.dxf')
+    dxf_file = f'{output_folder}\\redraw-{os.path.splitext(os.path.basename(beam_tmp_file))[0]}.dxf'
+    doc.saveas(dxf_file)
+    return dxf_file
 
 
 def init_doc_layers(doc: Drawing):

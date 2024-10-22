@@ -318,7 +318,7 @@ def upload_file():
 def result_page():
     filenames = session.get('filenames', [])
     count_filenames = session.get('count_filenames', [])
-    # print(session.get('filenames',[]))
+    print(session.get('count_filenames', []))
     # if filenames is None or len(filenames)==0:
     #     return render_template('tool1_result.html', filenames=[])
     # else:
