@@ -2025,8 +2025,10 @@ def create_report(class_beam_list: list[Beam],
     output_file_list.append(excel_filename)
     output_file_list.append(excel_filename_rcad)
 
-    draw_beam_rebar_dxf(output_folder=output_folder,
-                        beam_list=class_beam_list)
+    dxf_file = draw_beam_rebar_dxf(output_folder=output_folder,
+                                   beam_list=class_beam_list)
+
+    output_file_list.append(dxf_file)
 
     return output_file_list
 
