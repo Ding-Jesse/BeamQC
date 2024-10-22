@@ -26,7 +26,7 @@ from utils.algorithm import convert_mm_to_cm
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡B']
 beam_head1 = ['B', 'b', 'G', 'g']
-beam_head2 = ['FB', 'FG', 'Fb', 'CB', 'CG', 'cb']
+beam_head2 = ['FB', 'FG', 'FW', 'Fb', 'Fg', 'CB', 'CG', 'cb']
 global main_logger
 
 
@@ -297,66 +297,6 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                 f'read_plan error in step 4: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 4/13')
 
-    # Step 5. (1) 遍歷所有物件 -> 炸圖塊; (2) 刪除我們不要的條件 -> 省時間
-    # flag = 0
-    # time.sleep(5)
-    # layer_list = [floor_layer, size_layer, big_beam_layer,
-    #               big_beam_text_layer, sml_beam_layer, sml_beam_text_layer]
-    # non_trash_list = layer_list + [block_layer]
-    # while not flag and error_count <= 0:
-    #     try:
-    #         count = 0
-    #         total = msp_plan.Count
-    #         progress(
-    #             f'正在炸平面圖的圖塊及篩選判斷用的物件，平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候', progress_file)
-    #         for object in msp_plan:
-    #             explode_fail = 0
-    #             while explode_fail <= 3:
-    #                 try:
-    #                     count += 1
-    #                     if object.EntityName == "AcDbBlockReference" and object.Layer in layer_list:  # block 不會自動炸，需要手動修正
-    #                         object.Explode()
-    #                     if object.Layer not in non_trash_list:
-    #                         object.Delete()
-    #                     if count % 1000 == 0:
-    #                         # 每1000個跳一次，確認有在動
-    #                         progress(
-    #                             f'平面圖已讀取{count}/{total}個物件', progress_file)
-    #                     break
-    #                 except:
-    #                     explode_fail += 1
-    #                     time.sleep(5)
-    #                     try:
-    #                         msp_plan = doc_plan.Modelspace
-    #                     except:
-    #                         pass
-    #         flag = 1
-
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_plan error in step 5: {e}, error_count = {error_count}.')
-    #         try:
-    #             msp_plan = doc_plan.Modelspace
-    #         except:
-    #             pass
-
-    # progress('平面圖讀取進度 5/13', progress_file)
-
-    # Step 6. 重新匯入modelspace，剛剛炸出來的東西要重新讀一次
-    # flag = 0
-    # while not flag and error_count <= 10:
-    #     try:
-    #         msp_plan = doc_plan.Modelspace
-    #         flag = 1
-    #     except Exception as e:
-    #         error_count += 1
-    #         time.sleep(5)
-    #         error(
-    #             f'read_plan error in step 6: {e}, error_count = {error_count}.')
-    # progress('平面圖讀取進度 6/13', progress_file)
-
     # Step 7. 遍歷所有物件 -> 完成各種我們要的set跟list
 
     progress('正在遍歷平面圖上的物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候')
@@ -383,6 +323,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
         used_layer_list += layer_name
     progress(
         f'平面圖上共有{total}個物件，大約運行{int(total / 9000) + 1}分鐘，請耐心等候')
+
     for msp_object in msp_plan:
         object_list = []
         error_count = 0
@@ -396,8 +337,6 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                 # print(f'{msp_object.Layer}:{msp_object.EntityName}')
                 object_list = [msp_object]
                 if msp_object.EntityName == "AcDbBlockReference":
-                    if msp_object.Layer == 'S-TEXTG':
-                        print()
                     if msp_object.GetAttributes():
                         object_list = list(msp_object.GetAttributes())
                     else:
@@ -448,7 +387,8 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                                 coor_to_size_beam.add((coor, 'CG'))
                             else:
                                 coor_to_size_beam.add((coor, 'G'))
-                        if 'Bn' in object.TextString and 'W' not in object.TextString and 'D' not in object.TextString and 'FBn' not in object.TextString:
+                        if 'Bn' in object.TextString and 'W' not in object.TextString and \
+                                'D' not in object.TextString and 'FBn' not in object.TextString:
                             if 'C' in object.TextString and ('(' in object.TextString or object.TextString.count('Bn') >= 2):
                                 coor_to_size_beam.add((coor, 'CB'))
                                 coor_to_size_beam.add((coor, 'B'))
@@ -521,7 +461,9 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                                     (object_layer, 0, mid, round(abs(object.MLineScale), 2)))
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 有其他括號在鬧(ex. )
-                if object_layer in floor_layer and object.EntityName in text_object_type and '(' in object.TextString and object.InsertionPoint[1] >= 0:
+                if object_layer in floor_layer and \
+                    object.EntityName in text_object_type and \
+                        '(' in object.TextString:
                     floor = object.TextString.strip()
                     floor = re.search(r'\(([^)]+)', floor).group(1)  # 取括號內的樓層數
                     coor = (round(object.InsertionPoint[0], 2), round(
@@ -540,7 +482,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                 # 取beam的字串
                 # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
                 if object_layer in beam_text_layer and object.EntityName in text_object_type:
-                    matches = re.match(r'\(\d+(x|X)\d+\)', object.TextString)
+                    matches = re.search(r'\(\d+(x|X)\d+\)', object.TextString)
                     if matches:
                         beam = matches.group()
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
@@ -554,13 +496,12 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                             continue
                         else:
                             progress(object.TextString)
+
                 if object_layer in beam_text_layer and object.EntityName in text_object_type\
                         and object.TextString != '' and (object.TextString[0] in beam_head1 or object.TextString[0:2] in beam_head2):
 
-                    beam = object.TextString
-
-                    if ' ' in beam:
-                        beam = beam.replace(' ', '')  # 有空格要把空格拔掉
+                    beam: str = object.TextString
+                    beam = beam.replace(' ', '')  # 有空格要把空格拔掉
 
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -576,20 +517,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                             size = beam_size.group(0).replace('X', 'x').strip()
                         if beam_name:
                             beam = beam_name.group(0).strip()
-                            # beam = beam.replace('X','x')
-                    # if '(' in beam:
-                    #     size = (((beam.split('(')[1]).split(')')[0]).replace(' ', '')).replace('X', 'x')
-                    #     if 'x' not in size:
-                    #         size = ''
-                    #     else:
-                    #         try:
-                    #             first = size.split('x')[0]
-                    #             second = size.split('x')[1]
-                    #             if not (float(first) and float(second)):
-                    #                 size = ''
-                    #         except:
-                    #             size = ''
-                    #     beam = beam.split('(')[0] # 取括號前內容即可
+
                     comma_char = ','
                     for char in weird_comma_list:
                         if char in beam:
@@ -653,7 +581,8 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                 # 找框框，完成block_coor_list，格式為((0.0, 0.0), (14275.54, 10824.61))
                 # 此處不會報錯
 
-                if object_layer in block_layer and (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
+                if object_layer in block_layer and \
+                        (object.EntityName == "AcDbBlockReference" or object.EntityName == "AcDbPolyline"):
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
                     coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -775,6 +704,9 @@ def sort_plan(plan_filename: str,
             size = convert_mm_to_cm(size)
 
         temp_list = [s for s in coor_to_beam_set if s[1][1] == '']
+        if not temp_list:
+            continue
+
         closet_beam = min(temp_list, key=lambda x: get_distance(x[0], coor))
         coor_to_beam_set.remove(closet_beam)
         coor_to_beam_set.add(
@@ -1282,7 +1214,9 @@ def read_beam(beam_filename, layer_config):
                 else:
                     object_layer = object.Layer
 
-                if object_layer in text_layer and object.ObjectName == "AcDbText" and ' ' in object.TextString:
+                if object_layer in text_layer and \
+                        object.ObjectName == "AcDbText" and\
+                        ' ' in object.TextString:
                     pre_beam = (object.TextString.split(' ')[
                                 1]).split('(')[0]  # 把括號以後的東西拔掉
                     if pre_beam == '':
@@ -1846,6 +1780,18 @@ def write_beam(beam_filename,
 
 
 def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[str, dict]):
+    # Step 1: Normalize the mixed data into a uniform dictionary structure
+    def normalize_dict(cad_data):
+        normalized_data = {}
+        for key, value in cad_data.items():
+            if isinstance(value, dict):
+                normalized_data[key] = value
+            elif isinstance(value, list):
+                normalized_data[key] = {
+                    f"item_{i}": v for i, v in enumerate(value)}
+            else:
+                normalized_data[key] = {"value": value}
+        return normalized_data
     plan_beam_df_list = []
     plan_sbeam_df_list = []
     plan_fbeam_df_list = []
@@ -1865,6 +1811,8 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
     beam_sbeam_df_list = []
     beam_fbeam_df_list = []
     for error_type in ['not_found', 'size', 'no_size', 'duplicate']:
+        if beam_type not in beam_result:
+            continue
         for beam_type, content in beam_result[error_type].items():
             if not content:
                 continue
@@ -1885,43 +1833,10 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
         'XS-BEAM 大梁結果': beam_beam_df_list,
         'XS-BEAM 小梁結果': beam_sbeam_df_list,
         'XS-BEAM 地梁結果': beam_fbeam_df_list,
-        'XS-PLAN 詳細內容': [pd.DataFrame(plan_result['item'], columns=['floor', 'serial', 'size'])],
-        'XS-BEAM 詳細內容': [pd.DataFrame(beam_result['item'], columns=['floor', 'serial', 'size'])],
-        'CAD data': [pd.DataFrame.from_dict(plan_result['cad_data'], orient='columns')]
+        'XS-PLAN 詳細內容': [pd.DataFrame(plan_result['item'] if 'item' in plan_result else {}, columns=['floor', 'serial', 'size'])],
+        'XS-BEAM 詳細內容': [pd.DataFrame(beam_result['item'] if 'item' in beam_result else {}, columns=['floor', 'serial', 'size'])],
+        'CAD data': [pd.DataFrame.from_dict(normalize_dict(plan_result['cad_data'])if 'cad_data' in plan_result else {}, orient='columns')]
     }
-
-    sheet_name = 'result_log_new'
-    if not plan_result:
-        plan_result = ['', '', '']
-    if not beam_result:
-        beam_result = ['', '', '']
-    plan_not_beam_big = plan_result[0]
-    plan_not_beam_sml = plan_result[1]
-    plan_not_beam_fb = plan_result[2]
-    beam_not_plan_big = beam_result[0]
-    beam_not_plan_sml = beam_result[1]
-    beam_not_plan_fb = beam_result[2]
-    new_list = [(task_name,
-                 plan_not_beam_big,
-                 plan_not_beam_sml,
-                 plan_not_beam_fb,
-                 beam_not_plan_big,
-                 beam_not_plan_sml,
-                 beam_not_plan_fb,
-                 date, runtime, other)]
-    dfNew = pd.DataFrame(new_list, columns=[
-                         '名稱', '平面圖大梁錯誤率', '平面圖小梁錯誤率', '平面圖地梁錯誤率', '配筋圖大梁錯誤率', '配筋圖小梁錯誤率', '配筋圖地梁錯誤率', '執行時間', '執行日期', '備註'])
-    if os.path.exists(excel_file):
-        writer = pd.ExcelWriter(
-            excel_file, engine='openpyxl', mode='a', if_sheet_exists='replace')
-        df = pd.read_excel(excel_file)
-        df = pd.concat([df, dfNew], axis=0, ignore_index=True, join='inner')
-    else:
-        writer = pd.ExcelWriter(excel_file, engine='openpyxl')
-        df = dfNew
-    df.to_excel(writer, sheet_name)
-    writer.save()
-    return
 
 
 def run_plan(plan_filename,
@@ -2026,9 +1941,18 @@ if __name__ == '__main__':
     big_beam_text_layer = ['S-TEXTG']  # 大樑文字圖層
     sml_beam_layer = ['S-RCBMB']  # 小梁複線圖層
     sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
+
+    block_layer = ['DwFm', '0', 'DETPOINTS', 'FRAME']  # sys.argv[8] # 框框的圖層
+    floor_layer = ['TEXT1']  # sys.argv[9] # 樓層字串的圖層
+    size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
+    big_beam_layer = ['S-RCBMG']  # 大樑複線圖層
+    big_beam_text_layer = ['BTXT']  # 大樑文字圖層
+    sml_beam_layer = ['S-RCBMB']  # 小梁複線圖層
+    sml_beam_text_layer = ['SBTXT']  # 小梁文字圖層
     task_name = '0524-temp'  # sys.argv[13]
 
     progress_file = './result/tmp'  # sys.argv[14]
+    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1011'
 
     sizing = 1  # 要不要對尺寸
     mline_scaling = 1  # 要不要對複線寬度
@@ -2046,24 +1970,26 @@ if __name__ == '__main__':
         'sml_beam_text_layer': sml_beam_text_layer
     }
     pkls = [r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-BEAM_beam_set.pkl']
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0923\test.dwg'
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-XS-PLAN-new.dwg'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1011\revise2.dwg'
+    plan_new_filename = f'{output_folder}\\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-XS-PLAN-new.dwg'
     set_beam_all = set()
 
     set_plan, dic_plan, plan_mline_error_list, plan_cad_data_list = run_plan(plan_filename=plan_filename,
                                                                              plan_new_filename=plan_new_filename,
                                                                              layer_config=layer_config,
                                                                              date=date,
+                                                                             drawing_unit='cm',
                                                                              sizing=True,
                                                                              mline_scaling=True,
-                                                                             client_id='temp',
-                                                                             pkl=r'')
+                                                                             client_id='2024-1018',
+                                                                             pkl=r'TEST\2024-1011\revise2_plan_set.pkl')
 
-    for pkl in pkls:
-        floor_to_beam_set = save_temp_file.read_temp(pkl)
-        set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-                                       sizing=True)
-        set_beam_all = set_beam | set_beam_all
+    # for pkl in pkls:
+    #     floor_to_beam_set = save_temp_file.read_temp(pkl)
+    #     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
+    #                                    drawing_unit='cm',
+    #                                    sizing=True)
+    #     set_beam_all = set_beam | set_beam_all
 
     plan_error_list = write_plan(plan_filename=plan_filename,
                                  plan_new_filename=plan_new_filename,
@@ -2079,4 +2005,18 @@ if __name__ == '__main__':
                                                              title_text='XS-BEAM',
                                                              set_item=set_plan,
                                                              cad_data=plan_cad_data_list)
-    print()
+
+    data_excel_file = os.path.join(
+        output_folder, f'{task_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_梁Check_結果.xlsx')
+
+    from main import OutputExcel
+
+    output_data = write_result_log(task_name=task_name,
+                                   plan_result=plan_result_dict,
+                                   beam_result={}
+                                   )
+    for sheet_name, df_list in output_data.items():
+        OutputExcel(df_list=df_list,
+                    df_spacing=1,
+                    file_path=data_excel_file,
+                    sheet_name=sheet_name)

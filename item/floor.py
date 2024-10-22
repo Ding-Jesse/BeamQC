@@ -41,7 +41,6 @@ class Floor:
         self.coupler = {}
         self.formwork_count = 0
         self.is_seismic = False
-        pass
 
     def set_beam_prop(self, kwargs):
         self.material_list.update({'fc': kwargs["混凝土強度fc'(kgf/cm2)"]})

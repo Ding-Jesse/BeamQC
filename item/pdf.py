@@ -754,6 +754,9 @@ def add_cover(cover_pdf_path, content_pdf_path, output_pdf, cover_title=''):
     # Load the cover PDF and the content PDF
     cover_pdf = fitz.open(cover_pdf_path)
 
+    # Load the cover PDF and the content PDF
+    table_pdf = fitz.open(r'assets\分項目錄.pdf')
+
     page = cover_pdf[0]
 
     font = fitz.Font(fontfile=r'assets\msjhbd.ttc')
@@ -778,6 +781,9 @@ def add_cover(cover_pdf_path, content_pdf_path, output_pdf, cover_title=''):
 
     # Add the cover page
     combined_pdf.insert_pdf(cover_pdf)
+
+    # Add the cover page
+    combined_pdf.insert_pdf(table_pdf)
 
     # Add the content pages
     combined_pdf.insert_pdf(content_pdf)

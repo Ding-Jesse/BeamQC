@@ -72,6 +72,8 @@ def convert_mm_to_cm(text):
 def find_all_matching_patterns(text, patterns):
     matching_patterns = []
     for pattern in patterns:
+        if pattern == '':
+            continue
         if re.search(pattern, text):
             matching_patterns.append(pattern)
     return matching_patterns  # Return all matching patterns

@@ -190,8 +190,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                    'S' not in object.TextString:
+                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -1333,34 +1333,34 @@ def run_col(col_filename: str,
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 
 if __name__ == '__main__':
-    plan_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN.dwg'
+    plan_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-1011\revise.dwg'
     col_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A.dwg'
     plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
     col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A_new.dwg'
     layer_config = {
         'text_layer': ['S-TEXT'],
         'line_layer': ['S-TABLE'],
-        'block_layer': ['0', 'DwFm', 'DEFPOINTS'],
-        'floor_layer': ['S-TITLE'],
-        'col_layer': ['S-TEXTC'],
+        'block_layer': ['0', 'DwFm', 'DEFPOINTS', 'FRAME'],
+        'floor_layer': ['S-TITLE', 'TEXT1'],
+        'col_layer': ['S-TEXTC', 'CTXT'],
         'size_layer': ['S-TEXT'],
         'table_line_layer': ['S-TABLE'],
         'column_block_layer': ['S-COL']
     }
     set_plan, dic_plan, block_error_list, block_match_result_list = run_plan(
-        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\XS-PLAN.dwg',
+        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-1011\revise.dwg',
         layer_config=layer_config,
         client_id='0930-temp_col',
-        pkl=r"TEST\2024-0930\2024-10-04-14-26_副都心col-XS-PLAN_plan_to_col.pkl",
+        pkl=r"",
         drawing_unit='cm'
     )
     set_col, dic_col = run_col(
-        col_filename=r'D:\Desktop\BeamQC\TEST\2024-0930\2024-10-04-14-26_副都心col-XS-COL.dwg',
+        col_filename=r'D:\Desktop\BeamQC\TEST\2024-1011\2024-10-08-11-04_P2022-04A 國安社宅二期暨三期22FB4-XS-COL.dwg',
         layer_config=layer_config,
         client_id='0930-temp-col',
-        pkl=r'TEST\2024-0930\2024-10-04-14-26_副都心col-XS-COL_col_set.pkl',
+        pkl=r'TEST\INPUT\2024-10-17-10-50_temp-2024-10-08-11-04_P2022-04A_22FB4-XS-COL_col_set.pkl',
         bottom_line_offset=1,
-        exclude_string=['mm']
+        exclude_string=['']
     )
 
     date = time.strftime("%Y-%m-%d", time.localtime())
@@ -1379,7 +1379,7 @@ if __name__ == '__main__':
                            set_col,
                            dic_col,
                            date,
-                           drawing=False,
+                           drawing=True,
                            client_id='temp')
     plan_result_dict, col_result_dict, excel_data = write_result_log(plan_error_list=plan_result,
                                                                      col_error_list=col_result,
@@ -1393,5 +1393,5 @@ if __name__ == '__main__':
     for sheet_name, df_list in excel_data.items():
         OutputExcel(df_list=df_list,
                     df_spacing=1,
-                    file_path=os.path.join(output_folder, 'test2.xlsx'),
+                    file_path=os.path.join(output_folder, '2024-1018.xlsx'),
                     sheet_name=sheet_name)

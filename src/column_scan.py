@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 import pprint
-import src.beam_scan as beam_scan
+
 from item.column import Column
 from math import ceil
 from item.floor import read_parameter_df
@@ -77,7 +77,7 @@ def create_column_scan():
     df.fillna('', inplace=True)
     df = rename_unnamed(df=df)
     for index in df.index:
-        if np.isnan(index):
+        if df.loc[index][('Type', '柱')] == 'X' or np.isnan(index):
             continue
         column_scan = ColumnScan(df.loc[index].to_dict(), scan_index=index)
         set_check_scan(column_scan=column_scan)
@@ -86,6 +86,7 @@ def create_column_scan():
 
 
 def output_detail_scan_report(column_list: list[Column]):
+    import src.beam_scan as beam_scan
     return beam_scan.output_detail_scan_report(column_list)
     # ng_df = pd.DataFrame(columns = ['樓層','編號','備註'],index=[])
     # for b in column_list:
@@ -96,6 +97,7 @@ def output_detail_scan_report(column_list: list[Column]):
 
 
 def output_ng_ratio(df: pd.DataFrame):
+    import src.beam_scan as beam_scan
     return beam_scan.output_ng_ratio(df)
 
 
