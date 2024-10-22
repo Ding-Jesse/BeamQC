@@ -1,32 +1,33 @@
 from __future__ import annotations
-import time
-import pythoncom
-import win32com.client
 import re
+import win32com.client
+import pythoncom
+import time
+import copy
+import numpy as np
+import pandas as pd
 import os
 import src.save_temp_file as save_temp_file
-import pandas as pd
-import numpy as np
-import copy
-from src.plan_to_beam import (turn_floor_to_float, turn_floor_to_string,
-                              turn_floor_to_list, floor_exist, vtFloat)
-from item.column import Column
-from item.beam import Beam
-from src.plan_count import sort_plan_count
-from src.beam_count import vtPnt, read_parameter_json
+from typing import Literal
+from collections import defaultdict
+from src.logger import setup_custom_logger
+from utils.demand import calculate_column_beam_joint_shear
+from item.pdf import create_scan_pdf
+from item.rebar import readRebarExcel
+from item.floor import Floor, read_parameter_df, summary_floor_rebar, summary_floor_column_rebar_ratio
+from multiprocessing.pool import ThreadPool as Pool
+from src.main import OutputExcel
 from src.column_scan import (column_check, create_column_scan,
                              output_detail_scan_report, output_ng_ratio)
-from src.main import OutputExcel
-from multiprocessing.pool import ThreadPool as Pool
-from item.floor import Floor, read_parameter_df, summary_floor_rebar, summary_floor_column_rebar_ratio
-from item.rebar import readRebarExcel
-from item.pdf import create_scan_pdf
-from utils.demand import calculate_column_beam_joint_shear
-from src.logger import setup_custom_logger
-from collections import defaultdict
-from typing import Literal
+from src.beam_count import vtPnt, read_parameter_json
+from src.plan_count import sort_plan_count
+from item.beam import Beam
+from item.column import Column
+from src.plan_to_beam import (turn_floor_to_float, turn_floor_to_string,
+                              turn_floor_to_list, floor_exist, vtFloat)
 
-slash_pattern = r'(.+)[~|-](.+)'  # ~
+
+slash_pattern = r'(.+)F[~|-](.+)F'  # ~
 commom_pattern = r'(,)|(、)'
 multi = True
 
@@ -197,7 +198,8 @@ def sort_col_cad(msp_column,
             object = object_list.pop()
             try:
                 if object.Layer in tie_layer:
-                    if object.ObjectName == "AcDbPolyline" or object.ObjectName == "AcDb2dPolyline":
+                    if object.ObjectName == "AcDbPolyline" or\
+                            object.ObjectName == "AcDb2dPolyline" or object.ObjectName == "AcDbLine":
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -205,14 +207,20 @@ def sort_col_cad(msp_column,
                         coor_to_tie_list.append((coor1, coor2))
                 if object.Layer in tie_text_layer:
                     if object.ObjectName == "AcDbText":
-                        coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
-                            object.GetBoundingBox()[0][1], 2))
-                        coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
-                            object.GetBoundingBox()[1][1], 2))
+                        if not hasattr(object, 'GetBoundingBox'):
+                            coor1 = (round(object.InsertionPoint[0], 2), round(
+                                object.InsertionPoint[1], 2))
+                            coor2 = (round(object.InsertionPoint[0], 2), round(
+                                object.InsertionPoint[1], 2))
+                        else:
+                            coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
+                                object.GetBoundingBox()[0][1], 2))
+                            coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
+                                object.GetBoundingBox()[1][1], 2))
                         coor_to_tie_text_list.append(
                             ((coor1, coor2), object.TextString))
                 if object.Layer in rebar_text_layer and object.ObjectName == "AcDbText":
-                    if re.match(r'\d+.#\d+', object.TextString):
+                    if re.search(r'\d+.#\d+', object.TextString):
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -237,7 +245,8 @@ def sort_col_cad(msp_column,
                         coor_to_rebar_list.append((coor1, object.Name))
 
                 if object.Layer in text_layer and object.ObjectName == "AcDbText":
-                    if object.TextString[0] == 'C' and len(object.TextString) <= 7:
+                    if (object.TextString[0] == 'C' or 'EC' in object.TextString) \
+                            and len(object.TextString) <= 7:
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
@@ -288,8 +297,8 @@ def sort_col_cad(msp_column,
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                             object.GetBoundingBox()[1][1], 2))
-                        if '~' in floor:
-                            match_obj = re.search(r'(.+)[~](.+)', floor)
+                        if re.search(slash_pattern, floor):
+                            match_obj = re.search(slash_pattern, floor)
                             first_floor = int(
                                 turn_floor_to_float(match_obj.group(1)))
                             last_floor = int(
@@ -361,7 +370,8 @@ def sort_col_cad(msp_column,
             except Exception as ex:
                 error(ex)
                 error_count += 1
-                time.sleep(5)
+                object_list.append(object)
+                time.sleep(2)
         coor_to_col_line_list.sort(key=lambda x: x[0])
         coor_to_floor_line_list.sort(key=lambda x: x[0])
         # except Exception as e:
@@ -401,7 +411,8 @@ def sort_col_cad(msp_column,
 def cal_column_rebar(data={},
                      rebar_excel_path='',
                      line_order=1,
-                     size_type: Literal['text', 'section'] = 'text'):
+                     size_type: Literal['text', 'section'] = 'text',
+                     **kwargs):
     # output_txt =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar.txt')
     # output_txt_2 =os.path.join(output_folder,f'{project_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_rebar_floor.txt')
     # excel_filename = (
@@ -457,8 +468,10 @@ def cal_column_rebar(data={},
     combine_col_rebar(column_list=output_column_list, coor_to_rebar_list=coor_to_rebar_list,
                       coor_to_rebar_text_list=coor_to_rebar_text_list)
     progress('結合柱編號與柱箍筋')
-    combine_col_tie(column_list=output_column_list, coor_to_tie_list=coor_to_tie_list,
-                    coor_to_tie_text_list=coor_to_tie_text_list)
+    combine_col_tie(column_list=output_column_list,
+                    coor_to_tie_list=coor_to_tie_list,
+                    coor_to_tie_text_list=coor_to_tie_text_list,
+                    **kwargs)
     return output_column_list
 
 
@@ -924,12 +937,19 @@ def combine_col_rebar(column_list: list[Column], coor_to_rebar_list: list, coor_
         # print(f'{column.floor}:{column.serial} x:{column.x_row} y:{column.y_row}')
 
 
-def combine_col_tie(column_list: list[Column], coor_to_tie_text_list: list, coor_to_tie_list: list):
+def combine_col_tie(column_list: list[Column],
+                    coor_to_tie_text_list: list,
+                    coor_to_tie_list: list,
+                    **kwargs):
     count = 0
+
+    def distance(coor1, coor2):
+        return ((coor1[0] - coor2[0])**2 + (coor1[1] - coor2[1])**2)**0.5
+        pass
     progress('組合柱斷面與繫筋')
     for column in column_list:
         ties = [tie for tie in coor_to_tie_list if column.in_column_section(
-            coor=tie[0]) and column.in_column_section(coor=tie[1])]
+            coor=tie[0]) and column.in_column_section(coor=tie[1]) and distance(*tie) > 50]
         for tie in ties:
             column.add_tie(tie)
             coor_to_tie_list.remove(tie)
@@ -952,7 +972,7 @@ def combine_col_tie(column_list: list[Column], coor_to_tie_text_list: list, coor
         if count % 100 == 0:
             progress(f'{count} / {len(coor_to_tie_text_list)}')
     for column in column_list:
-        column.sort_tie()
+        column.sort_tie(**kwargs)
         # print(f'{column.floor}:{column.serial} x:{column.x_tie} y:{column.y_tie} tie:{column.tie_dict}')
 
 
@@ -1151,7 +1171,8 @@ def count_column_multifiles(project_name: str,
                     column_list = cal_column_rebar(data=save_temp_file.read_temp(filename),
                                                    rebar_excel_path=floor_parameter_xlsx,
                                                    line_order=line_order,
-                                                   size_type=size_type)
+                                                   size_type=size_type,
+                                                   **kwargs)
 
                     all_column_list.extend(column_list)
                 except Exception:
@@ -1177,7 +1198,9 @@ def count_column_multifiles(project_name: str,
 
                     column_list = cal_column_rebar(data=save_temp_file.read_temp(tmp_file),
                                                    rebar_excel_path=floor_parameter_xlsx,
-                                                   size_type=size_type)
+                                                   line_order=line_order,
+                                                   size_type=size_type,
+                                                   **kwargs)
 
                     all_column_list.extend(column_list)
 
@@ -1219,15 +1242,28 @@ if __name__ == '__main__':
     from os import listdir
     from os.path import isfile, join
 
-    parameter = read_parameter_json('Elements')['column']
+    parameter = read_parameter_json('廍子')['column']
     count_column_multifiles(
-        project_name='',
+        project_name='廍子社宅',
         column_filenames=[
-            r'D:\Desktop\BeamQC\TEST\2024-0923\2024-0926-COL.dwg'],
-        floor_parameter_xlsx=r'D:\Desktop\BeamQC\TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-24-16-02-floor_1.xlsx',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-0923',
-        column_pkl=r'D:\Desktop\BeamQC\TEST\2024-0923\column-3.pkl',
+            # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-002_柱配筋圖-1.dwg',
+            # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-003_柱配筋圖-2.dwg',
+            # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-004_柱配筋圖-3.dwg',
+            # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-005_柱配筋圖-4.dwg',
+            # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-006_柱配筋圖-5.dwg',
+            r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-007_柱配筋圖-6.dwg'],
+        # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-008_柱配筋圖-7.dwg'],
+        floor_parameter_xlsx=r'TEST\2024-1021\floor.xlsx',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
+        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
+        plan_pkl=r'TEST\2024-1021\2024-1021-2024-10-21-14-06-temp_plan_count_set.pkl',
+        pkl=[r'TEST\2024-1021\廍子社宅-20241021_151132-S3-002_柱配筋圖-1-column-data-0.pkl',
+             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-003_柱配筋圖-2-column-data-1.pkl',
+             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-004_柱配筋圖-3-column-data-2.pkl',
+             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-005_柱配筋圖-4-column-data-3.pkl',
+             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-006_柱配筋圖-5-column-data-4.pkl',
+             r'TEST\2024-1021\廍子社宅-20241021_155416-S3-007_柱配筋圖-6-column-data-0.pkl',
+             r'TEST\2024-1021\廍子社宅-20241021_155111-S3-008_柱配筋圖-7-column-data-0.pkl'],
         **parameter
     )
     # sys.argv[1] # XS-COL的路徑

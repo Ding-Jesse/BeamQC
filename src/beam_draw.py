@@ -1,7 +1,7 @@
 import ezdxf
 import ezdxf.path
 import os
-import save_temp_file
+import src.save_temp_file as save_temp_file
 from item.beam import Beam, RebarType
 from ezdxf import readfile
 from ezdxf.document import Drawing
@@ -251,4 +251,5 @@ def draw_dim(dim_dict: dict[str, list], msp: Modelspace):
 
 
 if __name__ == '__main__':
-    draw_beam_rebar_dxf()
+    draw_beam_rebar_dxf(output_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
+                        beam_tmp_file=r'TEST\2024-1021\廍子社宅-20241021_142536-beam-object.pkl')

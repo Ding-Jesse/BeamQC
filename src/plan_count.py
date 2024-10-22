@@ -139,7 +139,7 @@ def in_block(coor: tuple, block: tuple[tuple, tuple]):
 
 
 def check_is_floor(text: str):
-    if re.search(r'\(B?P?R?S?\d*F?\W?P?R?\d*F?\)', text):
+    if re.search(r'\(B?P?R?S?\d+F?(?:[\W、]+B?P?R?S?\d+F?)*\)', text):
         return True
     return False
 
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     # save_temp_file.save_pkl(
     #     data=cad_result, tmp_file=r'TEST\2024-0830\平面圖\0904-cad.pkl')
     cad_result = save_temp_file.read_temp(
-        tmp_file=r'TEST\2024-1008\ALL_plan_count_set.pkl')
+        tmp_file=r'TEST\2024-1021\2024-1021-2024-10-21-14-06-temp_plan_count_set.pkl')
     result = sort_name_text(cad_result)
     result = sort_floor_text(data=result)
     print(result)

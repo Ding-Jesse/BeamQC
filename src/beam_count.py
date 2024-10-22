@@ -632,6 +632,8 @@ def sort_arrow_to_word(coor_to_arrow_dic: dict,
                             re.search(rebar_pattern['pattern'], text) or
                             re.search(middle_tie_pattern['pattern'], text)]
 
+    # rebar_text_coor_list = [(text, coor) for text, coor in coor_to_data_list if
+    #                         re.search(middle_tie_pattern['pattern'], text)]
     # method 2
     # 腰筋會抓到上層筋
     for i, data in enumerate(coor_to_arrow_dic.items()):
@@ -1118,6 +1120,7 @@ def count_tie(coor_to_tie_text_list: list,
     - '#3@10'       # Without prefix 
     '''
     def extract_tie(tie: str):
+        tie = tie.replace(' ', '')
         match = re.search(tie_pattern['pattern'], tie)
         if match is None:
             return None
@@ -2305,17 +2308,6 @@ def draw_rebar_line(class_beam_list: list[Beam],
     return output_dwg
 
 
-def redraw_beam(class_beam_list: list[Beam],
-                msp_beam: object,
-                doc_beam: object,
-                output_folder: str,
-                project_name: str):
-    error_count = 0
-    date = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    output_dwg = os.path.join(
-        output_folder, f'{project_name}_{date}_Markon.dwg')
-
-
 def sort_beam(class_beam_list: list[Beam],
               **kwargs):
     for beam in class_beam_list:
@@ -2323,6 +2315,7 @@ def sort_beam(class_beam_list: list[Beam],
         beam.sort_beam_tie()
         if kwargs.get('middle_tie_type', '') == 'multi':
             beam.sort_middle_tie()
+
     for beam in class_beam_list[:]:
         for floor_text in beam.multi_floor[1:]:
             new_beam = copy.deepcopy(beam)
@@ -2819,7 +2812,7 @@ def count_beam_multifiles(project_name: str,
     else:
         plan = {}
 
-    if kwargs.get('beam_pkl', "") != "" and kwargs.get('cad_data_pkl', "") != "":
+    if kwargs.get('beam_pkl', "") != "" and kwargs.get('cad_data_pkl', "") != "" and not kwargs.get('pkl', []):
 
         all_beam_list = save_temp_file.read_temp(kwargs.get('beam_pkl', ""))
 
@@ -2858,6 +2851,10 @@ def count_beam_multifiles(project_name: str,
         save_temp_file.save_pkl(
             cad_data, tmp_file=f'{pkl_file_folder}/{project_name}-{now_time}-cad-data.pkl')
 
+        if kwargs.get('beam_pkl', "") != "":
+            pkl_beam_list = save_temp_file.read_temp(
+                kwargs.get('beam_pkl', ""))
+            all_beam_list.extend(pkl_beam_list)
         if all_beam_list:
             output_file_list = create_report(class_beam_list=all_beam_list,
                                              floor_parameter_xlsx=floor_parameter_xlsx,
@@ -2935,22 +2932,39 @@ def count_beam_multifiles(project_name: str,
 if __name__ == '__main__':
     from main import GetAllFiles
     import json
-
+    # beam_pkl_files = GetAllFiles(
+    #     r'D:\Desktop\BeamQC\TEST\2024-1021\梁pkl', ext="*.pkl")
+    # parameter = read_parameter_json('廍子')['beam']
     parameter = read_parameter_json('Elements')['beam']
     parameter['measure_type'] = "cm"
+    # count_beam_multifiles(
+    #     project_name='廍子社宅',
+    #     beam_filenames=[],
+    #     # beam_filenames=[
+    #     #     r'D:\Desktop\BeamQC\TEST\2024-1021\梁\S2-B28_地下層大梁配筋圖.dwg'],
+    #     floor_parameter_xlsx=r'TEST\2024-1021\floor.xlsx',
+    #     pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
+    #     output_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
+    #     # pkl=beam_pkl_files,
+    #     # pkl=[r'TEST\2024-1021\梁pkl\廍子社宅-20241021_165328-S2-B28_地下層大梁配筋圖-beam-data-0.pkl'],
+    #     #      r'TEST\2024-1011\SCAN\沙崙社宅-20241018_171452-2024-1018 沙崙社宅 下構大梁粗略配筋-beam-data-1.pkl'],
+    #     # plan_pkl=r'TEST\2024-1021\2024-1021-2024-10-21-14-06-temp_plan_count_set.pkl',
+    #     beam_pkl=r'TEST\2024-1021\廍子社宅-20241022_145715-beam-object.pkl',
+    #     cad_data_pkl=r'TEST\2024-1011\2024-1011-20241011_155100-cad-data.pkl',
+    #     # beam_type=['GB'],
+    #     **parameter
+    # )
+
     count_beam_multifiles(
-        project_name='2024-1011',
+        project_name='沙崙社宅',
         beam_filenames=[
-            r'D:\Desktop\BeamQC\TEST\2024-1011'],
-        floor_parameter_xlsx=r'TEST\2024-0923\P2022-04A 國安社宅二期暨三期22FB4-2024-09-24-16-02-floor_1.xlsx',
-        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1011',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1011',
-        pkl=[r'TEST\2024-1011\2024-0923-20240930_173909-S2-1-S2-30-beam-data-0.pkl'],
-        # plan_pkl=r'TEST\2024-1008\ALL_plan_count_set.pkl',
-        # beam_pkl=r'TEST\2024-1011\2024-1011-20241011_155100-beam-object.pkl',
-        # cad_data_pkl=r'TEST\2024-1011\2024-1011-20241011_155100-cad-data.pkl',
-        # beam_type=['GB'],
-        **parameter
+            r'D:\Desktop\BeamQC\TEST\2024-1011\SCAN\2024-1018 沙崙社宅 上構大梁粗略配筋.dwg'],
+        floor_parameter_xlsx=r'TEST\2024-1011\SCAN\floor.xlsx',
+        pkl_file_folder=r'TEST\2024-1011\SCAN',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1011\SCAN',
+        beam_pkl=r'TEST\2024-1011\SCAN\沙崙社宅-20241022_155028-beam-object-all.pkl',
+        cad_data_pkl=r'TEST\2024-1011\SCAN\沙崙社宅-20241022_155028-cad-data.pkl',
+        ** parameter
     )
     # from multiprocessing import Process, Pool
     # 檔案路徑區

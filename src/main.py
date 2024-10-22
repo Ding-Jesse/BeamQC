@@ -434,10 +434,10 @@ def Upload_Error_log(data, collection_name="Log", uri=None):
                   collection_name=collection_name)
 
 
-def GetAllFiles(mypath: str):
+def GetAllFiles(mypath: str, ext="*.dwg"):
     import glob
     from os.path import isfile, join
-    return glob.glob(join(mypath, "*.dwg"))
+    return glob.glob(join(mypath, ext))
 
 
 if __name__ == '__main__':

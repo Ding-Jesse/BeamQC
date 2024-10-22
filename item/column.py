@@ -202,12 +202,12 @@ class Column:
     def cal_length(self, coor1: Point, coor2: Point):
         return sqrt(pow((coor1.x - coor2.x), 2) + pow((coor1.y - coor2.y), 2))
 
-    def sort_tie(self):
+    def sort_tie(self, **kwargs):
         if not self.tie_text_list:
             return
         temp_list = []
         for tie_text in self.tie_text_list:
-            match_str = re.findall(r'(#\d+@\d+)', tie_text[1])
+            match_str = re.findall(r'(#\d+@\d+)', tie_text[1].replace(' ', ''))
             if match_str:
                 temp_list.append((tie_text[0], match_str[0]))
         for coor, tie_text in self.tie_text_list:
@@ -219,25 +219,44 @@ class Column:
                 confine_text = min(
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'端部': confine_text})
-                self.confine_tie = Tie(self.tie_dict['端部'][1], 0)
             if '一般' in tie_text or '中央' in tie_text or 'TIE' in tie_text or '非圍束' in tie_text:
                 middle_text = min(
                     temp_list, key=lambda r: self.cal_length(coor, r[0]))
                 self.tie_dict.update({'中央': middle_text})
-                self.middle_tie = Tie(self.tie_dict['中央'][1], 0)
+
         if not self.tie_list:
             return
 
-        # if there is no mid text in dwg, use the bottom on as middle
-        if '中央' not in self.tie_dict:
-            if temp_list:
-                middle_text = min(temp_list, key=lambda r: r[0].y)
-                self.tie_dict.update({'中央': middle_text})
-                self.middle_tie = Tie(self.tie_dict['中央'][1], 0)
+        # if there is no mid text in dwg, use the bottom one as middle
+        if 'tie_pattern' in kwargs:
+            if "order" in kwargs['tie_pattern'] and temp_list:
+                temp_list.sort(key=lambda r: r[0].y)
+                for i, order_item in enumerate(kwargs["tie_pattern"]["order"]):
+                    if order_item not in self.tie_dict:
+                        middle_text = temp_list[i]
+                        self.tie_dict.update({order_item: middle_text})
+        else:
+            if '中央' not in self.tie_dict:
+                if temp_list:
+                    middle_text = min(temp_list, key=lambda r: r[0].y)
+                    self.tie_dict.update({'中央': middle_text})
+
+            if '端部' not in self.tie_dict:
+                if temp_list:
+                    middle_text = max(temp_list, key=lambda r: r[0].y)
+                    self.tie_dict.update({'端部': middle_text})
+
+        if '端部' in self.tie_dict:
+            self.confine_tie = Tie(self.tie_dict['端部'][1], 0)
+
+        if '中央' in self.tie_dict:
+            self.middle_tie = Tie(self.tie_dict['中央'][1], 0)
+
         temp_list = []
         outer_tie = max(
             self.tie_list, key=lambda tie: self.cal_length(tie[0], tie[1]))
-        self.tie_list.remove(outer_tie)
+        if 'not_remove' not in kwargs:
+            self.tie_list.remove(outer_tie)
         for tie in self.tie_list:
             x_diff = abs(tie[0].x - tie[1].x)
             y_diff = abs(tie[0].y - tie[1].y)

@@ -2,35 +2,28 @@
     "beam": {
         "layer_config": {
             "rebar_data_layer": [
-                "主筋文字",
-                "主筋文字引線",
-                "扭力筋文字",
-                "扭力筋文字引線",
-                "扭力筋文字引線 no use"
+                "NBAR"
             ],
             "rebar_layer": [
-                "主筋線",
-                "剪力筋線",
-                "扭力筋線"
+                "RBAR"
             ],
             "tie_text_layer": [
-                "剪力筋文字"
+                "NBAR"
             ],
             "block_layer": [
-                "_noprint"
+                "DEFPOINTS"
             ],
             "beam_text_layer": [
-                "梁跨名稱"
+                "TITLE"
             ],
-            "bounding_block_layer": [],
+            "bounding_block_layer": [
+                "S-ARCH"
+            ],
             "rc_block_layer": [
-                "邊界線",
-                "梁柱截斷記號",
-                "邊界線-梁支撐內線",
-                "邊界線-梁支撐外線"
+                "OLINE"
             ],
             "s_dim_layer": [
-                "尺寸標註-字串"
+                "DIMS"
             ],
             "burst_layer_list": []
         },

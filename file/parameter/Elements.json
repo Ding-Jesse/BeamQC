@@ -13,7 +13,8 @@
             "block_layer": [
                 "0",
                 "DwFm",
-                "DEFPOINTS"
+                "DEFPOINTS",
+                "S-GRID"
             ],
             "beam_text_layer": [
                 "S-RC"
@@ -46,7 +47,8 @@
             "block_layer": [
                 "0",
                 "DwFm",
-                "DEFPOINTS"
+                "DEFPOINTS",
+                "Page"
             ],
             "name_text_layer": [
                 "S-TEXTG",

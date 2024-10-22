@@ -69,6 +69,9 @@
             "rc_block_layer": [
                 "AcDbPolyline",
                 "AcDbLine"
+            ],
+            "dim_layer": [
+                "AcDbAlignedDimension"
             ]
         },
         "middle_tie_pattern": ""

@@ -244,7 +244,8 @@ def upload_file():
                                                 client_id=client_id,
                                                 plan_drawing_unit=plan_drawing_unit,
                                                 column_drawing_unit=column_drawing_unit,
-                                                column_bottom_line=column_offset_line,
+                                                column_bottom_line=int(
+                                                    column_offset_line),
                                                 exclude_string=column_exclude_string)
 
                 filenames_column = [output_file]
