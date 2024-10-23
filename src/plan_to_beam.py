@@ -1783,14 +1783,15 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
     # Step 1: Normalize the mixed data into a uniform dictionary structure
     def normalize_dict(cad_data):
         normalized_data = {}
-        for key, value in cad_data.items():
-            if isinstance(value, dict):
-                normalized_data[key] = value
-            elif isinstance(value, list):
-                normalized_data[key] = {
-                    f"item_{i}": v for i, v in enumerate(value)}
-            else:
-                normalized_data[key] = {"value": value}
+        if isinstance(cad_data, dict):
+            for key, value in cad_data.items():
+                if isinstance(value, dict):
+                    normalized_data[key] = value
+                elif isinstance(value, list):
+                    normalized_data[key] = {
+                        f"item_{i}": v for i, v in enumerate(value)}
+                else:
+                    normalized_data[key] = {"value": value}
         return normalized_data
     plan_beam_df_list = []
     plan_sbeam_df_list = []
