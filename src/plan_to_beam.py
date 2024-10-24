@@ -481,16 +481,17 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                     continue
                 # 取beam的字串
                 # 此處會錯的地方在於可能會有沒遇過的怪怪comma，但報應不會在這裡產生，會直接反映到結果
+                # use search will cause b7-1(50x70) become a none concat size
                 if object_layer in beam_text_layer and object.EntityName in text_object_type:
-                    matches = re.search(r'\(\d+(x|X)\d+\)', object.TextString)
+                    matches = re.match(r'\(\d+(x|X)\d+\)', object.TextString)
                     if matches:
                         beam = matches.group()
                         coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                             object.GetBoundingBox()[1][1], 2))
-                        # use search will cause b7-1(50x70) become a none concat size
-                        size = re.match(r'(\d+(x|X)\d+)', beam)
+
+                        size = re.search(r'(\d+(x|X)\d+)', beam)
                         if size:
                             none_concat_size_text_list.append(
                                 ((coor1, coor2), size.group(0).strip()))
