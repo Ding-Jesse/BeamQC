@@ -489,7 +489,8 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                             object.GetBoundingBox()[0][1], 2))
                         coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
                             object.GetBoundingBox()[1][1], 2))
-                        size = re.search(r'(\d+(x|X)\d+)', beam)
+                        # use search will cause b7-1(50x70) become a none concat size
+                        size = re.match(r'(\d+(x|X)\d+)', beam)
                         if size:
                             none_concat_size_text_list.append(
                                 ((coor1, coor2), size.group(0).strip()))
@@ -711,6 +712,8 @@ def sort_plan(plan_filename: str,
         coor_to_beam_set.remove(closet_beam)
         coor_to_beam_set.add(
             (closet_beam[0], (closet_beam[1][0].strip(), size, closet_beam[1][2])))
+        if closet_beam[0] == ((39893.44, 3766.58), (39938.44, 3886.58)):
+            print
         # closet_beam[1][1] = size
 
     # Step 8. 完成size_coor_set (size_beam, size_string, size_coor), Ex. 把表格中的 'Bn' 跟 '50x70' 連起來
@@ -905,7 +908,8 @@ def sort_plan(plan_filename: str,
         if floor_list is None:
             continue
         for beam_floor in floor_list:
-
+            if beam_floor == '1F':
+                print
             if not (sizing and mline_scaling):
                 set_plan.add((beam_floor, beam_name))
                 dic_plan[(beam_floor, beam_name)] = full_coor
@@ -1983,7 +1987,7 @@ if __name__ == '__main__':
                                                                              sizing=True,
                                                                              mline_scaling=True,
                                                                              client_id='2024-1018',
-                                                                             pkl=r'TEST\2024-1011\revise2_plan_set.pkl')
+                                                                             pkl=r'TEST\2024-1024\2024-10-24-17-27_麗寶嘉義地上權_全棟大梁-XS-PLAN_plan_set.pkl')
 
     # for pkl in pkls:
     #     floor_to_beam_set = save_temp_file.read_temp(pkl)

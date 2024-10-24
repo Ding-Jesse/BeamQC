@@ -2927,7 +2927,7 @@ def count_beam_multifiles(project_name: str,
                                          **plan)
         save_temp_file.save_pkl(
             all_beam_list, tmp_file=result_pkl)
-
+    output_file_list = [os.path.basename(file) for file in output_file_list]
     return output_file_list, output_dwg_list, result_pkl
 
 
