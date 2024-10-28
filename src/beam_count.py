@@ -1940,6 +1940,12 @@ def create_report(class_beam_list: list[Beam],
         f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
         f'Rcad.xlsx'
     )
+    dxf_file_name = (
+        f'{output_folder}/'
+        f'{project_name}_'
+        f'{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_'
+        f'redraw.dxf'
+    )
     output_file_list = []
     pdf_GB_file = ''
     pdf_FB_file = ''
@@ -2025,10 +2031,11 @@ def create_report(class_beam_list: list[Beam],
     output_file_list.append(excel_filename)
     output_file_list.append(excel_filename_rcad)
 
-    dxf_file = draw_beam_rebar_dxf(output_folder=output_folder,
-                                   beam_list=class_beam_list)
+    dxf_file_name = draw_beam_rebar_dxf(output_folder=output_folder,
+                                        beam_list=class_beam_list,
+                                        dxf_file_name=dxf_file_name)
 
-    output_file_list.append(dxf_file)
+    output_file_list.append(dxf_file_name)
 
     return output_file_list
 

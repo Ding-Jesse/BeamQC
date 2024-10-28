@@ -15,6 +15,7 @@ from itertools import product
 
 def draw_beam_rebar_dxf(output_folder: str = r'TEST\2024-1008',
                         beam_list: list = None,
+                        dxf_file_name: str = None,
                         beam_tmp_file: str = r'TEST\2024-1008\梁\2024-1008-20241009_165315-beam-object.pkl'):
     '''
     Draw Beam Rebar Dxf , if beam list then use beam list , else use temp file
@@ -44,9 +45,10 @@ def draw_beam_rebar_dxf(output_folder: str = r'TEST\2024-1008',
         except ZeroDivisionError:
             pass
     # Save the DXF file
-    dxf_file = f'{output_folder}\\redraw-{os.path.splitext(os.path.basename(beam_tmp_file))[0]}.dxf'
-    doc.saveas(dxf_file)
-    return dxf_file
+    if dxf_file_name is None:
+        dxf_file_name = f'{output_folder}\\redraw-{os.path.splitext(os.path.basename(beam_tmp_file))[0]}.dxf'
+    doc.saveas(dxf_file_name)
+    return dxf_file_name
 
 
 def init_doc_layers(doc: Drawing):
