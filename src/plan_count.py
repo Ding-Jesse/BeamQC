@@ -205,16 +205,21 @@ def sort_name_text(data):
     floor_text_entity = data['floor_text_entity']
     sort_result = {}
     for block in block_entity:
-        name_text_list = [text for coor,
+        # regex the beam text (get rid of the parentheses) to avoid different comparsion in rebar
+        name_text_list = [re.sub(r'(\(.*\))', '', text) for coor,
                           text in name_text_entity if in_block(coor, block)]
         floor_text = [text for coor,
                       text in floor_text_entity if in_block(coor, block)]
+        temp_floor = ''
         if len(floor_text) > 1:
             for text in floor_text:
                 if check_is_floor(text):
+                    temp_floor = text
                     break
-        if len(floor_text) > 1 and text not in sort_result:
-            sort_result.update({text: Counter(name_text_list)})
+        if len(floor_text) > 1 and \
+            temp_floor != '' and \
+                temp_floor not in sort_result:
+            sort_result.update({temp_floor: Counter(name_text_list)})
     return sort_result
 
 
@@ -236,18 +241,18 @@ def sort_plan_count(plan_filename,
 
 
 if __name__ == "__main__":
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-0830\平面圖\ALL.dwg'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1024\XS-PLAN.dwg'
     progress_file = './result/tmp'
     layer_config = {
-        'block_layer': ['DEFPOINTS'],
-        'name_text_layer': ['Y-G-Text', 'X-G-Text', 'Y-B-Text', 'X-B-Text'],
+        'block_layer': ['0'],
+        'name_text_layer': ['S-TEXTC', 'S-TEXTG', 'S-TEXTB'],
         'floor_text_layer': ['S-TITLE']
     }
-    # cad_result = read_plan_cad(plan_filename, progress_file, layer_config)
+    # cad_result = read_plan_cad(plan_filename, layer_config)
     # save_temp_file.save_pkl(
-    #     data=cad_result, tmp_file=r'TEST\2024-0830\平面圖\0904-cad.pkl')
+    #     data=cad_result, tmp_file=r'TEST\2024-1024\1105-cad-中德.pkl')
     cad_result = save_temp_file.read_temp(
-        tmp_file=r'TEST\2024-1021\2024-1021-2024-10-21-14-06-temp_plan_count_set.pkl')
+        tmp_file=r'TEST\2024-1024\1105-cad-中德.pkl')
     result = sort_name_text(cad_result)
     result = sort_floor_text(data=result)
     print(result)

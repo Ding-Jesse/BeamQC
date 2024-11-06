@@ -1135,15 +1135,17 @@ def count_tie(coor_to_tie_text_list: list,
             tie_string = f"{tie_num}-{multi}{size}@{spacing}"
         elif tie_num:
             tie_string = f"{tie_num}-{size}@{spacing}"
+        elif multi:
+            tie_string = f"{multi}{size}@{spacing}"
         else:
             tie_string = f"{size}@{spacing}"
 
         return {
             'tie_string': tie_string,
-            'tie_num': tie_num,
+            'tie_num': tie_num if tie_num is not None else '',
             'size': size,
             'spacing': spacing,
-            'multi': multi
+            'multi': multi if multi is not None else ''
         }
 
     if tie_pattern is None:
@@ -1174,13 +1176,14 @@ def count_tie(coor_to_tie_text_list: list,
                 bottom[0] < coor[0]) and (min(bottom[1], top[1]) < coor[1]) and (max(bottom[1], top[1]) > coor[1])]
             tie_right_list = [(bottom, top, length) for bottom, top, length in coor_to_tie_list if (
                 bottom[0] > coor[0]) and (min(bottom[1], top[1]) < coor[1]) and (max(bottom[1], top[1]) > coor[1])]
-            left_tie = min(tie_left_list, key=lambda t: abs(t[0][0] - coor[0]))
-            right_tie = min(
-                tie_right_list, key=lambda t: abs(t[0][0] - coor[0]))
 
             if not (tie_left_list and tie_right_list):
                 error(f'{tie_text} {coor} no line bounded')
                 continue
+
+            left_tie = min(tie_left_list, key=lambda t: abs(t[0][0] - coor[0]))
+            right_tie = min(
+                tie_right_list, key=lambda t: abs(t[0][0] - coor[0]))
 
             count = int(
                 abs(left_tie[0][0] - right_tie[0][0]) / spacing) * multi
@@ -1923,10 +1926,12 @@ def create_report(class_beam_list: list[Beam],
                   plan_filename: str = '',
                   plan_layer_config: dict = None,
                   plan_pkl: str = '',
-                  output_beam_type: list[Literal['GB', 'SB', 'FB']] = None):
+                  output_beam_type: list[Literal['GB', 'SB', 'FB']] = None,
+                  **kwargs):
 
     if output_beam_type is None:
         output_beam_type = []
+    output_type = kwargs.get('output_type', ['pdf', 'excel', 'dxf'])
     progress('產生報表')
     excel_filename = (
         f'{output_folder}/'
@@ -1975,67 +1980,69 @@ def create_report(class_beam_list: list[Beam],
     bs_list = create_beam_scan()
     sb_bs_list = create_sbeam_scan()
     fb_bs_list = create_fbeam_scan()
-    if beam_list:
-        pdf_GB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=beam_list,
-                                         bs_list=bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.Grider,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
-        output_file_list.extend(pdf_GB_file)
+    if 'pdf' in output_type:
+        if beam_list:
+            pdf_GB_file = create_scan_report(floor_list=floor_list,
+                                             beam_list=beam_list,
+                                             bs_list=bs_list,
+                                             excel_filename=excel_filename,
+                                             beam_type=BeamType.Grider,
+                                             project_name=project_name,
+                                             output_folder=output_folder)
+            output_file_list.extend(pdf_GB_file)
 
-        if 'GB' in output_beam_type:
-            return
+            if 'GB' in output_beam_type:
+                return
 
-    if fbeam_list:
-        pdf_FB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=fbeam_list,
-                                         bs_list=fb_bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.FB,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
-        output_file_list.extend(pdf_FB_file)
-        if 'FB' in output_beam_type:
-            return
-    if sbeam_list:
-        pdf_SB_file = create_scan_report(floor_list=floor_list,
-                                         beam_list=sbeam_list,
-                                         bs_list=sb_bs_list,
-                                         excel_filename=excel_filename,
-                                         beam_type=BeamType.SB,
-                                         project_name=project_name,
-                                         output_folder=output_folder)
-        output_file_list.extend(pdf_SB_file)
-        if 'SB' in output_beam_type:
-            return
+        if fbeam_list:
+            pdf_FB_file = create_scan_report(floor_list=floor_list,
+                                             beam_list=fbeam_list,
+                                             bs_list=fb_bs_list,
+                                             excel_filename=excel_filename,
+                                             beam_type=BeamType.FB,
+                                             project_name=project_name,
+                                             output_folder=output_folder)
+            output_file_list.extend(pdf_FB_file)
+            if 'FB' in output_beam_type:
+                return
+        if sbeam_list:
+            pdf_SB_file = create_scan_report(floor_list=floor_list,
+                                             beam_list=sbeam_list,
+                                             bs_list=sb_bs_list,
+                                             excel_filename=excel_filename,
+                                             beam_type=BeamType.SB,
+                                             project_name=project_name,
+                                             output_folder=output_folder)
+            output_file_list.extend(pdf_SB_file)
+            if 'SB' in output_beam_type:
+                return
     rebar_df, concrete_df, coupler_df, formwork_df, _ = summary_floor_rebar(
         floor_list=floor_list, item_type='beam')
 
     # rcad_df = output_rcad_beam(class_beam_list=class_beam_list)
+    if 'excel' in output_type:
+        OutputExcel(df_list=[beam_df],
+                    file_path=excel_filename, sheet_name='梁統整表')
 
-    OutputExcel(df_list=[beam_df], file_path=excel_filename, sheet_name='梁統整表')
+        OutputExcel(df_list=[rebar_df],
+                    file_path=excel_filename, sheet_name='鋼筋統計表')
+        OutputExcel(df_list=[concrete_df],
+                    file_path=excel_filename, sheet_name='混凝土統計表')
+        OutputExcel(df_list=[formwork_df],
+                    file_path=excel_filename, sheet_name='模板統計表')
 
-    OutputExcel(df_list=[rebar_df],
-                file_path=excel_filename, sheet_name='鋼筋統計表')
-    OutputExcel(df_list=[concrete_df],
-                file_path=excel_filename, sheet_name='混凝土統計表')
-    OutputExcel(df_list=[formwork_df],
-                file_path=excel_filename, sheet_name='模板統計表')
+        OutputExcel(df_list=[cad_df], file_path=excel_filename,
+                    sheet_name='CAD統計表')
+        # OutputExcel(df_list=[rcad_df],
+        #             file_path=excel_filename_rcad, sheet_name='RCAD撿料')
+        output_file_list.append(excel_filename)
+        output_file_list.append(excel_filename_rcad)
+    if 'dxf' in output_type:
+        dxf_file_name = draw_beam_rebar_dxf(output_folder=output_folder,
+                                            beam_list=class_beam_list,
+                                            dxf_file_name=dxf_file_name)
 
-    OutputExcel(df_list=[cad_df], file_path=excel_filename,
-                sheet_name='CAD統計表')
-    # OutputExcel(df_list=[rcad_df],
-    #             file_path=excel_filename_rcad, sheet_name='RCAD撿料')
-    output_file_list.append(excel_filename)
-    output_file_list.append(excel_filename_rcad)
-
-    dxf_file_name = draw_beam_rebar_dxf(output_folder=output_folder,
-                                        beam_list=class_beam_list,
-                                        dxf_file_name=dxf_file_name)
-
-    output_file_list.append(dxf_file_name)
+        output_file_list.append(dxf_file_name)
 
     return output_file_list
 
@@ -2188,7 +2195,7 @@ def add_beam_to_list(coor_to_beam_list: list,
         error('No size pattern in kwargs at add_beam_to_list')
         return
 
-    floor_pattern = r'(\d+F|R\d+|PR|BS|B\d+|MF|RF|PF|FS)F*'
+    floor_pattern = r'(\d+F|R\d+|PR|BS|B\d+|\d+MF|RF|PF|FS)F*'
 
     for beam in coor_to_beam_list:
         try:
@@ -2382,8 +2389,9 @@ def output_beam(class_beam_list: list[Beam]):
 
     for b in class_beam_list:
         try:
-            b.cal_rebar()
             b.sort_rebar_table()
+            b.cal_rebar()
+
             beam.at[row, ('樓層', '')] = b.floor
             beam.at[row, ('編號', '')] = b.serial
             beam.at[row, ('RC 梁寬', '')] = b.width
@@ -2800,6 +2808,9 @@ def count_beam_multifiles(project_name: str,
                           plan_pkl: str = "",
                           plan_layer_config: dict = {},
                           **kwargs):
+    '''
+    kwargs : output_type => ['pdf','dxf','excel']
+    '''
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
 
@@ -2834,6 +2845,7 @@ def count_beam_multifiles(project_name: str,
                                          cad_data=cad_counter,
                                          output_beam_type=kwargs.get(
                                              'beam_type', []),
+                                         **kwargs,
                                          **plan)
         return output_file_list
 
@@ -2931,6 +2943,7 @@ def count_beam_multifiles(project_name: str,
                                          output_folder=output_folder,
                                          project_name=project_name,
                                          cad_data=cad_counter,
+                                         **kwargs,
                                          **plan)
         save_temp_file.save_pkl(
             all_beam_list, tmp_file=result_pkl)
@@ -2965,15 +2978,19 @@ if __name__ == '__main__':
     # )
 
     count_beam_multifiles(
-        project_name='沙崙社宅',
+        project_name='中德三重',
         beam_filenames=[
             r'D:\Desktop\BeamQC\TEST\2024-1011\SCAN\2024-1018 沙崙社宅 上構大梁粗略配筋.dwg'],
-        floor_parameter_xlsx=r'TEST\2024-1011\SCAN\floor.xlsx',
-        pkl_file_folder=r'TEST\2024-1011\SCAN',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1011\SCAN',
-        beam_pkl=r'TEST\2024-1011\SCAN\沙崙社宅-20241022_155028-beam-object-all.pkl',
-        cad_data_pkl=r'TEST\2024-1011\SCAN\沙崙社宅-20241022_155028-cad-data.pkl',
-        ** parameter
+        floor_parameter_xlsx=r'TEST\2024-1024\中德三重-2024-11-05-15-21-floor_1.xlsx',
+        pkl_file_folder=r'TEST\2024-1024',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1024',
+        # pkl=[
+        #     r'TEST\2024-1024\中德三重(梁)-20241105_155158-中德三重(梁)-2024-11-05-15-51-XS-BEAM-beam-data-0.pkl'],
+        beam_pkl=r'TEST\2024-1024\中德三重-20241106_104954-beam-object.pkl',
+        cad_data_pkl=r'TEST\2024-1024\沙崙社宅-20241105_173429-cad-data.pkl',
+        plan_pkl=r'TEST\2024-1024\1105-cad-中德.pkl',
+        output_type=['excel', 'pdf'],
+        **parameter
     )
     # from multiprocessing import Process, Pool
     # 檔案路徑區

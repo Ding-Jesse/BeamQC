@@ -28,7 +28,7 @@ from src.plan_to_beam import (turn_floor_to_float, turn_floor_to_string,
 
 
 slash_pattern = r'(.+)F[~|-](.+)F'  # ~
-commom_pattern = r'(,)|(、)'
+commom_pattern = r'(,|、)'
 multi = True
 
 global main_logger
@@ -408,6 +408,34 @@ def sort_col_cad(msp_column,
         error('Cant Close Dwg File')
 
 
+def regex_col_name(coor_to_col_set: set):
+    for coor in list(coor_to_col_set):
+        text_coor = coor[0]
+        txt = coor[1]
+        match_obj = re.search(slash_pattern, txt)
+        if match_obj:
+            suffix_index = re.search(
+                r'(\D*)\d+(\D*)', match_obj.group(1))
+            first_column = re.findall(
+                r'\d+', match_obj.group(1))
+            last_column = re.findall(
+                r'\d+', match_obj.group(2))
+            if first_column and last_column:
+                coor_to_col_set.remove(coor)
+                for column_number in range(int(first_column[0]), int(last_column[0]) + 1):
+                    temp_string = f'{suffix_index.group(1)}{column_number}{suffix_index.group(2)}'
+                    coor_to_col_set.add(
+                        (text_coor, temp_string))
+
+        elif re.search(commom_pattern, txt):
+            coor_to_col_set.remove(coor)
+            sep = re.search(
+                commom_pattern, txt).group(1)
+            for column_text in txt.split(sep):
+                coor_to_col_set.add(
+                    (text_coor, column_text))
+
+
 def cal_column_rebar(data={},
                      rebar_excel_path='',
                      line_order=1,
@@ -438,6 +466,8 @@ def cal_column_rebar(data={},
         coor_to_floor_slash_set = data['coor_to_floor_slash_set']
     readRebarExcel(file_path=rebar_excel_path)
     progress('結合格線與柱編號')
+
+    regex_col_name(coor_to_col_set)
     new_coor_to_col_line_list = concat_col_to_grid(
         coor_to_col_set=coor_to_col_set, coor_to_col_line_list=coor_to_col_line_list)
 
@@ -605,7 +635,7 @@ def create_report(output_column_list: list[Column],
                     item_name='柱',
                     detail_report=detail_report,
                     appendix=pdf_report_appendix)
-    return excel_filename, pdf_report
+    return excel_filename, pdf_report, pdf_report_appendix
 
 
 def create_column_joint_report(column_beam_df: pd.DataFrame, column_list: list[Column], beam_list: list[Beam]):
@@ -638,8 +668,9 @@ def concat_grid_line(line_list: list, start_line: list, overlap: function):
         new_line_bot = min(temp_line_list, key=lambda l: l[1])[1]
         if start_line[2] == new_line_top and start_line[1] == new_line_bot:
             break
-        start_line[2] = new_line_top
-        start_line[1] = new_line_bot
+        # start_line[2] = new_line_top
+        # start_line[1] = new_line_bot
+        start_line = (start_line[0], new_line_bot, new_line_top)
     return start_line
 
 
@@ -1146,7 +1177,7 @@ def count_column_multifiles(project_name: str,
     main_logger = setup_custom_logger(__name__, client_id=client_id)
 
     all_column_list = []
-
+    excel_filename = ''
     output_file_list = []
 
     now_time = time.strftime("%Y%m%d_%H%M%S")
@@ -1175,8 +1206,8 @@ def count_column_multifiles(project_name: str,
                                                    **kwargs)
 
                     all_column_list.extend(column_list)
-                except Exception:
-                    print(f'{filename} error')
+                except Exception as ex:
+                    print(f'{filename} error {ex}')
                     save_temp_file.save_pkl(
                         all_column_list, f'{pkl_file_folder}/{project_name}-{now_time}-column-object-{i}.pkl')
         else:
@@ -1215,14 +1246,14 @@ def count_column_multifiles(project_name: str,
             all_column_list, tmp_file=result_pkl)
 
     if all_column_list:
-        excel_filename, pdf_report = create_report(output_column_list=all_column_list,
-                                                   output_folder=output_folder,
-                                                   project_name=project_name,
-                                                   floor_parameter_xlsx=floor_parameter_xlsx,
-                                                   measure_type=measure_type,
-                                                   **plan)
+        excel_filename, pdf_report, pdf_report_appendix = create_report(output_column_list=all_column_list,
+                                                                        output_folder=output_folder,
+                                                                        project_name=project_name,
+                                                                        floor_parameter_xlsx=floor_parameter_xlsx,
+                                                                        measure_type=measure_type,
+                                                                        **plan)
 
-    return os.path.basename(excel_filename), os.path.basename(pdf_report), result_pkl
+        return [os.path.basename(excel_filename), os.path.basename(pdf_report), os.path.basename(pdf_report_appendix)], result_pkl
 
 # def count_column_main(column_filename, layer_config, temp_file='temp_1221_1F.pkl', output_folder='', project_name='', template_name='', floor_parameter_xlsx=''):
 #     start = time.time()
@@ -1242,7 +1273,7 @@ if __name__ == '__main__':
     from os import listdir
     from os.path import isfile, join
 
-    parameter = read_parameter_json('廍子')['column']
+    parameter = read_parameter_json('Elements')['column']
     count_column_multifiles(
         project_name='廍子社宅',
         column_filenames=[
@@ -1253,17 +1284,10 @@ if __name__ == '__main__':
             # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-006_柱配筋圖-5.dwg',
             r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-007_柱配筋圖-6.dwg'],
         # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-008_柱配筋圖-7.dwg'],
-        floor_parameter_xlsx=r'TEST\2024-1021\floor.xlsx',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
-        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1021',
-        plan_pkl=r'TEST\2024-1021\2024-1021-2024-10-21-14-06-temp_plan_count_set.pkl',
-        pkl=[r'TEST\2024-1021\廍子社宅-20241021_151132-S3-002_柱配筋圖-1-column-data-0.pkl',
-             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-003_柱配筋圖-2-column-data-1.pkl',
-             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-004_柱配筋圖-3-column-data-2.pkl',
-             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-005_柱配筋圖-4-column-data-3.pkl',
-             r'TEST\2024-1021\廍子社宅-20241021_151132-S3-006_柱配筋圖-5-column-data-4.pkl',
-             r'TEST\2024-1021\廍子社宅-20241021_155416-S3-007_柱配筋圖-6-column-data-0.pkl',
-             r'TEST\2024-1021\廍子社宅-20241021_155111-S3-008_柱配筋圖-7-column-data-0.pkl'],
+        floor_parameter_xlsx=r'TEST\2024-1024\中德三重-2024-11-05-15-21-floor_1.xlsx',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1024',
+        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1024',
+        pkl=[r'TEST\2024-1024\中德三重-20241105_152130-中德三重-2024-11-05-15-21-XS-COL-column-data-0.pkl'],
         **parameter
     )
     # sys.argv[1] # XS-COL的路徑

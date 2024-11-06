@@ -88,7 +88,7 @@
             "type": "single"
         },
         "tie_pattern": {
-            "pattern": "(\\d*)-?(\\d*)(#\\d+)@(\\d+)",
+            "pattern": "(?:(\\d+)-)?(\\d*)(#\\d+)@(\\d+)",
             "num": 1,
             "size": 3,
             "spacing": 4,

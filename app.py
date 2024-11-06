@@ -807,7 +807,7 @@ def count_column():
             hyper_parameter.update({'layer_config': layer_config,
                                     'plan_layer_config': plan_layer_config,
                                     'measure_type': measure_type})
-            column_excel, column_report, pkl = count_column_multifiles(
+            column_files, pkl = count_column_multifiles(
                 project_name=project_name,
                 column_filenames=column_filenames,
                 plan_filename=plan_filename,
@@ -830,9 +830,9 @@ def count_column():
             #                                                                 client_id=client_id)
             if 'count_filenames' in session:
                 session['count_filenames'].extend(
-                    [column_excel, column_report])
+                    column_files)
             else:
-                session['count_filenames'] = [column_excel, column_report]
+                session['count_filenames'] = column_files
 
             pkl = os.path.splitext(os.path.basename(pkl))[0]
             session['pkl_file_folder'] = pkl_file_folder
@@ -844,8 +844,7 @@ def count_column():
 
         if (email_address):
             try:
-                sendResult(email_address, [
-                           column_excel, column_report], "梁配筋圖數量計算結果")
+                sendResult(email_address, column_files, "梁配筋圖數量計算結果")
                 print(
                     f'send_email:{email_address}, filenames:{session["count_filenames"]}')
             except Exception:

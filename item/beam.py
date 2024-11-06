@@ -530,6 +530,21 @@ class Beam():
                         rebar.number * RebarInfo(rebar.size)
                 self.detail_report.append(
                     f'主筋:{rebar}= {rebar.length:.2f} (cm) * {rebar.number} * {RebarInfo(rebar.size):.2f} (kg)')
+        # lap length count
+        try:
+            middle_top_rebar = self.rebar_table[RebarType.Top.value][RebarType.Middle.value][0]
+            middle_lap_length = self.ld_table[(
+                RebarType.Top, RebarType.Middle)]
+            left_rebar = self.rebar_table[RebarType.Bottom.value][RebarType.Left.value][0]
+            left_lap_length = self.ld_table[(RebarType.Bottom, RebarType.Left)]
+
+            self.rebar_count[middle_top_rebar.size] += middle_lap_length * \
+                middle_top_rebar.number * \
+                RebarInfo(middle_top_rebar.size)
+            self.rebar_count[left_rebar.size] += left_lap_length * \
+                left_rebar.number * RebarInfo(left_rebar.size)
+        except:
+            print(f'{self.floor}{self.serial} ld error')
         for rebar in self.middle_tie:
             matchObj = re.search(r'[#|D]\d+', rebar.text)
             if matchObj:
@@ -546,6 +561,8 @@ class Beam():
                     f'側筋:{rebar}= {rebar.length:.2f} (cm) * {rebar.number} * {RebarInfo(rebar.size):.2f} (kg) * 2')
                 break  # middle tie rebar number equal to rebar line number, so only count one middle tie
         for tie in self.tie_list:
+            if '3' in tie.text:
+                print
             if tie.size in self.tie_count:
                 self.tie_count[tie.size] += tie.count * \
                     RebarInfo(tie.size) * (self.depth -
