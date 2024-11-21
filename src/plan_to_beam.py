@@ -226,6 +226,43 @@ def mycmp(a, b):  # a, b 皆為 tuple , 可能是 ((floor, beam), 0, correct) �
             return -1
 
 
+def activate_cad(filname):
+    error_count = 0
+    # Step 13-1. 開啟應用程式
+    wincad_instance = None
+    while wincad_instance is None and error_count <= 10:
+        try:
+            wincad_instance = win32com.client.Dispatch("AutoCAD.Application")
+        except Exception as ex:
+            error_count += 1
+            time.sleep(5)
+            error(
+                f'open cad error in step 13-1, {ex}, error_count = {error_count}')
+
+    # Step 13-2. 匯入檔案
+    document = None
+    while wincad_instance and document is None and error_count <= 10:
+        try:
+            document = wincad_instance.Documents.Open(filname)
+        except Exception as ex:
+            error_count += 1
+            time.sleep(5)
+            error(
+                f'read {filname} error in step 13-2, {ex}, error_count = {error_count}')
+
+    # Step 13-3. 載入modelspace(還要畫圖)
+    model_space = None
+    while document and model_space is None and error_count <= 10:
+        try:
+            model_space = document.Modelspace
+        except Exception as ex:
+            error_count += 1
+            time.sleep(5)
+            error(
+                f'read {filname} modelspace error in step 13-3, {ex}, error_count = {error_count}')
+    return document, model_space
+
+
 def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
     def _cal_ratio(pt1, pt2):
         if abs(pt1[1]-pt2[1]) == 0:
@@ -241,55 +278,15 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
     text_object_type = ['AcDbAttribute', "AcDbText", "AcDbMLeader"]
 
     error_count = 0
-    progress('開始讀取平面圖(核對項目: 梁配筋對應)')
-    # Step 1. 打開應用程式
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
-        except Exception as ex:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_plan error in step 1: {ex} ,error in open Autocad, error_count = {error_count}.')
-    progress('平面圖讀取進度 1/13')
 
-    # Step 2. 匯入檔案
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            doc_plan = wincad_plan.Documents.Open(plan_filename)
-            flag = 1
-        except Exception as ex:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_plan error in step 2: {ex} ,error in open dwg file , error_count = {error_count}.')
-    progress('平面圖讀取進度 2/13')
-
-    # Step 3. 匯入modelspace
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            msp_plan = doc_plan.Modelspace
-            flag = 1
-        except Exception as ex:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_plan error in step 3: {ex} ,error in reading ModelSpace, error_count = {error_count}.')
-    progress('平面圖讀取進度 3/13')
-
+    doc_plan, msp_plan = activate_cad(plan_filename)
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
-    flag = 0
-    while not flag and error_count <= 10:
+    while doc_plan and error_count <= 10:
         try:
             layer_count = doc_plan.Layers.count
             for x in range(layer_count):
                 layer = doc_plan.Layers.Item(x)
                 layer.Lock = False
-            flag = 1
         except Exception as e:
             error_count += 1
             time.sleep(5)
@@ -300,7 +297,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
     # Step 7. 遍歷所有物件 -> 完成各種我們要的set跟list
 
     progress('正在遍歷平面圖上的物件並篩選出有效信息，運行時間取決於平面圖大小，請耐心等候')
-    flag = 0
+
     coor_to_floor_set = set()  # set (字串的coor, floor)，Ex. 求'1F'這個字串的座標在哪
     # set (coor, [beam, size])，Ex. 求'B1-6'這個字串的座標在哪，如果後面有括號的話，順便紀錄尺寸，否則size = ''
     coor_to_beam_set = set()
@@ -630,13 +627,10 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
             'beam_direction_mid_scale_set': beam_direction_mid_scale_set}
 
 
-def sort_plan(plan_filename: str,
-              plan_new_filename: str,
-              layer_config: dict,
+def sort_plan(layer_config: dict,
               plan_data: dict,
               sizing: bool,
               mline_scaling: bool,
-              date,
               drawing_unit: Literal['cm', 'mm'] = "cm"):
     '''
     dic = {
@@ -713,8 +707,7 @@ def sort_plan(plan_filename: str,
         coor_to_beam_set.remove(closet_beam)
         coor_to_beam_set.add(
             (closet_beam[0], (closet_beam[1][0].strip(), size, closet_beam[1][2])))
-        if closet_beam[0] == ((39893.44, 3766.58), (39938.44, 3886.58)):
-            print
+
         # closet_beam[1][1] = size
 
     # Step 8. 完成size_coor_set (size_beam, size_string, size_coor), Ex. 把表格中的 'Bn' 跟 '50x70' 連起來
@@ -909,8 +902,6 @@ def sort_plan(plan_filename: str,
         if floor_list is None:
             continue
         for beam_floor in floor_list:
-            if beam_floor == '1F':
-                print
             if not (sizing and mline_scaling):
                 set_plan.add((beam_floor, beam_name))
                 dic_plan[(beam_floor, beam_name)] = full_coor
@@ -962,67 +953,12 @@ def sort_plan(plan_filename: str,
                     warning_list.append(
                         f'{beam_floor} {beam_name} cannot find size. ')
 
-    # doc_plan.Close(SaveChanges=False)
     progress('平面圖讀取進度 12/13')
 
     # Step 13. 用 dic_plan((floor, beam_name, beam_size, beam_rotate) -> full_coor) 和 beam_direction_mid_scale_set (beam_layer(big_beam_layer or sml_beam_layer), direction(0: 橫的, 1: 直的), midpoint, scale) 找圖是否畫錯
-    # 還要順便把結果寫入plan_new_file, big_file, sml_file，我懶得再把參數傳出來了哈哈
+    output_drawing_error_mline_list = []
     if mline_scaling:
-        # Step 13-1. 開啟應用程式
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
-                flag = 1
-            except Exception as ex:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'read_plan error in step 13-1, {ex}, error_count = {error_count}')
-
-        # Step 13-2. 匯入檔案
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                doc_plan = wincad_plan.Documents.Open(plan_filename)
-                flag = 1
-            except Exception as ex:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'read_plan error in step 13-2, {ex}, error_count = {error_count}')
-
-        # Step 13-3. 載入modelspace(還要畫圖)
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                msp_plan = doc_plan.Modelspace
-                flag = 1
-            except Exception as ex:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'read_plan error in step 13-3, {ex}, error_count = {error_count}')
-        time.sleep(5)
-
-        # Step 13-4. 設定mark的圖層
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
-                doc_plan.ActiveLayer = layer_plan
-                layer_plan.color = 10
-                layer_plan.Linetype = "Continuous"
-                layer_plan.Lineweight = 0.5
-                flag = 1
-            except Exception as ex:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'read_plan error in step 13-4, {ex}, error_count = {error_count}')
-
         # Step 13-5. 找最近的複線，有錯要畫圖 -> 中點找中點
-
         for x, item in dic_plan.items():
             if 'x' not in x[2]:
                 continue
@@ -1038,6 +974,7 @@ def sort_plan(plan_filename: str,
                         (beam_coor[0][1] + beam_coor[1][1]) / 2)
             min_scale = ''
             min_coor = ''
+
             if abs(beam_rotate - 1.57) < 0.1:  # 橫的 or 歪的，90度 = pi / 2 = 1.57 (前面有取round到後二位)
                 temp_list = [
                     mline for mline in beam_direction_mid_scale_set if mline[1] == 1 and mline[0] in beam_layer]
@@ -1047,47 +984,36 @@ def sort_plan(plan_filename: str,
             else:
                 temp_list = [
                     mline for mline in beam_direction_mid_scale_set if mline[0] in beam_layer]
-            if len(temp_list) != 0:
-                closet_mline = min(temp_list, key=lambda m: abs(
-                    midpoint[0] - m[2][0]) + abs(midpoint[1]-m[2][1]))
-                min_scale = closet_mline[3]
-                min_coor = closet_mline[2]
 
-                # 全部連線
-                # coor_list = [min_coor[0], min_coor[1], 0, midpoint[0], midpoint[1], 0]
-                # points = vtFloat(coor_list)
-                # line = msp_plan.AddPolyline(points)
-                # line.SetWidth(0, 3, 3)
-                # line.color = 200
-            try:
-                if min_scale == '' or min_scale != beam_scale:
-                    error_list.append(
-                        ((x[0], x[1]), 'mline', f'寬度有誤：文字為{beam_scale}，圖上為{min_scale}。\n'))
-                    coor = dic_plan[x]
-                    # 畫框框
-                    coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] +
-                                 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
-                    points = vtFloat(coor_list)
-                    pointobj = msp_plan.AddPolyline(points)
-                    pointobj.color = 130
-                    for i in range(4):
-                        pointobj.SetWidth(i, 10, 10)
-                    # 只畫有錯的線
-                    if min_coor != '':
-                        coor_list = [min_coor[0], min_coor[1],
-                                     0, midpoint[0], midpoint[1], 0]
-                        points = vtFloat(coor_list)
-                        line = msp_plan.AddPolyline(points)
-                        line.SetWidth(0, 3, 3)
-                        line.color = 200
-            except:
+            if len(temp_list) == 0:
                 continue
 
-        try:
-            doc_plan.SaveAs(plan_new_filename)
-            doc_plan.Close(SaveChanges=True)
-        except:
-            error(f'Cant Save Output {plan_new_filename} File')
+            closet_mline = min(temp_list, key=lambda m: abs(
+                midpoint[0] - m[2][0]) + abs(midpoint[1]-m[2][1]))
+            min_scale = closet_mline[3]
+            min_coor = closet_mline[2]
+
+            # 全部連線
+            # coor_list = [min_coor[0], min_coor[1], 0, midpoint[0], midpoint[1], 0]
+            # points = vtFloat(coor_list)
+            # line = msp_plan.AddPolyline(points)
+            # line.SetWidth(0, 3, 3)
+            # line.color = 200
+            if min_scale == '' or min_scale != beam_scale:
+                error_list.append(
+                    ((x[0], x[1]), 'mline', f'寬度有誤：文字為{beam_scale}，圖上為{min_scale}。\n'))
+                coor = dic_plan[x]
+                # 畫框框
+                coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] +
+                             20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+                output_drawing_error_mline_list.append((coor_list, 130, 10, 4))
+
+                # 只畫有錯的線
+                if min_coor != '':
+                    coor_list = [min_coor[0], min_coor[1],
+                                 0, midpoint[0], midpoint[1], 0]
+                    output_drawing_error_mline_list.append(
+                        (coor_list, 200, 3, 1))
 
         # Step 13.6 寫入txt_filename
 
@@ -1113,62 +1039,24 @@ def sort_plan(plan_filename: str,
     # result_dict['plan'] = sorted(list(set_plan))
     # result_dict['warning'] = warning_list
 
-    return (set_plan, dic_plan, warning_list, error_list)
+    return set_plan, dic_plan, warning_list, error_list, output_drawing_error_mline_list
 
 
 def read_beam(beam_filename, layer_config):
     error_count = 0
     progress('開始讀取梁配筋圖')
-    # Step 1. 打開應用程式
-    flag = 0
     text_layer = layer_config['text_layer']
-    while not flag and error_count <= 10:
-        try:
-            wincad_beam = win32com.client.Dispatch("AutoCAD.Application")
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 1: {e}, error_count = {error_count}.')
-    progress('梁配筋圖讀取進度 1/9')
 
-    # Step 2. 匯入檔案
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            doc_beam = wincad_beam.Documents.Open(beam_filename)
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 2: {e}, error_count = {error_count}.')
-    progress('梁配筋圖讀取進度 2/9')
-
-    # Step 3. 匯入modelspace
-    flag = 0
-    while not flag and error_count <= 10:
-        try:
-            msp_beam = doc_beam.Modelspace
-            flag = 1
-        except Exception as e:
-            error_count += 1
-            time.sleep(5)
-            error(
-                f'read_beam error in step 3: {e}, error_count = {error_count}.')
-    progress('梁配筋圖讀取進度 3/9')
-
+    doc_beam, msp_beam = activate_cad(beam_filename)
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
-    flag = 0
-    while not flag and error_count <= 10:
+
+    while not doc_beam and error_count <= 10:
         try:
             layer_count = doc_beam.Layers.count
 
             for x in range(layer_count):
                 layer = doc_beam.Layers.Item(x)
                 layer.Lock = False
-            flag = 1
         except Exception as e:
             error_count += 1
             time.sleep(5)
@@ -1399,8 +1287,9 @@ def write_plan(plan_filename,
                dic_plan,
                date,
                drawing,
-               mline_scaling,
+               output_drawing_error_mline_list: list[tuple],
                client_id) -> list:
+
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     error_count = 0
@@ -1413,75 +1302,6 @@ def write_plan(plan_filename,
     list_in_beam = list(set_in_beam)
     list_in_beam = [beam for beam in list_in_beam if beam[2] != 'replicate']
     list_in_beam.sort()
-
-    if drawing:
-        # Step 1. 開啟應用程式
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                wincad_plan = win32com.client.Dispatch("AutoCAD.Application")
-                flag = 1
-            except Exception as e:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'write_plan error in step 1, {e}, error_count = {error_count}.')
-        progress('平面圖標註進度 1/5')
-
-        # Step 2. 匯入檔案
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                if mline_scaling:
-                    doc_plan = wincad_plan.Documents.Open(plan_new_filename)
-                else:
-                    doc_plan = wincad_plan.Documents.Open(plan_filename)
-                flag = 1
-            except Exception as e:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'write_plan error in step 2, {e}, error_count = {error_count}.')
-        progress('平面圖標註進度 2/5')
-
-        # Step 3. 載入modelspace(還要畫圖)
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                msp_plan = doc_plan.Modelspace
-                flag = 1
-            except Exception as e:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'write_plan error in step 3, {e}, error_count = {error_count}.')
-        time.sleep(5)
-        progress('平面圖標註進度 3/5')
-
-        # Step 4. 設定mark的圖層
-        flag = 0
-        while not flag and error_count <= 10:
-            try:
-                layer_plan = doc_plan.Layers.Add(f"S-CLOUD_{date}")
-                doc_plan.ActiveLayer = layer_plan
-                layer_plan.color = 10
-                layer_plan.Linetype = "Continuous"
-                layer_plan.Lineweight = 0.5
-                flag = 1
-            except Exception as e:
-                error_count += 1
-                time.sleep(5)
-                error(
-                    f'write_plan error in step 4, {e}, error_count = {error_count}.')
-        progress('平面圖標註進度 4/5')
-
-    # 在這之後就沒有while迴圈了，所以錯超過10次就出去
-    if error_count > 10:
-        try:
-            doc_plan.Close(SaveChanges=False)
-        except:
-            error('Close File Error')
-        return False
 
     # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
     error_list = []
@@ -1505,12 +1325,56 @@ def write_plan(plan_filename,
             coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] +
                          20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
             points = vtFloat(coor_list)
-            pointobj = msp_plan.AddPolyline(points)
-            for i in range(4):
-                pointobj.SetWidth(i, 10, 10)
+            output_drawing_error_mline_list.append((coor_list, 0, 10, 4))
+            # pointobj = msp_plan.AddPolyline(points)
+            # for i in range(4):
+            #     pointobj.SetWidth(i, 10, 10)
+
     if drawing:
-        doc_plan.SaveAs(plan_new_filename)
-        doc_plan.Close(SaveChanges=True)
+        document, model_space = activate_cad(plan_filename)
+        # Step 13-4. 設定mark的圖層
+        error_count = 0
+        while document and error_count <= 10:
+            try:
+                layer_plan = document.Layers.Add(f"S-CLOUD_{date}")
+                document.ActiveLayer = layer_plan
+                layer_plan.color = 10
+                layer_plan.Linetype = "Continuous"
+                layer_plan.Lineweight = 0.5
+                break
+            except Exception as ex:
+                error_count += 1
+                time.sleep(5)
+                error(
+                    f'read_plan error in step 13-4, {ex}, error_count = {error_count}')
+        if model_space:
+            for error_mline in output_drawing_error_mline_list:
+                coor_list, color, width, border = error_mline
+                try:
+                    points = vtFloat(coor_list)
+                    ply = model_space.AddPolyline(points)
+                    for i in range(border):
+                        ply.SetWidth(i, width, width)
+                    if color:
+                        ply.color = color
+                except:
+                    continue
+            try:
+                document.SaveAs(plan_new_filename)
+                document.Close(SaveChanges=True)
+            except:
+                error(f'Cant Save Output {plan_new_filename} File')
+
+        # 在這之後就沒有while迴圈了，所以錯超過10次就出去
+        if error_count > 10:
+            try:
+                document.Close(SaveChanges=False)
+            except:
+                error('Close File Error')
+
+    # if drawing:
+    #     doc_plan.SaveAs(plan_new_filename)
+    #     doc_plan.Close(SaveChanges=True)
     return error_list
 
 
@@ -1671,13 +1535,6 @@ def write_beam(beam_filename,
         list_in_beam = list(set2)
         list_in_beam.sort()
         error_list = []
-        # f_fbeam = open(fbeam_file, "a", encoding='utf-8')
-        # f_big = open(big_file, "a", encoding='utf-8')
-        # f_sml = open(sml_file, "a", encoding='utf-8')
-
-        # f_fbeam.write("in beam but not in plan: \n")
-        # f_big.write("in beam but not in plan: \n")
-        # f_sml.write("in beam but not in plan: \n")
 
         if drawing:
             # Step 1. 開啟應用程式
@@ -1846,11 +1703,9 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
 
 
 def run_plan(plan_filename,
-             plan_new_filename,
              layer_config: dict,
              sizing,
              mline_scaling,
-             date,
              client_id,
              drawing_unit,
              pkl=""):
@@ -1867,14 +1722,12 @@ def run_plan(plan_filename,
     else:
         plan_data = save_temp_file.read_temp(
             tmp_file=pkl)
-    set_plan, dic_plan, warning_list, mline_error_list = sort_plan(plan_filename=plan_filename,
-                                                                   plan_new_filename=plan_new_filename,
-                                                                   plan_data=plan_data,
-                                                                   layer_config=layer_config,
-                                                                   sizing=sizing,
-                                                                   mline_scaling=mline_scaling,
-                                                                   date=date,
-                                                                   drawing_unit=drawing_unit)
+    set_plan, dic_plan, warning_list, \
+        mline_error_list, drawing_error_list = sort_plan(plan_data=plan_data,
+                                                         layer_config=layer_config,
+                                                         sizing=sizing,
+                                                         mline_scaling=mline_scaling,
+                                                         drawing_unit=drawing_unit)
     end_date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     cad_data = output_progress_report(layer_config=layer_config,
                                       start_date=start_date,
@@ -1884,7 +1737,7 @@ def run_plan(plan_filename,
                                       plan_filename=plan_filename,
                                       plan_data=plan_data)
 
-    return (set_plan, dic_plan, mline_error_list, cad_data)
+    return (set_plan, dic_plan, mline_error_list, cad_data, drawing_error_list)
 
 
 def run_beam(beam_filename,
@@ -1940,7 +1793,7 @@ if __name__ == '__main__':
     text_layer = ['S-RC']  # sys.argv[7]
 
     # 在plan裡面自訂圖層
-    block_layer = ['DwFm', '0', 'DETPOINTS']  # sys.argv[8] # 框框的圖層
+    block_layer = ['DwFm', '0', 'DEFPOINTS']  # sys.argv[8] # 框框的圖層
     floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
     size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = ['S-RCBMG']  # 大樑複線圖層
@@ -1948,17 +1801,18 @@ if __name__ == '__main__':
     sml_beam_layer = ['S-RCBMB']  # 小梁複線圖層
     sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
 
-    block_layer = ['DwFm', '0', 'DETPOINTS', 'FRAME']  # sys.argv[8] # 框框的圖層
-    floor_layer = ['TEXT1']  # sys.argv[9] # 樓層字串的圖層
+    block_layer = ['DwFm', '0', 'DEFPOINTS', 'FRAME']  # sys.argv[8] # 框框的圖層
+    floor_layer = ['S-TITLE']  # sys.argv[9] # 樓層字串的圖層
     size_layer = ['S-TEXT']  # sys.argv[12] # 梁尺寸字串圖層
     big_beam_layer = ['S-RCBMG']  # 大樑複線圖層
-    big_beam_text_layer = ['BTXT']  # 大樑文字圖層
+    big_beam_text_layer = ['S-TEXTG']  # 大樑文字圖層
     sml_beam_layer = ['S-RCBMB']  # 小梁複線圖層
-    sml_beam_text_layer = ['SBTXT']  # 小梁文字圖層
-    task_name = '0524-temp'  # sys.argv[13]
+    sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
+
+    task_name = '1111-勝利CDE'  # sys.argv[13]
 
     progress_file = './result/tmp'  # sys.argv[14]
-    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1011'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1024'
 
     sizing = 1  # 要不要對尺寸
     mline_scaling = 1  # 要不要對複線寬度
@@ -1975,27 +1829,27 @@ if __name__ == '__main__':
         'size_layer': size_layer,
         'sml_beam_text_layer': sml_beam_text_layer
     }
-    pkls = [r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-BEAM_beam_set.pkl']
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1011\revise2.dwg'
-    plan_new_filename = f'{output_folder}\\P2022-04A 國安社宅二期暨三期22FB4-2024-09-23-11-32-XS-PLAN-new.dwg'
+    pkls = [r'TEST\2024-1024\2024-11-08-12-37_2024-1108-2024-11-08-10-10_1-XS-BEAM_beam_set.pkl']
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1024\2024-11-07-09-31_勝利一-XS-PLANCDE.dwg'
+    plan_new_filename = f'{output_folder}\\勝利CDE.dwg'
     set_beam_all = set()
 
-    set_plan, dic_plan, plan_mline_error_list, plan_cad_data_list = run_plan(plan_filename=plan_filename,
-                                                                             plan_new_filename=plan_new_filename,
-                                                                             layer_config=layer_config,
-                                                                             date=date,
-                                                                             drawing_unit='cm',
-                                                                             sizing=True,
-                                                                             mline_scaling=True,
-                                                                             client_id='2024-1018',
-                                                                             pkl=r'TEST\2024-1024\2024-10-24-17-27_麗寶嘉義地上權_全棟大梁-XS-PLAN_plan_set.pkl')
+    set_plan, dic_plan, \
+        plan_mline_error_list, plan_cad_data_list, \
+        drawing_error_list = run_plan(plan_filename=plan_filename,
+                                      layer_config=layer_config,
+                                      drawing_unit='cm',
+                                      sizing=True,
+                                      mline_scaling=True,
+                                      client_id='2024-1018',
+                                      pkl=r'')
 
-    # for pkl in pkls:
-    #     floor_to_beam_set = save_temp_file.read_temp(pkl)
-    #     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-    #                                    drawing_unit='cm',
-    #                                    sizing=True)
-    #     set_beam_all = set_beam | set_beam_all
+    for pkl in pkls:
+        floor_to_beam_set = save_temp_file.read_temp(pkl)
+        set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
+                                       drawing_unit='cm',
+                                       sizing=True)
+        set_beam_all = set_beam | set_beam_all
 
     plan_error_list = write_plan(plan_filename=plan_filename,
                                  plan_new_filename=plan_new_filename,
@@ -2003,10 +1857,21 @@ if __name__ == '__main__':
                                  set_beam=set_beam_all,
                                  dic_plan=dic_plan,
                                  date=date,
-                                 drawing=False,
-                                 mline_scaling=True,
+                                 drawing=True,
+                                 output_drawing_error_mline_list=drawing_error_list,
                                  client_id='temp')
     plan_error_list.extend(plan_mline_error_list)
+
+    beam_error_list = write_beam(
+        beam_filename='',
+        beam_new_filename='',
+        set_plan=set_plan,
+        set_beam=set_beam,
+        dic_beam=dic_beam,
+        date=date,
+        drawing=False,
+        client_id='temp'
+    )
     plan_error_counter, plan_result_dict = output_error_list(error_list=plan_error_list,
                                                              title_text='XS-BEAM',
                                                              set_item=set_plan,

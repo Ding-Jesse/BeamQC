@@ -168,8 +168,6 @@ def read_plan(plan_filename: str, layer_config: dict):
                     object_layer = object.Layer
                 # 取floor的字串 -> 抓括號內的字串 (Ex. '十層至十四層結構平面圖(10F~14F)' -> '10F~14F')
                 # 若此處報錯，可能原因: 1. 沒有括號, 2. 待補
-                # if object.Layer == floor_layer and object.ObjectName == "AcDbText":
-                #     print(object.TextString)
                 #  and object.InsertionPoint[1] >= 0
                 if object_layer in floor_layer and object.ObjectName in text_entity_name and '(' in object.TextString:
                     floor = object.TextString
@@ -190,8 +188,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                'S' not in object.TextString:
+                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                    'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -330,9 +328,12 @@ def sort_plan(plan_data: dict,
                 if lower_line:
                     lower_bound = max(lower_line, key=lambda l: l[0][1])
                 sizes = [t for s_coor, t in floor_table_size if re.match(
-                    r'\d+[x|X]\d+', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
+                    r'.*\d+.*[x|X].*\d+.*', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
+                assert len([t for s_coor, t in floor_table_size if upper_bound[0]
+                           [1] >= s_coor[1] >= lower_bound[0][1]]) == len(sizes), TypeError
                 if sizes:
-                    real_size = re.match(r'\d+[x|X]\d+', sizes[0]).group()
+                    real_size = re.match(
+                        r'.*\d+.*[x|X].*\d+.*', sizes[0]).group()
                     floor_table_size_dict[floor].update({'Cn': real_size})
             elif re.match(r'C\d+', text):
                 upper_line = [
@@ -497,8 +498,6 @@ def sort_plan(plan_data: dict,
                 (col_coor, col_name, col_size))
             set_plan.add((floor, col_name, col_size))
             dic_plan[(floor, col_name, col_size)] = full_coor
-        else:
-            error('read_plan error in step 11: min_floor cannot be found.')
 
     progress('平面圖讀取進度 11/11')
     # match plan column block and string
@@ -1014,18 +1013,6 @@ def write_plan(plan_filename,
         doc_plan.SaveAs(plan_new_filename)
         doc_plan.Close(SaveChanges=True)
 
-    # count = 0
-    # for x in set_plan:
-    #     count += 1
-
-    # 計算錯誤率可能會噴錯，因為分母為0
-    # try:
-    #     rate = round(error_num / count * 100, 2)
-    #     f.write(f'error rate = {rate} %\n')
-    # except:
-    #     rate = 'unfinish'
-    #     error(f'write_plan error in step 5, there are no col in plan.txt?')
-
     # f.close()
     progress('平面圖標註進度 5/5')
     progress("標註平面圖(核對項目: 柱配筋)及輸出核對結果。")
@@ -1333,9 +1320,9 @@ def run_col(col_filename: str,
 error_file = './result/error_log.txt'  # error_log.txt的路徑
 
 if __name__ == '__main__':
-    plan_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-1011\revise.dwg'
+    plan_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-1024\2024-11-08-10-10_勝利1-XS-PLANFG.dwg'
     col_dwg_file = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A.dwg'
-    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-XS-PLAN_new.dwg'
+    plan_new_filename = r'D:\Desktop\BeamQC\TEST\2024-1024\2024-11-08-10-10_勝利1-XS-PLANFG_new_2.dwg'
     col_new_filename = r'D:\Desktop\BeamQC\TEST\2024-0528\2024-05-28-11-50_temp-A_new.dwg'
     layer_config = {
         'text_layer': ['S-TEXT'],
@@ -1348,17 +1335,17 @@ if __name__ == '__main__':
         'column_block_layer': ['S-COL']
     }
     set_plan, dic_plan, block_error_list, block_match_result_list = run_plan(
-        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-1011\revise.dwg',
+        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-1024\2024-11-08-10-10_勝利1-XS-PLANFG.dwg',
         layer_config=layer_config,
         client_id='0930-temp_col',
-        pkl=r"",
+        pkl=r"TEST\2024-1024\2024-11-08-10-10_勝利1-XS-PLANFG_plan_to_col.pkl",
         drawing_unit='cm'
     )
     set_col, dic_col = run_col(
         col_filename=r'D:\Desktop\BeamQC\TEST\2024-1011\2024-10-08-11-04_P2022-04A 國安社宅二期暨三期22FB4-XS-COL.dwg',
         layer_config=layer_config,
-        client_id='0930-temp-col',
-        pkl=r'TEST\INPUT\2024-10-17-10-50_temp-2024-10-08-11-04_P2022-04A_22FB4-XS-COL_col_set.pkl',
+        client_id='temp',
+        pkl=r'TEST\2024-1024\2024-11-08-10-12_勝利1-XS-COL_col_set.pkl',
         bottom_line_offset=1,
         exclude_string=['']
     )
@@ -1370,7 +1357,7 @@ if __name__ == '__main__':
                              set_col,
                              dic_plan,
                              date,
-                             drawing=False,
+                             drawing=True,
                              block_match=block_match_result_list,
                              client_id='temp')
     col_result = write_col(col_dwg_file,
@@ -1379,7 +1366,7 @@ if __name__ == '__main__':
                            set_col,
                            dic_col,
                            date,
-                           drawing=True,
+                           drawing=False,
                            client_id='temp')
     plan_result_dict, col_result_dict, excel_data = write_result_log(plan_error_list=plan_result,
                                                                      col_error_list=col_result,
@@ -1389,9 +1376,9 @@ if __name__ == '__main__':
                                                                      block_match_list=block_match_result_list
                                                                      )
     from main import OutputExcel
-    output_folder = r'TEST\2024-0930'
+    output_folder = r'TEST\2024-1024'
     for sheet_name, df_list in excel_data.items():
         OutputExcel(df_list=df_list,
                     df_spacing=1,
-                    file_path=os.path.join(output_folder, '2024-1018.xlsx'),
+                    file_path=os.path.join(output_folder, '勝利FG柱.xlsx'),
                     sheet_name=sheet_name)

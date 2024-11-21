@@ -51,11 +51,9 @@ def main_functionV3(beam_filenames,
 
     for plan_filename in plan_filenames:
         res_plan.append(pool.apply_async(run_plan, (plan_filename,
-                                                    plan_new_filename,
                                                     layer_config,
                                                     sizing,
                                                     mline_scaling,
-                                                    date,
                                                     client_id,
                                                     plan_drawing_unit,
                                                     plan_pkl)))
@@ -76,6 +74,7 @@ def main_functionV3(beam_filenames,
 
     mline_error_list = []
     plan_cad_data_list = []
+    plan_drawing_error_list = []
     # try:
     for plan in res_plan:
         plan = plan.get()
@@ -85,8 +84,10 @@ def main_functionV3(beam_filenames,
                 dic_plan = plan[1]
             plan_mline_error_list = plan[2]
             plan_cad_data = plan[3]
+            drawing_error_list = plan[4]
             mline_error_list.extend(plan_mline_error_list)
             plan_cad_data_list.append(plan_cad_data)
+            plan_drawing_error_list.extend(drawing_error_list)
         else:
             end = time.time()
 
@@ -106,7 +107,7 @@ def main_functionV3(beam_filenames,
                                  dic_plan=dic_plan,
                                  date=date,
                                  drawing=plan_drawing,
-                                 mline_scaling=mline_scaling,
+                                 output_drawing_error_mline_list=plan_drawing_error_list,
                                  client_id=client_id)
 
     plan_error_list.extend(plan_mline_error_list)
