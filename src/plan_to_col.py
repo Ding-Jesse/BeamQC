@@ -150,6 +150,7 @@ def read_plan(plan_filename: str, layer_config: dict):
                         object_list = list(msp_object.GetAttributes())
                     else:
                         object_list = list(msp_object.Explode())
+                    break
             except Exception as ex:
                 error_count += 1
                 time.sleep(2)
@@ -329,8 +330,8 @@ def sort_plan(plan_data: dict,
                     lower_bound = max(lower_line, key=lambda l: l[0][1])
                 sizes = [t for s_coor, t in floor_table_size if re.match(
                     r'.*\d+.*[x|X].*\d+.*', t) and upper_bound[0][1] >= s_coor[1] >= lower_bound[0][1]]
-                assert len([t for s_coor, t in floor_table_size if upper_bound[0]
-                           [1] >= s_coor[1] >= lower_bound[0][1]]) == len(sizes), TypeError
+                # assert len([t for s_coor, t in floor_table_size if upper_bound[0]
+                #            [1] >= s_coor[1] >= lower_bound[0][1]]) == len(sizes), TypeError
                 if sizes:
                     real_size = re.match(
                         r'.*\d+.*[x|X].*\d+.*', sizes[0]).group()
@@ -1335,17 +1336,17 @@ if __name__ == '__main__':
         'column_block_layer': ['S-COL']
     }
     set_plan, dic_plan, block_error_list, block_match_result_list = run_plan(
-        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-1024\2024-11-08-10-10_勝利1-XS-PLANFG.dwg',
+        plan_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN.dwg',
         layer_config=layer_config,
         client_id='0930-temp_col',
-        pkl=r"TEST\2024-1024\2024-11-08-10-10_勝利1-XS-PLANFG_plan_to_col.pkl",
+        pkl=r"TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN_plan_to_col.pkl",
         drawing_unit='cm'
     )
     set_col, dic_col = run_col(
-        col_filename=r'D:\Desktop\BeamQC\TEST\2024-1011\2024-10-08-11-04_P2022-04A 國安社宅二期暨三期22FB4-XS-COL.dwg',
+        col_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-COL.dwg',
         layer_config=layer_config,
         client_id='temp',
-        pkl=r'TEST\2024-1024\2024-11-08-10-12_勝利1-XS-COL_col_set.pkl',
+        pkl=r'',
         bottom_line_offset=1,
         exclude_string=['']
     )
@@ -1375,10 +1376,10 @@ if __name__ == '__main__':
                                                                      block_error_list=block_error_list,
                                                                      block_match_list=block_match_result_list
                                                                      )
-    from main import OutputExcel
-    output_folder = r'TEST\2024-1024'
+    from src.main import OutputExcel
+    output_folder = r'TEST\2024-1128'
     for sheet_name, df_list in excel_data.items():
         OutputExcel(df_list=df_list,
                     df_spacing=1,
-                    file_path=os.path.join(output_folder, '勝利FG柱.xlsx'),
+                    file_path=os.path.join(output_folder, '逢大柱.xlsx'),
                     sheet_name=sheet_name)

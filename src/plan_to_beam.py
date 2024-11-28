@@ -287,6 +287,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
             for x in range(layer_count):
                 layer = doc_plan.Layers.Item(x)
                 layer.Lock = False
+            break
         except Exception as e:
             error_count += 1
             time.sleep(5)
@@ -325,6 +326,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
         object_list = []
         error_count = 0
         count += 1
+
         if count % 1000 == 0 or count == total:
             progress(f'平面圖已讀取{count}/{total}個物件')
         while error_count <= 3 and not object_list:
@@ -338,6 +340,7 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
                         object_list = list(msp_object.GetAttributes())
                     else:
                         object_list = list(msp_object.Explode())
+                    break
             except Exception as ex:
                 error_count += 1
                 time.sleep(2)
@@ -348,7 +351,6 @@ def read_plan(plan_filename, layer_config: dict, sizing, mline_scaling):
             object = object_list.pop()
             try:
                 if object.Layer == '0':
-
                     object_layer = msp_object.Layer
                 else:
                     object_layer = object.Layer
@@ -1674,11 +1676,11 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
     beam_sbeam_df_list = []
     beam_fbeam_df_list = []
     for error_type in ['not_found', 'size', 'no_size', 'duplicate']:
-        if beam_type not in beam_result:
-            continue
         for beam_type, content in beam_result[error_type].items():
             if not content:
                 continue
+            # if beam_type not in beam_result:
+            #     continue
             df = pd.DataFrame(content, columns=['樓層', '編號', '錯誤'])
             if beam_type == '大梁':
                 beam_beam_df_list.append(df)
@@ -1809,10 +1811,10 @@ if __name__ == '__main__':
     sml_beam_layer = ['S-RCBMB']  # 小梁複線圖層
     sml_beam_text_layer = ['S-TEXTB']  # 小梁文字圖層
 
-    task_name = '1111-勝利CDE'  # sys.argv[13]
+    task_name = '1128-逢大段'  # sys.argv[13]
 
     progress_file = './result/tmp'  # sys.argv[14]
-    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1024'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1128'
 
     sizing = 1  # 要不要對尺寸
     mline_scaling = 1  # 要不要對複線寬度
@@ -1830,7 +1832,7 @@ if __name__ == '__main__':
         'sml_beam_text_layer': sml_beam_text_layer
     }
     pkls = [r'TEST\2024-1024\2024-11-08-12-37_2024-1108-2024-11-08-10-10_1-XS-BEAM_beam_set.pkl']
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1024\2024-11-07-09-31_勝利一-XS-PLANCDE.dwg'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN.dwg'
     plan_new_filename = f'{output_folder}\\勝利CDE.dwg'
     set_beam_all = set()
 
@@ -1842,29 +1844,36 @@ if __name__ == '__main__':
                                       sizing=True,
                                       mline_scaling=True,
                                       client_id='2024-1018',
-                                      pkl=r'')
-
-    for pkl in pkls:
-        floor_to_beam_set = save_temp_file.read_temp(pkl)
-        set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-                                       drawing_unit='cm',
-                                       sizing=True)
-        set_beam_all = set_beam | set_beam_all
+                                      pkl=r'TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN_plan_set.pkl')
+    set_beam, dic_beam = run_beam(
+        beam_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM.dwg',
+        layer_config=layer_config,
+        sizing=True,
+        client_id='2024-1018',
+        drawing_unit='cm',
+        pkl=r'TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM_beam_set.pkl'
+    )
+    # for pkl in pkls:
+    #     floor_to_beam_set = save_temp_file.read_temp(pkl)
+    #     set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
+    #                                    drawing_unit='cm',
+    #                                    sizing=True)
+    #     set_beam_all = set_beam | set_beam_all
 
     plan_error_list = write_plan(plan_filename=plan_filename,
                                  plan_new_filename=plan_new_filename,
                                  set_plan=set_plan,
-                                 set_beam=set_beam_all,
+                                 set_beam=set_beam,
                                  dic_plan=dic_plan,
                                  date=date,
-                                 drawing=True,
+                                 drawing=False,
                                  output_drawing_error_mline_list=drawing_error_list,
                                  client_id='temp')
     plan_error_list.extend(plan_mline_error_list)
 
     beam_error_list = write_beam(
-        beam_filename='',
-        beam_new_filename='',
+        beam_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM.dwg',
+        beam_new_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM_new.dwg',
         set_plan=set_plan,
         set_beam=set_beam,
         dic_beam=dic_beam,
@@ -1877,14 +1886,18 @@ if __name__ == '__main__':
                                                              set_item=set_plan,
                                                              cad_data=plan_cad_data_list)
 
+    beam_error_counter, beam_result_dict = output_error_list(error_list=beam_error_list,
+                                                             title_text='XS-PLAN',
+                                                             set_item=set_beam)
+
     data_excel_file = os.path.join(
         output_folder, f'{task_name}_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}_梁Check_結果.xlsx')
 
-    from main import OutputExcel
+    from src.main import OutputExcel
 
     output_data = write_result_log(task_name=task_name,
                                    plan_result=plan_result_dict,
-                                   beam_result={}
+                                   beam_result=beam_result_dict
                                    )
     for sheet_name, df_list in output_data.items():
         OutputExcel(df_list=df_list,

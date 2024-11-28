@@ -442,8 +442,8 @@ def GetAllFiles(mypath: str, ext="*.dwg"):
 
 
 if __name__ == '__main__':
-    output_directory = r"D:\Desktop\BeamQC\TEST\2024-0605"
-    task_name = project_name = "0524-temp"
+    output_directory = r"D:\Desktop\BeamQC\TEST\2024-1128"
+    task_name = project_name = "1128-temp"
     # Upload_Error_log([{1: 1}, {
     #                  2: 2}], uri="mongodb+srv://ghjk85692012:MGI3hjs341a7kNWq@cluster0.glspevs.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
     # data = read_temp(tmp_file=r'TEST\2024-0522\temp-result.pkl')
@@ -466,10 +466,10 @@ if __name__ == '__main__':
     #                 sheet_name=sheet_name)
 
     beam_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-BEAM.dwg']
+        r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM.dwg']
     # sys.argv[2] # XS-PLAN的路徑
     plan_filenames = [
-        r'D:\Desktop\BeamQC\TEST\2024-0524\2024-05-23-09-53_temp-XS-PLAN.dwg']
+        r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN.dwg']
     # sys.argv[3] # XS-BEAM_new的路徑
     beam_new_filename = f"{output_directory}/0524-XS-BEAM_new2.dwg"
     # sys.argv[4] # XS-PLAN_new的路徑
@@ -574,8 +574,8 @@ if __name__ == '__main__':
                     sizing=sizing,
                     mline_scaling=mline_scaling,
                     client_id="2024-0605",
-                    plan_pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-PLAN_plan_set.pkl',
-                    beam_pkl=r'TEST\2024-0605\2024-06-14-14-57_2024-0614 佳元2-XS-BEAM_beam_set.pkl')
+                    plan_pkl=r'',
+                    beam_pkl=r'')
 
     # Column Test
     # layer_config = {
