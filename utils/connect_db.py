@@ -12,7 +12,7 @@ def get_db(database_name, uri=None):
         db = client.get_database(database_name)
         return db
     if uri is None:
-        uri = current_app.config['MONGO_URI']
+        uri = current_app.config['MONGO_URL']
     if 'db' not in g:
         # Create a new client and connect to the server
         client = MongoClient(uri, server_api=ServerApi('1'))

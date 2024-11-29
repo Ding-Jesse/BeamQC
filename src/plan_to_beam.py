@@ -1052,13 +1052,16 @@ def read_beam(beam_filename, layer_config):
     doc_beam, msp_beam = activate_cad(beam_filename)
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
 
-    while not doc_beam and error_count <= 10:
+    while doc_beam and error_count <= 10:
         try:
             layer_count = doc_beam.Layers.count
 
             for x in range(layer_count):
                 layer = doc_beam.Layers.Item(x)
                 layer.Lock = False
+
+            break
+
         except Exception as e:
             error_count += 1
             time.sleep(5)
@@ -1069,7 +1072,7 @@ def read_beam(beam_filename, layer_config):
     # Step 7. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
     progress('正在遍歷梁配筋圖上的物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候')
     floor_to_beam_set = set()
-    flag = 0
+
     count = 0
     used_layer_list = []
     for key, layer_name in layer_config.items():
