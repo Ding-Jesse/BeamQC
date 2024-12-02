@@ -1026,8 +1026,8 @@ def sort_plan(layer_config: dict,
     new_dic_plan = {}
     if not sizing:
         for x in dic_plan:
-            new_set_plan.add((x[0], x[1]))
-            new_dic_plan[(x[0], x[1])] = dic_plan[x]
+            new_set_plan.add((x[0], x[1], ''))
+            new_dic_plan[(x[0], x[1], '')] = dic_plan[x]
     else:
         for x in dic_plan:
             new_set_plan.add((x[0], x[1], x[2]))
@@ -1269,8 +1269,8 @@ def sort_beam(floor_to_beam_set: set,
                     set_beam.add((floor, beam, size))
                     dic_beam[(floor, beam, size)] = coor
             else:
-                set_beam.add((floor, beam))
-                dic_beam[(floor, beam)] = coor
+                set_beam.add((floor, beam, ''))
+                dic_beam[(floor, beam, '')] = coor
 
     # result_dict['beam'] = sorted(list(set_beam))
     # beam.txt單純debug用，不想多新增檔案可以註解掉
@@ -1697,7 +1697,7 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
         'XS-PLAN 大梁結果': plan_beam_df_list,
         'XS-PLAN 小梁結果': plan_sbeam_df_list,
         'XS-PLAN 地梁結果': plan_fbeam_df_list,
-        'XS-BEAM 統整': [pd.DataFrame.from_dict(plan_result['summary'], orient='index')],
+        'XS-BEAM 統整': [pd.DataFrame.from_dict(beam_result['summary'], orient='index')],
         'XS-BEAM 大梁結果': beam_beam_df_list,
         'XS-BEAM 小梁結果': beam_sbeam_df_list,
         'XS-BEAM 地梁結果': beam_fbeam_df_list,
