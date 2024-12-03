@@ -1,3 +1,4 @@
+import os
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.database import Database
@@ -12,7 +13,13 @@ def get_db(database_name, uri=None):
         db = client.get_database(database_name)
         return db
     if uri is None:
-        uri = current_app.config['MONGO_URL']
+        try:
+            uri = current_app.config['MONGO_URL']
+        except RuntimeError:
+            uri = os.environ['MONGO_URL'].replace('"', '')
+            client = MongoClient(uri, server_api=ServerApi('1'))
+            db = client.get_database(database_name)
+            return db
     if 'db' not in g:
         # Create a new client and connect to the server
         client = MongoClient(uri, server_api=ServerApi('1'))

@@ -19,14 +19,15 @@ from numpy import object_
 from openpyxl import load_workbook
 from collections import Counter
 from src.logger import setup_custom_logger
-from utils.algorithm import match_points, for_loop_min_match
+from utils.algorithm import match_points, for_loop_min_match, inblock, define_beam_type, define_serial_order
 from typing import Literal
 from utils.algorithm import convert_mm_to_cm
 
 weird_to_list = ['-', '~']
 weird_comma_list = [',', '、', '¡B']
 beam_head1 = ['B', 'b', 'G', 'g']
-beam_head2 = ['FB', 'FG', 'FW', 'Fb', 'Fg', 'CB', 'CG', 'cb']
+beam_head2 = ['FB', 'FG', 'FW', 'Fb', 'Fg',
+              'CB', 'CG', 'cb', 'WB', 'cg', 'DB', 'DWB']
 global main_logger
 
 
@@ -1047,7 +1048,9 @@ def sort_plan(layer_config: dict,
 def read_beam(beam_filename, layer_config):
     error_count = 0
     progress('開始讀取梁配筋圖')
+    beam_block_layer = layer_config['beam_block_layer']
     text_layer = layer_config['text_layer']
+    beam_block_name_layer = layer_config['beam_block_name_layer']
 
     doc_beam, msp_beam = activate_cad(beam_filename)
     # Step 4 解鎖所有圖層 -> 不然不能刪東西
@@ -1072,6 +1075,8 @@ def read_beam(beam_filename, layer_config):
     # Step 7. 遍歷所有物件 -> 完成 floor_to_beam_set，格式為(floor, beam, coor, size)
     progress('正在遍歷梁配筋圖上的物件並篩選出有效信息，運行時間取決於梁配筋圖大小，請耐心等候')
     floor_to_beam_set = set()
+    beam_block_name_layer_list = []
+    beam_block_layer_list = []
 
     count = 0
     used_layer_list = []
@@ -1098,6 +1103,7 @@ def read_beam(beam_filename, layer_config):
                         object_list = list(msp_object.GetAttributes())
                     else:
                         object_list = list(msp_object.Explode())
+                    break
             except Exception as ex:
                 error_count += 1
                 time.sleep(2)
@@ -1111,7 +1117,8 @@ def read_beam(beam_filename, layer_config):
                     object_layer = msp_object.Layer
                 else:
                     object_layer = object.Layer
-
+                if object.ObjectName == "AcDbText":
+                    print(object.TextString)
                 if object_layer in text_layer and \
                         object.ObjectName == "AcDbText" and\
                         ' ' in object.TextString:
@@ -1124,7 +1131,6 @@ def read_beam(beam_filename, layer_config):
                             pre_beam = (pre_beam.split(' ')[
                                 1]).split('(')[0]  # 把括號以後的東西拔掉
                         if pre_beam == '':
-                            print(object.TextString)
                             continue
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -1143,7 +1149,21 @@ def read_beam(beam_filename, layer_config):
                             size = (((object.TextString.split('(')[1]).split(')')[0]).replace(
                                 ' ', '')).replace('X', 'x')  # size 的格式就是 90x50, 沒空格且使用小寫x作為乘號
                             floor_to_beam_set.add(
-                                (floor, beam, (coor1, coor2), size))
+                                (floor, beam, (coor1, coor2), size, object.TextString))
+                if object_layer in beam_block_name_layer and \
+                        object.ObjectName == "AcDbText":
+                    beam_block_name_layer_list.append(
+                        (object.TextString,
+                         object.InsertionPoint)
+                    )
+                if object_layer in beam_block_layer and \
+                        (object.EntityName == "AcDbBlockReference" or
+                         object.EntityName == "AcDbPolyline"):
+                    coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
+                        object.GetBoundingBox()[0][1], 2))
+                    coor2 = (round(object.GetBoundingBox()[1][0], 2), round(
+                        object.GetBoundingBox()[1][1], 2))
+                    beam_block_layer_list.append((coor1, coor2))
             except Exception as ex:
                 object_list.append(object)
                 error_count += 1
@@ -1164,12 +1184,16 @@ def read_beam(beam_filename, layer_config):
     # doc_beam.Close(SaveChanges=False)
     progress('梁配筋圖讀取進度 9/9')
     progress('梁配筋圖讀取完成。')
-    return floor_to_beam_set
+
+    return {'floor_to_beam_set': floor_to_beam_set,
+            'beam_block_layer_list': beam_block_layer_list,
+            'beam_block_name_layer_list': beam_block_name_layer_list}
 
 
-def sort_beam(floor_to_beam_set: set,
+def sort_beam(beam_drawing_data: dict[str, list],
               sizing: bool,
-              drawing_unit: Literal['cm', 'mm']):
+              drawing_unit: Literal['cm', 'mm'],
+              name_pattern: dict[str, list]):
     '''
         result_dict = {
             'beam':[]
@@ -1179,6 +1203,20 @@ def sort_beam(floor_to_beam_set: set,
     Bmax = 0
     Fmax = 0
     Rmax = 0
+    floor_to_beam_set = beam_drawing_data['floor_to_beam_set']
+    beam_block_layer_list = beam_drawing_data['beam_block_layer_list']
+    beam_block_name_layer_list = beam_drawing_data['beam_block_name_layer_list']
+
+    # find block name
+    string_match_block: list[tuple[tuple, tuple]] = []
+    match_result, _ = match_points([block[0] for block in beam_block_layer_list],
+                                   [block_string[1][0:2] for block_string in beam_block_name_layer_list])
+    for i, j in match_result:
+        string_match_block.append(
+            (beam_block_layer_list[i], beam_block_name_layer_list[j]))
+
+    beam_block_result = []
+
     for x in floor_to_beam_set:
         floor = x[0]
         tmp_floor_list = []
@@ -1214,16 +1252,19 @@ def sort_beam(floor_to_beam_set: set,
     # Step 9. 完成set_beam和dic_beam
     dic_beam = {}
     set_beam = set()
+
     for x in floor_to_beam_set:
         floor: str = x[0]
         beam = x[1]
         coor = x[2]
         size = x[3]
+        origin_text = x[4]
         floor_list = []
         to_bool = False
-
         if drawing_unit == 'mm':
             beam_size = convert_mm_to_cm(beam_size)
+
+        # find block
 
         for char in weird_to_list:
             if char in floor:
@@ -1272,16 +1313,20 @@ def sort_beam(floor_to_beam_set: set,
                 set_beam.add((floor, beam, ''))
                 dic_beam[(floor, beam, '')] = coor
 
-    # result_dict['beam'] = sorted(list(set_beam))
-    # beam.txt單純debug用，不想多新增檔案可以註解掉
-    # with open(result_filename, "w") as f:
-    #     f.write("in beam: \n")
-    #     l = list(set_beam)
-    #     l.sort()
-    #     for x in l:
-    #         f.write(f'{x}\n')
+        for block_data in string_match_block:
+            block, block_string = block_data
 
-    return (set_beam, dic_beam)
+            if inblock(block=block, pt=coor[0]):
+                beam_type = define_beam_type(
+                    name_pattern=name_pattern, beam_name=origin_text)
+                for floor in floor_list:
+                    beam_block_result.append(
+                        (floor, beam, block_string[0], origin_text, beam_type))
+                break
+
+    beam_block_result.sort(
+        key=lambda beam: (turn_floor_to_float(beam[0]), define_serial_order(beam[1])))
+    return (set_beam, dic_beam), beam_block_result
 
 
 # 完成 in plan but not in beam 的部分並在圖上mark有問題的部分
@@ -1297,12 +1342,13 @@ def write_plan(plan_filename,
 
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
-    error_count = 0
+
     progress("開始標註平面圖(核對項目: 梁配筋)及輸出核對結果。")
     pythoncom.CoInitialize()
     set_in_plan = set_plan - set_beam
     list_in_plan = list(set_in_plan)
     list_in_plan.sort()
+
     set_in_beam = set_beam - set_plan
     list_in_beam = list(set_in_beam)
     list_in_beam = [beam for beam in list_in_beam if beam[2] != 'replicate']
@@ -1327,8 +1373,11 @@ def write_plan(plan_filename,
 
         if drawing and beam_drawing:
             coor = dic_plan[plan_beam]
-            coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] +
-                         20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+            coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0,
+                         coor[1][0] + 20, coor[0][1] - 20, 0,
+                         coor[1][0] + 20, coor[1][1] + 20, 0,
+                         coor[0][0] - 20, coor[1][1] + 20, 0,
+                         coor[0][0] - 20, coor[0][1] - 20, 0]
             points = vtFloat(coor_list)
             output_drawing_error_mline_list.append((coor_list, 0, 10, 4))
             # pointobj = msp_plan.AddPolyline(points)
@@ -1530,66 +1579,30 @@ def write_beam(beam_filename,
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     try:
-        error_count = 0
         progress("開始標註梁配筋圖及輸出核對結果")
         pythoncom.CoInitialize()
+
         set1 = set_plan - set_beam
         list_in_plan = list(set1)
         list_in_plan.sort()
+
         set2 = set_beam - set_plan
         list_in_beam = list(set2)
         list_in_beam.sort()
         error_list = []
 
+        error_count = 0
         if drawing:
-            # Step 1. 開啟應用程式
-            flag = 0
-            while not flag and error_count <= 10:
-                try:
-                    wincad_beam = win32com.client.Dispatch(
-                        "AutoCAD.Application")
-                    flag = 1
-                except Exception as e:
-                    error_count += 1
-                    time.sleep(5)
-                    error(
-                        f'write_beam error in step 1, {e}, error_count = {error_count}.')
-            progress('梁配筋圖標註進度 1/5')
-            # Step 2. 匯入檔案
-            flag = 0
-            while not flag and error_count <= 10:
-                try:
-                    doc_beam = wincad_beam.Documents.Open(beam_filename)
-                    flag = 1
-                except Exception as e:
-                    error_count += 1
-                    time.sleep(5)
-                    error(
-                        f'write_beam error in step 2, {e}, error_count = {error_count}.')
-            progress('梁配筋圖標註進度 2/5')
-            # Step 3. 載入modelspace(還要畫圖)
-            flag = 0
-            while not flag and error_count <= 10:
-                try:
-                    msp_beam = doc_beam.Modelspace
-                    flag = 1
-                except Exception as e:
-                    error_count += 1
-                    time.sleep(5)
-                    error(
-                        f'write_beam error in step 3, {e}, error_count = {error_count}.')
-            time.sleep(5)
-            progress('梁配筋圖標註進度 3/5')
-            # Step 4. 設定mark的圖層
-            flag = 0
-            while not flag and error_count <= 10:
+            doc_beam, msp_beam = activate_cad(beam_filename)
+
+            while doc_beam and error_count <= 10:
                 try:
                     layer_beam = doc_beam.Layers.Add(f"S-CLOUD_{date}")
                     doc_beam.ActiveLayer = layer_beam
                     layer_beam.color = 10
                     layer_beam.Linetype = "Continuous"
                     layer_beam.Lineweight = 0.5
-                    flag = 1
+                    break
                 except Exception as e:
                     error_count += 1
                     time.sleep(5)
@@ -1601,9 +1614,9 @@ def write_beam(beam_filename,
         if error_count > 10:
             try:
                 doc_beam.Close(SaveChanges=False)
+                msp_beam = None
             except:
                 pass
-            return False
 
         # Step 5. 完成in plan but not in beam，畫圖，以及計算錯誤率
         error_list = []
@@ -1626,18 +1639,22 @@ def write_beam(beam_filename,
                 beam_drawing = 1
                 error_list.append((beam_beam, 'no_beam', ''))
 
-            if drawing and beam_drawing:
+            if drawing and beam_drawing and msp_beam:
                 coor = dic_beam[beam_beam]
-                coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0, coor[1][0] + 20, coor[0][1] - 20, 0, coor[1][0] +
-                             20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[1][1] + 20, 0, coor[0][0] - 20, coor[0][1] - 20, 0]
+                coor_list = [coor[0][0] - 20, coor[0][1] - 20, 0,
+                             coor[1][0] + 20, coor[0][1] - 20, 0,
+                             coor[1][0] + 20, coor[1][1] + 20, 0,
+                             coor[0][0] - 20, coor[1][1] + 20, 0,
+                             coor[0][0] - 20, coor[0][1] - 20, 0]
                 points = vtFloat(coor_list)
                 pointobj = msp_beam.AddPolyline(points)
                 for i in range(4):
                     pointobj.SetWidth(i, 10, 10)
 
-        if drawing:
+        if drawing and msp_beam:
             doc_beam.SaveAs(beam_new_filename)
             doc_beam.Close(SaveChanges=True)
+
     except Exception as e:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1646,7 +1663,10 @@ def write_beam(beam_filename,
     return error_list
 
 
-def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[str, dict]):
+def write_result_log(task_name,
+                     plan_result: dict[str, dict],
+                     beam_result: dict[str, dict],
+                     beam_block_result: list[tuple]):
     # Step 1: Normalize the mixed data into a uniform dictionary structure
     def normalize_dict(cad_data):
         normalized_data = {}
@@ -1692,6 +1712,18 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
             if beam_type == '地梁':
                 beam_fbeam_df_list.append(df)
 
+    grider_df = pd.DataFrame([data for data in beam_block_result if data[4] == 'Grider'], columns=[
+        '樓層', '編號', '圖紙編號', '圖面名稱', '類型'])
+    grider_df.drop(columns=['類型'], inplace=True)
+
+    fb_df = pd.DataFrame([data for data in beam_block_result if data[4] == 'FB'], columns=[
+        '樓層', '編號', '圖紙編號', '圖面名稱', '類型'])
+    fb_df.drop(columns=['類型'], inplace=True)
+
+    sb_df = pd.DataFrame([data for data in beam_block_result if data[4] == 'SB'], columns=[
+        '樓層', '編號', '圖紙編號', '圖面名稱', '類型'])
+    sb_df.drop(columns=['類型'], inplace=True)
+
     return {
         'XS-PLAN 統整': [pd.DataFrame.from_dict(plan_result['summary'], orient='index')],
         'XS-PLAN 大梁結果': plan_beam_df_list,
@@ -1703,7 +1735,10 @@ def write_result_log(task_name, plan_result: dict[str, dict], beam_result: dict[
         'XS-BEAM 地梁結果': beam_fbeam_df_list,
         'XS-PLAN 詳細內容': [pd.DataFrame(plan_result['item'] if 'item' in plan_result else {}, columns=['floor', 'serial', 'size'])],
         'XS-BEAM 詳細內容': [pd.DataFrame(beam_result['item'] if 'item' in beam_result else {}, columns=['floor', 'serial', 'size'])],
-        'CAD data': [pd.DataFrame.from_dict(normalize_dict(plan_result['cad_data'])if 'cad_data' in plan_result else {}, orient='columns')]
+        'CAD data': [pd.DataFrame.from_dict(normalize_dict(plan_result['cad_data'])if 'cad_data' in plan_result else {}, orient='columns')],
+        '大梁配筋圖號對應': [wrap_dataframe(grider_df)],
+        '小梁配筋圖號對應': [wrap_dataframe(fb_df)],
+        '地梁配筋圖號對應': [wrap_dataframe(sb_df)]
     }
 
 
@@ -1754,16 +1789,47 @@ def run_beam(beam_filename,
     global main_logger
     main_logger = setup_custom_logger(__name__, client_id=client_id)
     if pkl == "":
-        floor_to_beam_set = read_beam(
+        beam_drawing_data = read_beam(
             beam_filename=beam_filename, layer_config=layer_config)
-        save_temp_file.save_pkl(data=floor_to_beam_set,
+        save_temp_file.save_pkl(data=beam_drawing_data,
                                 tmp_file=f'{os.path.splitext(beam_filename)[0]}_beam_set.pkl')
     else:
-        floor_to_beam_set = save_temp_file.read_temp(pkl)
-    set_beam, dic_beam = sort_beam(floor_to_beam_set=floor_to_beam_set,
-                                   sizing=sizing,
-                                   drawing_unit=drawing_unit)
-    return (set_beam, dic_beam)
+        beam_drawing_data = save_temp_file.read_temp(pkl)
+
+    parameter = read_parameter_json('Elements')
+    (set_beam, dic_beam), beam_block_result = sort_beam(beam_drawing_data=beam_drawing_data,
+                                                        sizing=sizing,
+                                                        drawing_unit=drawing_unit,
+                                                        name_pattern=parameter['beam']['name_pattern'])
+    return (set_beam, dic_beam), beam_block_result
+
+
+def read_parameter_json(template_name):
+
+    filename = f'file\\parameter\\{template_name}.json'
+    if os.path.exists(filename):
+        with open(filename, "r", encoding='utf-8') as f:
+            parameter = json.load(f)
+        return parameter
+    return {}
+
+
+def wrap_dataframe(df: pd.DataFrame):
+    # Separate odd and even rows
+    # Rows with odd indices (0-based)
+    odd_rows = df.iloc[::2].reset_index(drop=True)
+    even_rows = df.iloc[1::2].reset_index(
+        drop=True)  # Rows with even indices (0-based)
+
+    # Combine odd and even rows side by side
+    df_wrapped = pd.concat([odd_rows, even_rows], axis=1)
+
+    # Adjust column names for clarity
+    df_wrapped.columns = (
+        list(df.columns) + [f"{col}_" for col in df.columns]
+    )
+
+    return df_wrapped
 
 
 def output_progress_report(layer_config: dict, start_date, end_date, plan_data: dict, project_name: str, plan_filename: str, warning_list: list):
@@ -1796,6 +1862,8 @@ def output_progress_report(layer_config: dict, start_date, end_date, plan_data: 
 if __name__ == '__main__':
     # # 在beam裡面自訂圖層
     text_layer = ['S-RC']  # sys.argv[7]
+    beam_block_layer = ['DwFm', '0', 'DEFPOINTS']
+    beam_block_name_layer = ['0', 'DEFPOINTS']
 
     # 在plan裡面自訂圖層
     block_layer = ['DwFm', '0', 'DEFPOINTS']  # sys.argv[8] # 框框的圖層
@@ -1817,7 +1885,7 @@ if __name__ == '__main__':
     task_name = '1128-逢大段'  # sys.argv[13]
 
     progress_file = './result/tmp'  # sys.argv[14]
-    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1128'
+    output_folder = r'D:\Desktop\BeamQC\TEST\2024-1202'
 
     sizing = 1  # 要不要對尺寸
     mline_scaling = 1  # 要不要對複線寬度
@@ -1826,6 +1894,8 @@ if __name__ == '__main__':
     layer_config = {
         # 'line_layer':line_layer,
         'text_layer': text_layer,
+        'beam_block_name_layer': beam_block_name_layer,
+        'beam_block_layer': beam_block_layer,
         'block_layer': block_layer,
         'floor_layer': floor_layer,
         'big_beam_layer': big_beam_layer,
@@ -1834,6 +1904,7 @@ if __name__ == '__main__':
         'size_layer': size_layer,
         'sml_beam_text_layer': sml_beam_text_layer
     }
+
     pkls = [r'TEST\2024-1024\2024-11-08-12-37_2024-1108-2024-11-08-10-10_1-XS-BEAM_beam_set.pkl']
     plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN.dwg'
     plan_new_filename = f'{output_folder}\\勝利CDE.dwg'
@@ -1848,13 +1919,13 @@ if __name__ == '__main__':
                                       mline_scaling=True,
                                       client_id='2024-1018',
                                       pkl=r'TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN_plan_set.pkl')
-    set_beam, dic_beam = run_beam(
-        beam_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM.dwg',
+    (set_beam, dic_beam), beam_block_result = run_beam(
+        beam_filename=r'D:\Desktop\BeamQC\TEST\2024-1202\XS-BEAM.dwg',
         layer_config=layer_config,
         sizing=True,
-        client_id='2024-1018',
+        client_id='2024-1202',
         drawing_unit='cm',
-        pkl=r'TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-BEAM_beam_set.pkl'
+        pkl=r''
     )
     # for pkl in pkls:
     #     floor_to_beam_set = save_temp_file.read_temp(pkl)
@@ -1872,6 +1943,7 @@ if __name__ == '__main__':
                                  drawing=False,
                                  output_drawing_error_mline_list=drawing_error_list,
                                  client_id='temp')
+
     plan_error_list.extend(plan_mline_error_list)
 
     beam_error_list = write_beam(
@@ -1900,7 +1972,8 @@ if __name__ == '__main__':
 
     output_data = write_result_log(task_name=task_name,
                                    plan_result=plan_result_dict,
-                                   beam_result=beam_result_dict
+                                   beam_result=beam_result_dict,
+                                   beam_block_result=beam_block_result
                                    )
     for sheet_name, df_list in output_data.items():
         OutputExcel(df_list=df_list,

@@ -1,5 +1,6 @@
 import numpy as np
 import re
+from typing import Literal
 from scipy.optimize import linear_sum_assignment
 
 
@@ -99,3 +100,58 @@ def extract_dimensions(text):
     if match:
         return match.group()
     return ''
+
+
+def inblock(block: tuple, pt: tuple):
+    pt_x = pt[0]
+    pt_y = pt[1]
+    if len(block) == 0:
+        return False
+    if (pt_x - block[0][0])*(pt_x - block[1][0]) < 0 and (pt_y - block[0][1])*(pt_y - block[1][1]) < 0:
+        return True
+    return False
+
+
+def define_beam_type(name_pattern: dict[str, list], beam_name) -> Literal['Grider', 'FB', 'SB', None]:
+    if name_pattern:
+        for beam_type, patterns in name_pattern.items():
+            if beam_type == 'General':
+                continue
+            match_floor = ''
+            match_serial = ''
+            match_obj = None
+
+            for pattern in patterns:
+                match_obj = re.search(pattern, beam_name)
+                if match_obj:
+                    match_floor = match_obj.group(1)
+                    match_floor = re.sub(r'\(|\)', '', match_floor)  # 去除()
+                    match_serial = match_obj.group(2)
+                    match_serial.replace(' ', '')  # 去除編號與尺寸的間隔
+                    break
+
+            if match_obj:
+                return beam_type
+
+    return None
+
+# Custom sorting function
+
+
+def define_serial_order(item):
+    # Regex to match components: prefix, first number, and second number
+    match = re.match(r"([A-Za-z]+)(\d+)?(?:-?(\d+))?", item)
+    if match:
+        prefix = match.group(1)  # The alphabetic prefix (e.g., "B", "G", "GA")
+        num1 = int(match.group(2)) if match.group(2) else float(
+            'inf')  # First numeric part, or inf if missing
+        num2 = int(match.group(3)) if match.group(3) else float(
+            'inf')  # Second numeric part, or inf if missing
+        # Normalize prefix case for sorting
+        return (prefix.lower(), num1, num2)
+    # Fallback for unexpected strings
+    return (item.lower(), float('inf'), float('inf'))
+
+
+if __name__ == '__main__':
+    pass

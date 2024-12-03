@@ -147,8 +147,13 @@ def upload_file():
             column_exclude_string = request.form['column_exclude_string']
             column_exclude_string = column_exclude_string.split('\r\n')
 
+            beam_block_name_layer = request.form['beam_block_name_layer']
+            beam_block_layer = request.form['beam_block_layer']
+
             layer_config = {
                 'text_layer': text_layer.split('\r\n'),
+                'beam_block_name_layer': beam_block_name_layer.split('\r\n'),
+                'beam_block_layer': beam_block_layer.split('\r\n'),
                 'block_layer': block_layer.split('\r\n'),
                 'floor_layer': floor_layer.split('\r\n'),
                 'big_beam_layer': big_beam_layer.split('\r\n'),

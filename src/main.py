@@ -66,11 +66,11 @@ def main_functionV3(beam_filenames,
                                                     beam_pkl)))
 
     plan_drawing = 0
-    if len(plan_filenames) == 1:
-        plan_drawing = 1
+    # if len(plan_filenames) == 1:
+    #     plan_drawing = 1
     beam_drawing = 0
-    if len(beam_filenames) == 1:
-        beam_drawing = 1
+    # if len(beam_filenames) == 1:
+    #     beam_drawing = 1
 
     mline_error_list = []
     plan_cad_data_list = []
@@ -91,12 +91,14 @@ def main_functionV3(beam_filenames,
         else:
             end = time.time()
 
+    beam_block_name_list = []
     for beam in res_beam:
         beam = beam.get()
         if beam:
-            set_beam = set_beam | beam[0]
+            set_beam = set_beam | beam[0][0]
+            beam_block_name_list.extend(beam[1])
             if beam_drawing:
-                dic_beam = beam[1]
+                dic_beam = beam[0][1]
         else:
             end = time.time()
 
@@ -138,8 +140,8 @@ def main_functionV3(beam_filenames,
 
     output_data = write_result_log(task_name=task_name,
                                    plan_result=plan_result_dict,
-                                   beam_result=beam_result_dict
-                                   )
+                                   beam_result=beam_result_dict,
+                                   beam_block_result=beam_block_name_list)
     for sheet_name, df_list in output_data.items():
         OutputExcel(df_list=df_list,
                     df_spacing=1,
@@ -357,7 +359,11 @@ def storefile(file, file_directory, file_new_directory, project_name):
     return file_ok, file_new_name, save_file
 
 
-def OutputExcel(df_list: list[pd.DataFrame], file_path, sheet_name, auto_fit_columns=[], auto_fit_rows=[], columns_list=[], rows_list=[], df_spacing=0):
+def OutputExcel(df_list: list[pd.DataFrame],
+                file_path, sheet_name, auto_fit_columns=[],
+                auto_fit_rows=[], columns_list=[],
+                rows_list=[], df_spacing=0,
+                output_index: bool = False):
     if os.path.exists(file_path):
         # book = load_workbook(file_path)
         writer = pd.ExcelWriter(
@@ -369,7 +375,8 @@ def OutputExcel(df_list: list[pd.DataFrame], file_path, sheet_name, auto_fit_col
         writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
     row = 0
     for df in df_list:
-        df.to_excel(writer, sheet_name=sheet_name, startrow=row)
+        df.to_excel(writer, sheet_name=sheet_name,
+                    startrow=row, index=output_index)
         row += len(df.index) + df_spacing
     writer.close()
 
@@ -422,7 +429,9 @@ def Add_Row_Title(file_path: str, sheet_name: str, i: int, j: int, title_text: s
     writer.close()
 
 
-def Output_Config(project_name: str, layer_config: dict, file_new_directory: str):
+def Output_Config(project_name: str,
+                  layer_config: dict,
+                  file_new_directory: str):
     with open(os.path.join(file_new_directory, f'{project_name}_layer_config.txt'), 'w') as f:
         f.write(str(layer_config))
 
@@ -479,6 +488,8 @@ if __name__ == '__main__':
 
     # # 在beam裡面自訂圖層
     text_layer = ['S-RC']  # sys.argv[7]
+    beam_block_layer = ['DwFm', '0', 'DEFPOINTS']
+    beam_block_name_layer = ['0', 'DEFPOINTS']
 
     # 在plan裡面自訂圖層
     block_layer = ['DwFm', '0', 'DETPOINTS']  # sys.argv[8] # 框框的圖層
@@ -503,6 +514,8 @@ if __name__ == '__main__':
     layer_config = {
         # 'line_layer':line_layer,
         'text_layer': text_layer,
+        'beam_block_name_layer': beam_block_name_layer,
+        'beam_block_layer': beam_block_layer,
         'block_layer': block_layer,
         'floor_layer': floor_layer,
         'big_beam_layer': big_beam_layer,
@@ -574,7 +587,7 @@ if __name__ == '__main__':
                     sizing=sizing,
                     mline_scaling=mline_scaling,
                     client_id="2024-0605",
-                    plan_pkl=r'',
+                    plan_pkl=r'TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN_plan_set.pkl',
                     beam_pkl=r'')
 
     # Column Test
