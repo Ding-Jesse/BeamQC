@@ -1117,8 +1117,6 @@ def read_beam(beam_filename, layer_config):
                     object_layer = msp_object.Layer
                 else:
                     object_layer = object.Layer
-                if object.ObjectName == "AcDbText":
-                    print(object.TextString)
                 if object_layer in text_layer and \
                         object.ObjectName == "AcDbText" and\
                         ' ' in object.TextString:

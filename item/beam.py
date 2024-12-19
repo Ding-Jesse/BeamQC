@@ -561,8 +561,6 @@ class Beam():
                     f'側筋:{rebar}= {rebar.length:.2f} (cm) * {rebar.number} * {RebarInfo(rebar.size):.2f} (kg) * 2')
                 break  # middle tie rebar number equal to rebar line number, so only count one middle tie
         for tie in self.tie_list:
-            if '3' in tie.text:
-                print
             if tie.size in self.tie_count:
                 self.tie_count[tie.size] += tie.count * \
                     RebarInfo(tie.size) * (self.depth -

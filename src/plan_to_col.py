@@ -189,8 +189,8 @@ def read_plan(plan_filename: str, layer_config: dict):
                 if object_layer in col_layer and \
                     object.ObjectName in text_entity_name and \
                         object.TextString != '' and \
-                    (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
-                    'S' not in object.TextString:
+                (object.TextString[0] == 'C' or (('¡æ' in object.TextString or '⊥' in object.TextString) and 'C' in object.TextString)) and \
+                'S' not in object.TextString:
                     col = f"C{object.TextString.split('C')[1].strip()}"
                     coor1 = (round(object.GetBoundingBox()[0][0], 2), round(
                         object.GetBoundingBox()[0][1], 2))
@@ -890,8 +890,6 @@ def sort_col(col_data: dict,
             min_floor = floor_data[0]
             for col_data in multi_col:
                 min_col = col_data[0]
-                if min_floor == '1F' and min_col == 'C10':
-                    print()
         # if min_floor != '' and min_col != '':
                 if re.findall(special_char_pattern, min_col):
                     cols = re.split(special_char_pattern, min_col)
@@ -916,16 +914,8 @@ def sort_col(col_data: dict,
                     dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1],
                                                            min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
 
-    # doc_col.Close(SaveChanges=False)
     progress('柱配筋圖讀取進度 10/10')
     progress('柱配筋圖讀取完成。')
-    # col.txt單純debug用，不想多新增檔案可以註解掉
-    # with open(result_filename, "w", encoding='utf-8') as f:
-    #     f.write("in col: \n")
-    #     l = list(set_col)
-    #     l.sort()
-    #     for x in l:
-    #         f.write(f'{x}\n')
 
     return (set_col, dic_col)
 
@@ -948,13 +938,11 @@ def write_plan(plan_filename,
     set1 = set_plan - set_col
     list1 = list(set1)
     list1.sort()
+
     set2 = set_col - set_plan
     list2 = list(set2)
     list2.sort()
-    # f = open(result_filename, "w", encoding='utf-8')
 
-    # f.write("in plan but not in col: \n")
-    # f.write(f"------------------------------\n")
     if drawing:
         # Step 1. 開啟應用程式
         flag = 0
@@ -1194,21 +1182,6 @@ def write_col(col_filename,
         doc_col.SaveAs(col_new_filename)
         doc_col.Close(SaveChanges=True)
 
-    count = 0
-
-    for x in set_col:
-        count += 1
-
-    # 計算錯誤率可能會噴錯，因為分母為0
-    # try:
-    #     rate = round(error_num / count * 100, 2)
-    #     f.write(f'error rate = {rate} %\n')
-    # except Exception as ex:
-    #     rate = 'unfinish'
-    #     error(
-    #         f'write_col error in step 5, there are no col in col.txt? ex:{ex}')
-
-    # f.close()
     progress('柱配筋圖標註進度 5/5')
     progress("標註柱配筋圖及輸出核對結果至'column.txt'完成。")
     return error_list
