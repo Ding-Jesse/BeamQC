@@ -765,48 +765,82 @@ def sort_col(col_data: dict,
     coor_to_floor_line_list = col_data['coor_to_floor_line_list']
     coor_to_size_set = col_data['coor_to_size_set']
 
-    col_to_line_set = set()
+    col_to_line_list = []
     for x in coor_to_col_set:
         coor = x[0]
         col = x[1]
+        floor_line_dict = defaultdict(list)
         new_coor_to_col_line_list = []
-        for y in coor_to_col_line_list:  # (縱線x座標, start, end)
-            if y[1] <= coor[0][1] <= y[2]:  # 先看y座標有沒有被夾住
-                new_coor_to_col_line_list.append(y)
-        tmp_set = set(new_coor_to_col_line_list)
-        new_coor_to_col_line_list = list(tmp_set)
-        new_coor_to_col_line_list.sort(key=lambda x: x[0])
+
+        between_lines = [
+            line for line in coor_to_col_line_list if line[1] <= coor[0][1] <= line[2]]
+        for line in between_lines:
+            floor_line_dict[line[0]].append(line)
+
+        for y_pos, lines in floor_line_dict.items():
+            max_line = max(lines, key=lambda l: abs(l[1] - l[2]))
+            new_coor_to_col_line_list.append(max_line)
+
+        # for y in coor_to_col_line_list:  # (縱線x座標, start, end)
+        #     if y[1] <= coor[0][1] <= y[2]:  # 先看y座標有沒有被夾住
+        #         new_coor_to_col_line_list.append(y)
+        # tmp_set = set(new_coor_to_col_line_list)
+        # new_coor_to_col_line_list = list(tmp_set)
+        # new_coor_to_col_line_list.sort(key=lambda x: x[0])
         for y in range(len(new_coor_to_col_line_list)-1):  # 再看x座標被哪兩條線夾住
-            if new_coor_to_col_line_list[y][0] < coor[0][0] < new_coor_to_col_line_list[y+1][0]:
-                col_to_line_set.add(
-                    (col, new_coor_to_col_line_list[y][0], new_coor_to_col_line_list[y+1][0], coor[1][1]))
+            line = new_coor_to_col_line_list[y]
+            next_line = new_coor_to_col_line_list[y+1]
+            if line[0] < coor[0][0] < next_line[0]:
+                col_to_line_list.append(
+                    (col,
+                     line[0],
+                     next_line[0],
+                     coor[1][1],
+                     (line[1], line[2])))
     progress('柱配筋圖讀取進度 8/10')
 
     # Step 9. 完成floor_to_line_set 格式:(floor, down, up, left)
-    floor_to_line_set = set()
+    floor_to_line_list = []
     for x in coor_to_floor_set:
+
         coor = x[0]
         floor = x[1]
+        floor_line_dict = defaultdict(list)
         new_coor_to_floor_line_list = []
-        for y in coor_to_floor_line_list:  # (橫線y座標, start, end)
-            if y[1] <= coor[0][0] <= y[2]:  # 先看x座標有沒有被夾住
-                failed = 0  # 查看是否有重複
-                for z in new_coor_to_floor_line_list:
-                    if z[0] == y[0]:
-                        failed = 1
-                        break
-                if failed == 0:
-                    new_coor_to_floor_line_list.append(y)
-        tmp_set = set(new_coor_to_floor_line_list)
-        new_coor_to_floor_line_list = list(tmp_set)
+
+        between_lines = [
+            line for line in coor_to_floor_line_list if line[1] <= coor[0][0] <= line[2]]
+        for line in between_lines:
+            floor_line_dict[line[0]].append(line)
+
+        for y_pos, lines in floor_line_dict.items():
+            max_line = max(lines, key=lambda l: abs(l[1] - l[2]))
+            new_coor_to_floor_line_list.append(max_line)
+        # for y in coor_to_floor_line_list:  # (橫線y座標, start, end)
+        #     if y[1] <= coor[0][0] <= y[2]:  # 先看x座標有沒有被夾住
+        #         failed = 0  # 查看是否有重複
+        #         for z in new_coor_to_floor_line_list:
+        #             if z[0] == y[0]:
+        #                 failed = 1
+        #                 break
+        #         if failed == 0:
+        #             new_coor_to_floor_line_list.append(y)
+        # tmp_set = set(new_coor_to_floor_line_list)
+        # new_coor_to_floor_line_list = list(tmp_set)
         new_coor_to_floor_line_list.sort(key=lambda x: x[0])
         try:
             # 再看y座標被哪兩條線夾住，下面那條要往下平移一格
             for y, line in enumerate(new_coor_to_floor_line_list):
-                if new_coor_to_floor_line_list[y][0] < coor[0][1] < new_coor_to_floor_line_list[y+1][0]:
-                    floor_to_line_set.add(
-                        (floor, new_coor_to_floor_line_list[y - bottom_line_offset][0],
-                         new_coor_to_floor_line_list[y+1][0], coor[0][0]))
+                line = new_coor_to_floor_line_list[y+1]
+                bottom_line = new_coor_to_floor_line_list[y -
+                                                          bottom_line_offset]
+                if new_coor_to_floor_line_list[y][0] < coor[0][1] < line[0]:
+                    floor_to_line_list.append(
+                        (floor,
+                         bottom_line[0],
+                         line[0],
+                         coor[0][0],
+                         (line[1], line[2])))
         except:
             pass
     progress('柱配筋圖讀取進度 9/10')
@@ -827,43 +861,60 @@ def sort_col(col_data: dict,
             size = convert_mm_to_cm(size)
         min_floor = ''
         min_floor_coor = ''
-        min_floor_diff = 10000
+        # min_floor_diff = 10000
+
         min_col: str = ''
         min_col_coor = ''
-        min_col_diff = 10000
-        for y in floor_to_line_set:  # (floor, down, up, left)
-            if y[1] <= coor[1][1] <= y[2] and coor[1][0] - y[3] >= 0 and coor[1][0] - y[3] <= min_floor_diff:
+        # min_col_diff = 10000
+
+        multi_floor = []
+        multi_col = []
+        for y in floor_to_line_list:  # (floor, down, up, left ,(start ,end))
+            if y[1] <= coor[1][1] <= y[2] and \
+                coor[1][0] - y[3] >= 0 and \
+                    y[4][1] > coor[1][0] > y[4][0]:
                 min_floor = y[0]
                 min_floor_coor = (y[1], y[2])
                 min_floor_diff = coor[1][0] - y[3]
-        for y in col_to_line_set:  # (col, left, right, up)
-            if y[1] <= coor[1][0] <= y[2] and y[3] - coor[1][1] >= 0 and y[3] - coor[1][1] <= min_col_diff:
+                multi_floor.append((min_floor, min_floor_coor, min_floor_diff))
+        for y in col_to_line_list:  # (col, left, right, up)
+            if y[1] <= coor[1][0] <= y[2] and \
+                y[3] - coor[1][1] >= 0 and \
+                    y[4][1] > coor[1][1] > y[4][0]:
                 min_col = y[0]
                 min_col_coor = (y[1], y[2])
                 min_col_diff = y[3] - coor[1][1]
-        if min_floor != '' and min_col != '':
-            if re.findall(special_char_pattern, min_col):
-                cols = re.split(special_char_pattern, min_col)
-                for col in cols:
-                    set_col.add((min_floor, col, size))
-                    dic_col[(min_floor, col, size)] = (
-                        min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])
-            elif '-' in min_col:
-                try:
-                    start = int((min_col.split('-')[0]).split('C')[1])
-                    end = int((min_col.split('-')[1]).split('C')[1])
-                    for i in range(start, end + 1):
-                        set_col.add((min_floor, f'C{i}', size))
-                        dic_col[(min_floor, f'C{i}', size)] = (
-                            min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
-                except Exception:  # CW3-1 之類的不是區間
+                multi_col.append((min_col, min_col_coor, min_col_diff))
+
+        for floor_data in multi_floor:
+            min_floor = floor_data[0]
+            for col_data in multi_col:
+                min_col = col_data[0]
+                if min_floor == '1F' and min_col == 'C10':
+                    print()
+        # if min_floor != '' and min_col != '':
+                if re.findall(special_char_pattern, min_col):
+                    cols = re.split(special_char_pattern, min_col)
+                    for col in cols:
+                        set_col.add((min_floor, col, size))
+                        dic_col[(min_floor, col, size)] = (
+                            min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])
+                elif '-' in min_col:
+                    try:
+                        start = int((min_col.split('-')[0]).split('C')[1])
+                        end = int((min_col.split('-')[1]).split('C')[1])
+                        for i in range(start, end + 1):
+                            set_col.add((min_floor, f'C{i}', size))
+                            dic_col[(min_floor, f'C{i}', size)] = (
+                                min_col_coor[0], min_col_coor[1], min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
+                    except Exception:  # CW3-1 之類的不是區間
+                        set_col.add((min_floor, min_col, size))
+                        dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1],
+                                                               min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
+                else:
                     set_col.add((min_floor, min_col, size))
                     dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1],
                                                            min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
-            else:
-                set_col.add((min_floor, min_col, size))
-                dic_col[(min_floor, min_col, size)] = (min_col_coor[0], min_col_coor[1],
-                                                       min_floor_coor[1], min_floor_coor[0])  # (left, right, up, down)
 
     # doc_col.Close(SaveChanges=False)
     progress('柱配筋圖讀取進度 10/10')
@@ -1339,14 +1390,14 @@ if __name__ == '__main__':
         plan_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN.dwg',
         layer_config=layer_config,
         client_id='0930-temp_col',
-        pkl=r"TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-PLAN_plan_to_col.pkl",
+        pkl=r"TEST\2024-1202\INPUT (1)\2024-12-19-09-53_三重384-XS-PLAN_plan_to_col.pkl",
         drawing_unit='cm'
     )
     set_col, dic_col = run_col(
         col_filename=r'D:\Desktop\BeamQC\TEST\2024-1128\2024-11-28-16-38_2024-1128 逢大段-XS-COL.dwg',
         layer_config=layer_config,
         client_id='temp',
-        pkl=r'',
+        pkl=r'TEST\2024-1202\INPUT (1)\2024-12-19-09-53_三重384-XS-COL_col_set.pkl',
         bottom_line_offset=1,
         exclude_string=['']
     )
@@ -1358,7 +1409,7 @@ if __name__ == '__main__':
                              set_col,
                              dic_plan,
                              date,
-                             drawing=True,
+                             drawing=False,
                              block_match=block_match_result_list,
                              client_id='temp')
     col_result = write_col(col_dwg_file,
@@ -1377,9 +1428,9 @@ if __name__ == '__main__':
                                                                      block_match_list=block_match_result_list
                                                                      )
     from src.main import OutputExcel
-    output_folder = r'TEST\2024-1128'
+    output_folder = r'TEST\2024-1202'
     for sheet_name, df_list in excel_data.items():
         OutputExcel(df_list=df_list,
                     df_spacing=1,
-                    file_path=os.path.join(output_folder, '逢大柱.xlsx'),
+                    file_path=os.path.join(output_folder, '柱-3.xlsx'),
                     sheet_name=sheet_name)
