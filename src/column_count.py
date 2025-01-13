@@ -742,8 +742,12 @@ def concat_floor_to_grid(coor_to_floor_set: set,
     new_coor_to_floor_line_list = []
     record_floor_line_dict = defaultdict(list)
     for element in coor_to_floor_set:
+
         coor = element[0]
         floor = element[1]
+
+        if floor == 'B2F':
+            print()
 
         if floor not in floor_list:
             continue
@@ -978,9 +982,11 @@ def combine_col_tie(column_list: list[Column],
         return ((coor1[0] - coor2[0])**2 + (coor1[1] - coor2[1])**2)**0.5
         pass
     progress('組合柱斷面與繫筋')
+    # column_list = [c for c in column_list if c.floor ==
+    #                '11F' and c.serial == 'C10']
     for column in column_list:
         ties = [tie for tie in coor_to_tie_list if column.in_column_section(
-            coor=tie[0]) and column.in_column_section(coor=tie[1]) and distance(*tie) > 50]
+            coor=tie[0]) and column.in_column_section(coor=tie[1]) and distance(*tie) > 40]
         for tie in ties:
             column.add_tie(tie)
             coor_to_tie_list.remove(tie)
@@ -1274,20 +1280,21 @@ if __name__ == '__main__':
     from os.path import isfile, join
 
     parameter = read_parameter_json('Elements')['column']
+    # parameter['']
     count_column_multifiles(
-        project_name='廍子社宅',
+        project_name='Test',
         column_filenames=[
             # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-002_柱配筋圖-1.dwg',
             # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-003_柱配筋圖-2.dwg',
             # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-004_柱配筋圖-3.dwg',
             # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-005_柱配筋圖-4.dwg',
             # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-006_柱配筋圖-5.dwg',
-            r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-007_柱配筋圖-6.dwg'],
+            r'D:\Desktop\BeamQC\TEST\2025-0113\富樂群-2025-01-13-10-44-XS-COL.dwg'],
         # r'D:\Desktop\BeamQC\TEST\2024-1021\柱\S3-008_柱配筋圖-7.dwg'],
-        floor_parameter_xlsx=r'TEST\2024-1024\中德三重-2024-11-05-15-21-floor_1.xlsx',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1024',
-        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2024-1024',
-        pkl=[r'TEST\2024-1024\中德三重-20241105_152130-中德三重-2024-11-05-15-21-XS-COL-column-data-0.pkl'],
+        floor_parameter_xlsx=r'TEST\2025-0113\富樂群-2025-01-13-09-39-floor.xlsx',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2025-0113',
+        pkl_file_folder=r'D:\Desktop\BeamQC\TEST\2025-0113',
+        # pkl=[r'TEST\2025-0113\Test-20250113_133819-富樂群-2025-01-13-10-44-XS-COL-column-data-0.pkl'],
         **parameter
     )
     # sys.argv[1] # XS-COL的路徑
