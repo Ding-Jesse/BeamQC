@@ -146,7 +146,8 @@ def main_functionV3(beam_filenames,
         OutputExcel(df_list=df_list,
                     df_spacing=1,
                     file_path=data_excel_file,
-                    sheet_name=sheet_name)
+                    sheet_name=sheet_name,
+                    output_index=False)
     Upload_Error_log(data={
         'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         'beam_filenames': beam_filenames,
@@ -307,7 +308,8 @@ def main_col_function(col_filenames,
         OutputExcel(df_list=df_list,
                     df_spacing=1,
                     file_path=data_excel_file,
-                    sheet_name=sheet_name)
+                    sheet_name=sheet_name,
+                    output_index=False)
     Upload_Error_log(data={
         'date': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         'col_filenames': col_filenames,
@@ -363,7 +365,7 @@ def OutputExcel(df_list: list[pd.DataFrame],
                 file_path, sheet_name, auto_fit_columns=[],
                 auto_fit_rows=[], columns_list=[],
                 rows_list=[], df_spacing=0,
-                output_index: bool = False):
+                output_index: bool = True):
     if os.path.exists(file_path):
         # book = load_workbook(file_path)
         writer = pd.ExcelWriter(
@@ -375,8 +377,12 @@ def OutputExcel(df_list: list[pd.DataFrame],
         writer = pd.ExcelWriter(file_path, engine='xlsxwriter')
     row = 0
     for df in df_list:
-        df.to_excel(writer, sheet_name=sheet_name,
-                    startrow=row, index=output_index)
+        try:
+            df.to_excel(writer, sheet_name=sheet_name,
+                        startrow=row, index=output_index)
+        except NotImplementedError:
+            df.to_excel(writer, sheet_name=sheet_name,
+                        startrow=row)
         row += len(df.index) + df_spacing
     writer.close()
 

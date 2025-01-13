@@ -2978,17 +2978,17 @@ if __name__ == '__main__':
     # )
 
     count_beam_multifiles(
-        project_name='中德三重',
+        project_name='Test',
         beam_filenames=[
             r'D:\Desktop\BeamQC\TEST\2024-1011\SCAN\2024-1018 沙崙社宅 上構大梁粗略配筋.dwg'],
-        floor_parameter_xlsx=r'TEST\2024-1024\中德三重-2024-11-05-15-21-floor_1.xlsx',
-        pkl_file_folder=r'TEST\2024-1024',
-        output_folder=r'D:\Desktop\BeamQC\TEST\2024-1024',
+        floor_parameter_xlsx=r'TEST\2025-0113\富樂群-2025-01-13-09-39-floor.xlsx',
+        pkl_file_folder=r'TEST\2025-0113',
+        output_folder=r'D:\Desktop\BeamQC\TEST\2025-0113',
         # pkl=[
         #     r'TEST\2024-1024\中德三重(梁)-20241105_155158-中德三重(梁)-2024-11-05-15-51-XS-BEAM-beam-data-0.pkl'],
-        beam_pkl=r'TEST\2024-1024\中德三重-20241106_104954-beam-object.pkl',
+        beam_pkl=r'TEST\2025-0113\富樂群-20250113_091700-beam-object-all.pkl',
         cad_data_pkl=r'TEST\2024-1024\沙崙社宅-20241105_173429-cad-data.pkl',
-        plan_pkl=r'TEST\2024-1024\1105-cad-中德.pkl',
+        plan_pkl=r'',
         output_type=['excel', 'pdf'],
         **parameter
     )

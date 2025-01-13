@@ -1977,4 +1977,5 @@ if __name__ == '__main__':
         OutputExcel(df_list=df_list,
                     df_spacing=1,
                     file_path=data_excel_file,
-                    sheet_name=sheet_name)
+                    sheet_name=sheet_name,
+                    output_index=False)

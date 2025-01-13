@@ -1406,4 +1406,5 @@ if __name__ == '__main__':
         OutputExcel(df_list=df_list,
                     df_spacing=1,
                     file_path=os.path.join(output_folder, '柱-3.xlsx'),
-                    sheet_name=sheet_name)
+                    sheet_name=sheet_name,
+                    output_index=False)
