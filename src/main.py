@@ -65,10 +65,10 @@ def main_functionV3(beam_filenames,
                                                     beam_drawing_unit,
                                                     beam_pkl)))
 
-    plan_drawing = 0
+    plan_drawing = 1
     # if len(plan_filenames) == 1:
     #     plan_drawing = 1
-    beam_drawing = 0
+    beam_drawing = 1
     # if len(beam_filenames) == 1:
     #     beam_drawing = 1
 

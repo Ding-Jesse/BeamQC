@@ -746,9 +746,6 @@ def concat_floor_to_grid(coor_to_floor_set: set,
         coor = element[0]
         floor = element[1]
 
-        if floor == 'B2F':
-            print()
-
         if floor not in floor_list:
             continue
         top_temp_list = [l for l in coor_to_floor_line_list if l[1]
@@ -980,7 +977,7 @@ def combine_col_tie(column_list: list[Column],
 
     def distance(coor1, coor2):
         return ((coor1[0] - coor2[0])**2 + (coor1[1] - coor2[1])**2)**0.5
-        pass
+
     progress('組合柱斷面與繫筋')
     # column_list = [c for c in column_list if c.floor ==
     #                '11F' and c.serial == 'C10']
