@@ -57,12 +57,6 @@ def read_plan_cad(plan_filename, layer_config: dict[Literal['block_layer', 'name
             error(
                 f'read_beam error in step 3: {e}, error_count = {error_count}.')
     progress('平面圖讀取進度 3/15')
-    total = 1
-    used_layer_list = []
-    count = 0
-
-    for key, layer_name in layer_config.items():
-        used_layer_list += layer_name
 
     block_layer = layer_config['block_layer']
     name_text_layer = layer_config['name_text_layer']
@@ -75,8 +69,13 @@ def read_plan_cad(plan_filename, layer_config: dict[Literal['block_layer', 'name
     block_entity = []
     name_text_entity = []
     floor_text_entity = []
+
+    used_layer_list = []
     for key, layer_name in layer_config.items():
         used_layer_list += layer_name
+
+    total = msp_plan.Count
+    count = 0
     for msp_object in msp_plan:
         object_list = []
         error_count = 0
@@ -85,9 +84,8 @@ def read_plan_cad(plan_filename, layer_config: dict[Literal['block_layer', 'name
             progress(f'平面圖已讀取{count}/{total}個物件')
         while error_count <= 3 and not object_list:
             try:
-                if msp_object.Layer not in used_layer_list:
-                    break
-                # print(f'{msp_object.Layer}:{msp_object.EntityName}')
+                # if msp_object.Layer not in used_layer_list:
+                #     break
                 object_list = [msp_object]
                 if msp_object.EntityName == "AcDbBlockReference" and msp_object.Layer not in block_layer:
                     if msp_object.GetAttributes():
@@ -162,8 +160,13 @@ def sort_floor_text(data: dict[str, Counter]):
     floor_list = list(data.keys())
     floor_list = [(f, floor) for floor in floor_list if get_last_parentheses(floor) is not None
                   for f in get_last_parentheses(floor)]
-    floor_float_list = [turn_floor_to_float(re.sub(
-        r'\(|\)', '', floor)) for floor, origin_floor in floor_list if not re.findall(r'\W', re.sub(r'\(|\)', '', floor))]
+    floor_float_list = []
+    for floor, origin_floor in floor_list:
+        floor_sub = re.sub(r'\(|\)', '', floor)
+        for text in re.split(r'\W', floor_sub):
+            floor_float_list.append(turn_floor_to_float(text))
+    # floor_float_list = [turn_floor_to_float(re.sub(
+    #     r'\(|\)', '', floor)) for floor, origin_floor in floor_list if not re.findall(r'\W', re.sub(r'\(|\)', '', floor))]
     # not equal to -1000 (FB)
     Bmax = 0  # 地下最深到幾層(不包括FB不包括FB)
     Fmax = 0  # 正常樓最高到幾層
@@ -211,11 +214,13 @@ def sort_name_text(data):
         floor_text = [text for coor,
                       text in floor_text_entity if in_block(coor, block)]
         temp_floor = ''
-        if len(floor_text) > 1:
+        # print(floor_text)
+        if len(floor_text) >= 1:
             for text in floor_text:
                 if check_is_floor(text):
                     temp_floor = text
                     break
+            # assert temp_floor != '', "Floor Text Error"
         if len(floor_text) > 1 and \
             temp_floor != '' and \
                 temp_floor not in sort_result:
@@ -241,18 +246,18 @@ def sort_plan_count(plan_filename,
 
 
 if __name__ == "__main__":
-    plan_filename = r'D:\Desktop\BeamQC\TEST\2024-1024\XS-PLAN.dwg'
+    plan_filename = r'D:\Desktop\BeamQC\TEST\2025-0113\麗寶逢大段-2025-03-03-13-38-XS-PLAN.dwg'
     progress_file = './result/tmp'
     layer_config = {
-        'block_layer': ['0'],
+        'block_layer': ['0', 'DwFm'],
         'name_text_layer': ['S-TEXTC', 'S-TEXTG', 'S-TEXTB'],
         'floor_text_layer': ['S-TITLE']
     }
-    # cad_result = read_plan_cad(plan_filename, layer_config)
-    # save_temp_file.save_pkl(
-    #     data=cad_result, tmp_file=r'TEST\2024-1024\1105-cad-中德.pkl')
-    cad_result = save_temp_file.read_temp(
-        tmp_file=r'TEST\2024-1024\1105-cad-中德.pkl')
+    cad_result = read_plan_cad(plan_filename, layer_config)
+    save_temp_file.save_pkl(
+        data=cad_result, tmp_file=r'TEST\2025-0113\cad.pkl')
+    # cad_result = save_temp_file.read_temp(
+    #     tmp_file=r'TEST\2025-0113\cad.pkl')
     result = sort_name_text(cad_result)
     result = sort_floor_text(data=result)
     print(result)
