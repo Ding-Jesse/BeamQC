@@ -616,9 +616,9 @@ def count_beam():
             'burst_layer_list': request.form['burst_layer_list'].split('\r\n'),
         }
         plan_layer_config = {
-            'block_layer':  request.form['plan_block_layer'].split('\r\n'),
-            'floor_text_layer':  request.form['plan_floor_text_layer'].split('\r\n'),
-            'name_text_layer':  request.form['plan_serial_text_layer'].split('\r\n'),
+            'block_layer':  request.form['beam_plan_block_layer'].split('\r\n'),
+            'floor_text_layer':  request.form['beam_plan_floor_text_layer'].split('\r\n'),
+            'name_text_layer':  request.form['beam_plan_name_text_layer'].split('\r\n'),
         }
         result_log_content['upload_xlsx'] = uploaded_xlsx
         result_log_content['upload_beams'] = uploaded_beams
@@ -629,19 +629,7 @@ def count_beam():
 
         # print(layer_config)
         if beam_filename != '' and beam_ok:
-            # rebar_txt,rebar_txt_floor,rebar_excel,rebar_dwg =count_beam_main(beam_filename=beam_filename,layer_config=layer_config,temp_file=temp_file,
-            #                                                                     output_folder=app.config['OUTPUT_FOLDER'],project_name=project_name,template_name=template_name)
-            # output_file_list, output_dwg_list, pkl = count_beam_multiprocessing(beam_filenames=beam_filenames,
-            #                                                                     layer_config=layer_config,
-            #                                                                     pkl_file_folder=pkl_file_folder,
-            #                                                                     project_name=project_name,
-            #                                                                     output_folder=app.config['OUTPUT_FOLDER'],
-            #                                                                     template_name=template_name,
-            #                                                                     floor_parameter_xlsx=xlsx_filename,
-            #                                                                     progress_file=progress_file,
-            #                                                                     plan_filename=plan_filename,
-            #                                                                     plan_layer_config=plan_layer_config,
-            #                                                                     client_id=client_id)
+
             hyper_parameter: dict = read_parameter_json(
                 template_name=template_name)['beam']
 
@@ -791,9 +779,9 @@ def count_column():
         }
 
         plan_layer_config = {
-            'block_layer':  request.form['plan_block_layer'].split('\r\n'),
-            'floor_text_layer':  request.form['plan_floor_text_layer'].split('\r\n'),
-            'name_text_layer':  request.form['plan_serial_text_layer'].split('\r\n'),
+            'block_layer':  request.form['column_plan_block_layer'].split('\r\n'),
+            'floor_text_layer':  request.form['column_plan_floor_text_layer'].split('\r\n'),
+            'name_text_layer':  request.form['column_plan_name_text_layer'].split('\r\n'),
         }
 
         result_log_content['upload_xlsx'] = uploaded_xlsx
@@ -955,6 +943,10 @@ def get_fillin_template():
             return jsonify(read_parameter_json(template_name=template)['beam']['layer_config'])
         if element_type == 'column':
             return jsonify(read_parameter_json(template_name=template)['column']['layer_config'])
+        if element_type == "beam_plan":
+            return jsonify(read_parameter_json(template_name=template)['beam']['plan_layer_config'])
+        if element_type == "column_plan":
+            return jsonify(read_parameter_json(template_name=template)['column']['plan_layer_config'])
 # @app.route('/notify')
 # def notify():
 #     client_id = session.get('client_id')

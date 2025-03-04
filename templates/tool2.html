@@ -129,10 +129,10 @@
                     <label for="file_plan">選擇檔案(.dwg)</label>
                     <input type=file id="file_plan" name="file_plan" value="dwg">
                 </p>
-                <p><strong>圖框圖層</strong><textarea type="plan_block" id="plan_block_layer" name="plan_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>0&#10;DwFm&#10;DEFPOINTS</textarea>
+                <p><strong>圖框圖層</strong><textarea type="plan_block" id="beam_plan_block_layer" name="beam_plan_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required></textarea>
                 </p>
-                <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="plan_floor_text_layer" name="plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TEXT</textarea></p>
-                <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="plan_serial_text_layer" name="plan_serial_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TEXTC&#10;S-TEXTG&#10;S-TEXTB</textarea></p>
+                <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="beam_plan_floor_text_layer" name="beam_plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required></textarea></p>
+                <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="beam_plan_name_text_layer" name="beam_plan_name_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required></textarea></p>
             </div>
             <div class="btn-block">
                 <button id="count_beam">完成</button>
@@ -183,27 +183,16 @@
                 <p><strong>箍筋文字圖層</strong><textarea type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
                 <p><strong>柱斷面圖層</strong><textarea type="text" id="column_column_rc_layer" name="column_column_rc_layer" placeholder="請輸入圖層名稱" value="S-LEADER" required></textarea></p>
                 <p><strong>需要炸圖層(選填)</strong><textarea type="text" id="column_burst_layer_list" name="column_burst_layer_list" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="S-ARCH" required></textarea></p>
-                <!-- <input type="text" id="column_rebar_text_layer" name="column_rebar_text_layer" placeholder="請輸入圖層名稱" value = "S-REINF" required > -->
-                <!-- <label>格線圖層</label>
-                <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-TEXT" required >
-                <label>圖框圖層</label>
-                <input type="text" id="column_block_layer" name="column_block_layer" placeholder="請輸入圖層名稱" value = "S-GRID" required >
-                <label>柱編號/樓層圖層</label>
-                <input type="text" id="column_text_layer" name="column_text_layer" placeholder="請輸入圖層名稱" value = "S-RC">
-                <labe>箍筋線圖層</label>
-                <input type="text" id="column_tie_layer" name="column_tie_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">
-                <label>箍筋文字圖層</label>
-                <input type="text" id="column_tie_text_layer" name="column_tie_text_layer" placeholder="請輸入圖層名稱" value = "S-ARCH">     -->
                 <div class="item dashed-border">
 
                     <p><strong>平面圖(選填)用於計算數量</strong>
                         <label for="file_plan">選擇檔案(.dwg)</label>
                         <input type=file id="file_plan" name="file_plan" value="dwg">
                     </p>
-                    <p><strong>圖框圖層</strong><textarea type="plan_block" id="plan_block_layer" name="plan_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>0&#10;DwFm&#10;DEFPOINTS</textarea>
+                    <p><strong>圖框圖層</strong><textarea type="plan_block" id="column_plan_block_layer" name="column_plan_block_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>0&#10;DwFm&#10;DEFPOINTS</textarea>
                     </p>
-                    <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="plan_floor_text_layer" name="plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TEXT</textarea></p>
-                    <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="plan_serial_text_layer" name="plan_serial_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TEXTC&#10;S-TEXTG&#10;S-TEXTB</textarea></p>
+                    <p><strong>樓層文字圖層</strong><textarea type="plan_floor_text" id="column_plan_floor_text_layer" name="column_plan_floor_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TEXT</textarea></p>
+                    <p><strong>梁柱編號文字圖層</strong><textarea type="plan_serial_text" id="column_plan_name_text_layer" name="column_plan_name_text_layer" placeholder="請輸入圖層1名稱&#10;請輸入圖層2名稱" value="" required>S-TEXTC&#10;S-TEXTG&#10;S-TEXTB</textarea></p>
                 </div>
 
                 <div class="btn-block">
@@ -313,6 +302,28 @@
                 }).catch(
                     error => console.log(error)
                 )
+
+            fetch('/get_template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'template': $('#company').val(),
+                    'element_type': 'beam_plan'
+                })
+            }).then(response => response.json())
+                .then(data => {
+                    console.log(data)
+                    for (const key in data) {
+                        const value = data[key];
+                        const textarea = document.getElementById(`beam_plan_${key}`);
+                        textarea.value = Array.isArray(value) ? value.join("\r\n") : value;
+                    }
+
+                }).catch(
+                    error => console.log(error)
+                )
         })
         $('#companyColumn').change(function () {
             console.log($('#companyColumn').val());
@@ -338,77 +349,29 @@
                 }).catch(
                     error => console.log(error)
                 )
-        })
-        // $('#company').change(function () {
-        //     if ($('#company').val() == 'DrawRC') {
-        //         $('#rebar_data_layer').val('NBAR');
-        //         $('#rebar_layer').val('RBAR');
-        //         $('#tie_text_layer').val('NBAR');
-        //         $('#block_layer').val('DEFPOINTS');
-        //         $('#beam_text_layer').val('TITLE');
-        //     }
-        //     if ($('#company').val() == "Elements") {
-        //         $('#rebar_data_layer').val("S-LEADER");
-        //         $('#rebar_layer').val("S-REINF");
-        //         $('#tie_text_layer').val("S-TEXT");
-        //         $('#block_layer').val("S-GRID\r\n0\r\nDEFPOINTS\r\nDwFm");
-        //         $('#beam_text_layer').val("S-RC");
-        //         $('#beam_dim_layer').val("S-DIM");
-        //         $('#rc_block_layer').val("S-RC");
-        //     }
-        //     if ($('#company').val() == "RCAD") {
-        //         $('#rebar_data_layer').val('主筋文字\r\n主筋文字引線\r\n扭力筋文字\r\n扭力筋文字引線\r\n扭力筋文字引線 no use');
-        //         $('#rebar_layer').val("主筋線\r\n剪力筋線\r\n扭力筋線");
-        //         $('#tie_text_layer').val("剪力筋文字");
-        //         $('#block_layer').val("_noprint");
-        //         $('#beam_text_layer').val("梁跨名稱");
-        //         $('#beam_dim_layer').val("尺寸標註-字串");
-        //         $('#rc_block_layer').val("邊界線\r\n梁柱截斷記號\r\n邊界線-梁支撐內線\r\n邊界線-梁支撐外線");
-        //     }
+            fetch('/get_template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'template': $('#companyColumn').val(),
+                    'element_type': 'column_plan'
+                })
+            }).then(response => response.json())
+                .then(data => {
+                    console.log(data)
+                    for (const key in data) {
+                        console.log(key);
+                        const value = data[key];
+                        const textarea = document.getElementById('column_plan_' + key);
+                        textarea.value = Array.isArray(value) ? value.join("\r\n") : value;
+                    }
 
-        // });
-        // $('#companyColumn').change(function () {
-        //     if ($('#companyColumn').val() == 'DrawRC') {
-        //         $('#column_rebar_text_layer').val('NBAR');
-        //         $('#column_rebar_layer').val('RBAR');
-        //         $('#column_tie_text_layer').val('NBAR');
-        //         $('#column_tie_layer').val('RBAR');
-        //         $('#column_block_layer').val('DEFPOINTS');
-        //         $('#column_text_layer').val('TABLE\r\nSIZE');
-        //         $('#column_line_layer').val('TABLE');
-        //         $('#column_rc_layer').val('OLINE');
-        //     }
-        //     if ($('#companyColumn').val() == "RCAD") {
-        //         $('#column_text_layer').val('文字-柱線名稱\r\n文字-樓層名稱\r\n文字-斷面尺寸');
-        //         $('#column_line_layer').val('GridInner\r\nGirdBoundary');
-        //         $('#column_rebar_text_layer').val('文字-主筋根數');
-        //         $('#column_rebar_layer').val('主筋斷面');
-        //         $('#column_tie_text_layer').val('文字-剪力筋 中央區\r\n文字-剪力筋-BC\r\n文字-剪力筋-圍束區');
-        //         $('#column_tie_layer').val('箍筋線');
-        //         $('#column_block_layer').val('DEFPOINTS');
-        //         $('#column_rc_layer').val('柱斷面線');
-        //     }
-        //     if ($('#companyColumn').val() == "Elements") {
-        //         $('#column_text_layer').val('S-TEXT');
-        //         $('#column_line_layer').val('S-STUD\r\nS-TABLE');
-        //         $('#column_rebar_text_layer').val('S-TEXT');
-        //         $('#column_rebar_layer').val('S-REINFD');
-        //         $('#column_tie_text_layer').val('S-TEXT');
-        //         $('#column_tie_layer').val('S-REINF');
-        //         $('#column_block_layer').val('Page\r\n0\r\nDEFPOINTS\r\nDwFm');
-        //         $('#column_rc_layer').val('S-RC');
-        //     }
-        // });
-        // $('#download_sample').click(function(){
-        //     fetch("/results/sample.zip",{method:'post',contentType : false,cache: 'no-cache',credentials: 'same-origin'}).then(
-        //         response=>response.text()
-        //     ).then(
-        //         data=>{
-        //             console.log(data);
-        //         }
-        //     )
-        // })
-        // var form = $('#dataForm');
+                }).catch(
+                    error => console.log(error)
+                )
+        })
         $('#count_beam').click(function () {
             project_count += 1
             const form = document.getElementById('dataForm');

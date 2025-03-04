@@ -253,11 +253,11 @@ if __name__ == "__main__":
         'name_text_layer': ['S-TEXTC', 'S-TEXTG', 'S-TEXTB'],
         'floor_text_layer': ['S-TITLE']
     }
-    cad_result = read_plan_cad(plan_filename, layer_config)
-    save_temp_file.save_pkl(
-        data=cad_result, tmp_file=r'TEST\2025-0113\cad.pkl')
-    # cad_result = save_temp_file.read_temp(
-    #     tmp_file=r'TEST\2025-0113\cad.pkl')
+    # cad_result = read_plan_cad(plan_filename, layer_config)
+    # save_temp_file.save_pkl(
+    #     data=cad_result, tmp_file=r'TEST\2025-0113\cad.pkl')
+    cad_result = save_temp_file.read_temp(
+        tmp_file=r'TEST\2025-0113\cad.pkl')
     result = sort_name_text(cad_result)
     result = sort_floor_text(data=result)
     print(result)

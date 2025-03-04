@@ -2986,9 +2986,9 @@ if __name__ == '__main__':
         output_folder=r'D:\Desktop\BeamQC\TEST\2025-0113',
         # pkl=[
         #     r'TEST\2024-1024\中德三重(梁)-20241105_155158-中德三重(梁)-2024-11-05-15-51-XS-BEAM-beam-data-0.pkl'],
-        beam_pkl=r'TEST\2025-0113\富樂群-20250113_091700-beam-object-all.pkl',
-        cad_data_pkl=r'TEST\2024-1024\沙崙社宅-20241105_173429-cad-data.pkl',
-        plan_pkl=r'',
+        beam_pkl=r'TEST\2025-0113\2025-0304-20250304_094126-beam-object-all.pkl',
+        cad_data_pkl=r'TEST\2025-0113\2025-0304-20250304_094126-cad-data.pkl',
+        plan_pkl=r'TEST\2025-0113\cad.pkl',
         output_type=['excel', 'pdf'],
         **parameter
     )
